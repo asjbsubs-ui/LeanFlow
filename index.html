@@ -966,6 +966,8 @@ function switchTab(id, btn){
   if(window.innerWidth<=768) closeMobSidebar();
   const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview};
   if(renders[id]) renders[id]();
+  // Auto-resync GCal when navigating to Meetings
+  if(id==='meetings') gcalAutoSync();
 }
 
 // ── Discipline score ───────────────────────────────────
@@ -2231,6 +2233,24 @@ function disconnectGcal(){
   renderMeetSyncPanel();
   if(_meetView==='cal') renderMeetCal();
 }
+
+// Auto-resync GCal — throttled to once per 2 minutes
+async function gcalAutoSync(){
+  if(localStorage.getItem('ahq_gcal_connected')!=='true') return;
+  if(!localStorage.getItem('ahq_gcal_token')) return;
+  const last=parseInt(localStorage.getItem('ahq_gcal_last_sync')||'0');
+  if(Date.now()-last < 120000) return; // 2-min cooldown
+  localStorage.setItem('ahq_gcal_last_sync',String(Date.now()));
+  await _fetchGcalEvents();
+}
+
+// Re-sync when user returns to the tab/app
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && activeTab==='meetings') gcalAutoSync();
+});
+window.addEventListener('focus',()=>{
+  if(activeTab==='meetings') gcalAutoSync();
+});
 
 async function createGcalEvent(m){
   if(localStorage.getItem('ahq_gcal_connected')!=='true') return;
