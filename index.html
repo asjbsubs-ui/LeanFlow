@@ -1004,6 +1004,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return[];}}
+const toLbs=kg=>Math.round(kg*2.20462*10)/10;
 function loadObj(k,d={}){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch{return d;}}
 function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);obsSync(k);}
 
@@ -1768,7 +1769,7 @@ function renderFitness(){
   $('fitnessStats').innerHTML=[
     {val:workouts.length,label:'Total Workouts',c:'--t-fitness'},
     {val:thisWeek.length,label:'This Week',c:'--t-fitness'},
-    {val:latest?latest.weight+'kg':'—',label:'Current Weight',c:'--t-selfdev'},
+    {val:latest?toLbs(latest.weight)+'lbs':'—',label:'Current Weight',c:'--t-selfdev'},
     {val:workouts.length?workouts[workouts.length-1].name||'—':'—',label:'Last Session',c:'--t-habits'},
   ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   const ICONS={Weights:'🏋️',Running:'🏃',Sports:'⚽',Other:'💪'};
@@ -1777,7 +1778,7 @@ function renderFitness(){
   else wel.innerHTML=[...workouts].reverse().map(w=>`<div class="workout-row"><div class="workout-type">${ICONS[w.type]||'💪'}</div><div class="workout-info"><div class="workout-name">${esc(w.type)} ${w.name?'— '+esc(w.name):''}</div><div class="workout-meta">${fmtDate(w.date)} ${w.notes?'· '+esc(w.notes):''}</div></div><button class="delete-btn" onclick="deleteWorkout('${w.id}')">✕</button></div>`).join('');
   const mel=$('metricLog');
   if(!metrics.length){mel.innerHTML='<div class="empty"><span class="empty-icon">⚖️</span><span class="empty-text">No metrics logged yet.</span></div>';}
-  else mel.innerHTML=[...metrics].reverse().map(m=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${fmtDate(m.date)}</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t-fitness);flex:1">${m.weight}kg</div>${m.notes?`<div style="font-size:11px;color:var(--text-muted)">${esc(m.notes)}</div>`:''}<button class="delete-btn" onclick="deleteMetric('${m.id}')">✕</button></div>`).join('');
+  else mel.innerHTML=[...metrics].reverse().map(m=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${fmtDate(m.date)}</div><div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t-fitness);line-height:1">${toLbs(m.weight)}<span style="font-size:13px">lbs</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${m.weight}kg</div></div>${m.notes?`<div style="font-size:11px;color:var(--text-muted)">${esc(m.notes)}</div>`:''}<button class="delete-btn" onclick="deleteMetric('${m.id}')">✕</button></div>`).join('');
 }
 function deleteWorkout(id){save(K.workouts,load(K.workouts).filter(w=>w.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
 function deleteMetric(id){save(K.metrics,load(K.metrics).filter(m=>m.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
@@ -3038,7 +3039,7 @@ function renderLogsF(q){
   ]));
   const mRows=[...metrics].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)}</span>`,
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--t-fitness)">${m.weight}kg</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--t-fitness)">${toLbs(m.weight)}lbs</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:4px">${m.weight}kg</span>`,
     esc(m.notes||'—'),
     dbDelBtn('deleteMetric',m.id)
   ]));
@@ -3155,7 +3156,7 @@ function obsMarkdown(file){
     const workouts=load(K.workouts).sort((a,b)=>b.date.localeCompare(a.date));
     const metrics=load(K.metrics).sort((a,b)=>b.date.localeCompare(a.date));
     const wRows=workouts.slice(0,20).map(w=>`| ${w.date} | ${w.type} | ${w.name||'—'} | ${w.notes||'—'} |`).join('\n');
-    const mRows=metrics.slice(0,10).map(m=>`| ${m.date} | ${m.weight}kg | ${m.notes||'—'} |`).join('\n');
+    const mRows=metrics.slice(0,10).map(m=>`| ${m.date} | ${toLbs(m.weight)}lbs (${m.weight}kg) | ${m.notes||'—'} |`).join('\n');
     return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💪 Fitness\n\n## Workouts\n| Date | Type | Focus | Notes |\n|---|---|---|---|\n${wRows||'_None_'}\n\n## Body Metrics\n| Date | Weight | Notes |\n|---|---|---|\n${mRows||'_None_'}\n`;
   }
   if(file==='Notes.md'){
