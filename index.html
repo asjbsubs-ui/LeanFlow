@@ -9,6 +9,7 @@
 <title>LeanHQ by StreamLean</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -391,6 +392,22 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .db-table tbody tr:hover td{background:rgba(255,255,255,.02);color:var(--text-primary)}
 .db-empty{padding:48px;text-align:center;font-size:13px;color:var(--text-muted)}
 .db-section-label{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding:18px 0 8px;display:block}
+/* ── Auth screen ── */
+#auth-screen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px}
+.auth-card{width:100%;max-width:380px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);padding:32px 28px;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+.auth-logo{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;color:var(--text-bright);letter-spacing:.06em;margin-bottom:4px;text-align:center}
+.auth-logo span{color:var(--green)}
+.auth-sub{font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:28px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase}
+.auth-tabs{display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px;margin-bottom:22px}
+.auth-tab{flex:1;padding:7px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;text-align:center;color:var(--text-muted);transition:all .15s}
+.auth-tab.on{background:rgba(74,222,128,.12);color:var(--green)}
+.auth-err{font-size:12px;color:var(--red);margin-bottom:12px;text-align:center;min-height:18px}
+.auth-footer{font-size:11px;color:var(--text-muted);text-align:center;margin-top:16px;line-height:1.6}
+/* sync indicator */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;flex-shrink:0}
+.sync-dot.off{background:var(--text-muted)}
+.sync-dot.syncing{background:var(--yellow);animation:pulse-sync .8s infinite}
+@keyframes pulse-sync{0%,100%{opacity:1}50%{opacity:.3}}
 /* ── Mobile / iOS ── */
 .mob-header{display:none}
 @media(max-width:768px){
@@ -436,6 +453,29 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 </style>
 </head>
 <body>
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Lean<span>HQ</span></div>
+    <div class="auth-sub">by StreamLean</div>
+    <div class="auth-tabs">
+      <div class="auth-tab on" id="auth-tab-in" onclick="switchAuthTab('in')">Sign In</div>
+      <div class="auth-tab" id="auth-tab-up" onclick="switchAuthTab('up')">Sign Up</div>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <div class="field">
+      <label>Email</label>
+      <input class="input" id="auth-email" type="email" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input class="input" id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;background:var(--green);color:#000;padding:11px;font-size:13px;margin-top:4px" id="auth-btn" onclick="doAuth()">Sign In</button>
+    <div class="auth-footer">Your data syncs across all your devices.<br>Each account is private and secure.</div>
+  </div>
+</div>
+
 <div class="mob-backdrop" id="mobBackdrop" onclick="closeMobSidebar()"></div>
 <div class="shell">
 
@@ -489,6 +529,11 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div class="score-bar-wrap"><div class="score-bar-fill" id="sbScoreBar" style="width:0%"></div></div>
     <div class="score-val" id="sbScoreVal">0%</div>
     <div class="score-caption" id="sbScoreCap">Start checking off habits</div>
+  </div>
+  <div style="padding:10px 16px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
+    <span class="sync-dot off" id="syncDot"></span>
+    <span style="font-size:11px;color:var(--text-muted);flex:1" id="syncLabel">Not signed in</span>
+    <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
 </nav>
 
@@ -867,7 +912,7 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return[];}}
 function loadObj(k,d={}){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch{return d;}}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);}
 
 function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
@@ -2465,6 +2510,102 @@ function closeMobSidebar(){
   document.getElementById('mobBackdrop').classList.remove('on');
 }
 
+// ── Supabase Cloud Sync ────────────────────────────────
+const _SB_URL = 'https://eewyzqyxwwkdimonltjy.supabase.co';
+const _SB_KEY = 'sb_publishable_qgfJXOAlB33B2mDNqeWAUQ_nFpBv-bN';
+let _sb = null, _sbUser = null;
+const SYNC_KEYS = Object.values(K); // all ahq_* keys
+
+function initSupabase(){
+  if(typeof supabase !== 'undefined'){
+    _sb = supabase.createClient(_SB_URL, _SB_KEY);
+  }
+}
+
+function setSyncStatus(state, label){
+  const dot=$('syncDot'), lbl=$('syncLabel'), btn=$('syncLogoutBtn');
+  if(!dot) return;
+  dot.className='sync-dot'+(state==='on'?'':state==='syncing'?' syncing':' off');
+  lbl.textContent=label;
+  if(btn) btn.style.display=state==='on'?'inline':'none';
+}
+
+async function sbCheckSession(){
+  if(!_sb) return;
+  const {data:{session}} = await _sb.auth.getSession();
+  if(session){ _sbUser=session.user; await sbPullAndStart(); }
+  else{ document.getElementById('auth-screen').style.display='flex'; }
+}
+
+async function sbPullAndStart(){
+  setSyncStatus('syncing','Syncing…');
+  try{
+    const {data,error} = await _sb.from('leanhq_sync').select('key,value').eq('user_id',_sbUser.id);
+    if(!error && data && data.length){
+      data.forEach(r=>{ if(r.value!==null) localStorage.setItem(r.key,JSON.stringify(r.value)); });
+    }
+  }catch(e){ console.warn('Pull error',e); }
+  const email = _sbUser.email||'Synced';
+  setSyncStatus('on', email.split('@')[0]);
+  document.getElementById('auth-screen').style.display='none';
+  init();
+}
+
+async function sbPush(k,v){
+  if(!_sb||!_sbUser) return;
+  try{
+    await _sb.from('leanhq_sync').upsert(
+      {user_id:_sbUser.id, key:k, value:v, updated_at:new Date().toISOString()},
+      {onConflict:'user_id,key'}
+    );
+  }catch(e){ console.warn('Push error',e); }
+}
+
+async function doAuth(){
+  const email=$('auth-email').value.trim();
+  const pass=$('auth-password').value;
+  const isSignUp=document.getElementById('auth-tab-up').classList.contains('on');
+  const errEl=$('auth-err');
+  const btn=$('auth-btn');
+  if(!email||!pass){errEl.textContent='Email and password required.';return;}
+  btn.textContent='Loading…';btn.disabled=true;errEl.textContent='';
+  try{
+    if(isSignUp){
+      const {error:e} = await _sb.auth.signUp({email,password:pass});
+      if(e) throw e;
+      errEl.style.color='var(--green)';
+      errEl.textContent='Account created! Signing you in…';
+    }
+    const {data,error} = await _sb.auth.signInWithPassword({email,password:pass});
+    if(error) throw error;
+    _sbUser=data.user;
+    await sbPullAndStart();
+  }catch(e){
+    errEl.style.color='var(--red)';
+    errEl.textContent=e.message||'Authentication failed.';
+    btn.textContent=isSignUp?'Sign Up':'Sign In';
+    btn.disabled=false;
+  }
+}
+
+async function doSignOut(){
+  if(_sb) await _sb.auth.signOut();
+  _sbUser=null;
+  setSyncStatus('off','Not signed in');
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('auth-password').value='';
+  document.getElementById('auth-err').textContent='';
+  document.getElementById('auth-btn').textContent='Sign In';
+  document.getElementById('auth-btn').disabled=false;
+}
+
+function switchAuthTab(t){
+  document.getElementById('auth-tab-in').classList.toggle('on',t==='in');
+  document.getElementById('auth-tab-up').classList.toggle('on',t==='up');
+  document.getElementById('auth-btn').textContent=t==='in'?'Sign In':'Sign Up';
+  document.getElementById('auth-err').textContent='';
+}
+
 // ── Workout focus chip selector ───────────────────────
 function selectWorkoutFocus(btn, label){
   const chips = document.querySelectorAll('#m-wo-focus-chips button');
@@ -2516,7 +2657,11 @@ function init(){
   const active=load(K.tasks).filter(t=>!t.done).length;
   $('pill-tasks').textContent=active;
 }
-init();
+
+// Boot — Supabase first, then render
+initSupabase();
+if(_sb){ sbCheckSession(); }
+else { document.getElementById('auth-screen').style.display='none'; init(); }
 </script>
 </body>
 </html>
