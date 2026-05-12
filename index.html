@@ -558,6 +558,12 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <span style="font-size:11px;color:var(--text-muted);flex:1" id="syncLabel">Not signed in</span>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
+  <div style="padding:0 16px 14px;display:flex;gap:6px">
+    <button onclick="openObsSettings()" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
+      <span style="font-size:14px">📓</span> Obsidian Sync
+    </button>
+    <button onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
+  </div>
 </nav>
 
 <!-- ── Main ── -->
@@ -944,7 +950,7 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return[];}}
 function loadObj(k,d={}){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch{return d;}}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);obsSync(k);}
 
 function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
@@ -2885,6 +2891,144 @@ function closeMobSidebar(){
   document.getElementById('mobBackdrop').classList.remove('on');
 }
 
+// ── Obsidian Sync ─────────────────────────────────────
+const OBS_PORT = 27123;
+const OBS_KEY_MAP = {
+  [K.tasks]:'Tasks.md', [K.meetings]:'Meetings.md',
+  [K.habits]:'Habits.md', [K.habitLog]:'Habits.md',
+  [K.goals]:'Goals.md', [K.journal]:'Journal.md',
+  [K.knowledge]:'Knowledge.md',
+  [K.workouts]:'Fitness.md', [K.metrics]:'Fitness.md',
+  [K.reviews]:'Weekly Reviews.md'
+};
+const _obsThrottle={};
+
+async function pushToObsidian(file, md){
+  const key=localStorage.getItem('obs_api_key');
+  const folder=(localStorage.getItem('obs_vault_folder')||'LeanHQ/Data').replace(/\/$/,'');
+  if(!key) return;
+  try{
+    await fetch(`http://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
+      method:'PUT',
+      headers:{'Authorization':`Bearer ${key}`,'Content-Type':'text/markdown'},
+      body:md
+    });
+  }catch(e){ /* Obsidian not open — silent */ }
+}
+
+function obsSync(k){
+  const file=OBS_KEY_MAP[k];
+  if(!file||!localStorage.getItem('obs_api_key')) return;
+  clearTimeout(_obsThrottle[file]);
+  _obsThrottle[file]=setTimeout(()=>pushToObsidian(file,obsMarkdown(file)),1500);
+}
+
+function obsMarkdown(file){
+  const now=new Date().toLocaleString('en-GB');
+  const hr=`\n---\n`;
+  if(file==='Tasks.md'){
+    const tasks=load(K.tasks);
+    const work=tasks.filter(t=>t.type!=='personal');
+    const personal=tasks.filter(t=>t.type==='personal');
+    const row=t=>`- [${t.done?'x':' '}] ${t.title}${t.priority?' #'+t.priority.toLowerCase():''}${t.business?' · '+t.business:''}${t.dept?' · '+t.dept:''}${t.due?' 📅 '+t.due:''}`;
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# ✅ Tasks\n\n## 💼 Work\n${work.length?work.map(row).join('\n'):'_None_'}\n\n## 🏠 Personal\n${personal.length?personal.map(row).join('\n'):'_None_'}\n`;
+  }
+  if(file==='Meetings.md'){
+    const meetings=load(K.meetings).sort((a,b)=>a.date>b.date?1:-1);
+    const today=new Date().toISOString().slice(0,10);
+    const upcoming=meetings.filter(m=>m.date>=today);
+    const past=meetings.filter(m=>m.date<today);
+    const row=m=>`### ${m.date}${m.time?' at '+m.time:''} · ${m.title}\n${m.business?'**Business:** '+m.business+'\n':''}${m.attendees?'**Attendees:** '+m.attendees+'\n':''}${m.notes?'**Notes:** '+m.notes+'\n':''}`;
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 📅 Meetings\n\n## Upcoming\n${upcoming.length?upcoming.map(row).join('\n'):'_None_'}\n\n## Past\n${past.slice(-10).reverse().map(row).join('\n')||'_None_'}\n`;
+  }
+  if(file==='Habits.md'){
+    const habits=load(K.habits);
+    const log=JSON.parse(localStorage.getItem(K.habitLog)||'{}');
+    const todayStr=new Date().toISOString().slice(0,10);
+    const todayLog=log[todayStr]||[];
+    const rows=habits.map(h=>`| ${h.icon||'⭐'} ${h.name} | ${h.streak||0}🔥 | ${todayLog.includes(h.id)?'✅':'❌'} |`).join('\n');
+    const done=habits.filter(h=>todayLog.includes(h.id)).length;
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# ⭐ Habits\n\n**Today's Score:** ${habits.length?Math.round(done/habits.length*100):0}% (${done}/${habits.length})\n\n| Habit | Streak | Today |\n|---|---|---|\n${rows||'_No habits_'}\n`;
+  }
+  if(file==='Goals.md'){
+    const goals=load(K.goals);
+    const bar=p=>('█'.repeat(Math.round(p/10))+'░'.repeat(10-Math.round(p/10)));
+    const rows=goals.map(g=>`## ${g.title}\n**Category:** ${g.cat||'—'} | **Progress:** ${g.progress}% | **Deadline:** ${g.deadline||'—'}\n\`${bar(g.progress)}\` ${g.progress}%\n${g.milestones&&g.milestones.length?'\n**Milestones:**\n'+g.milestones.map(m=>`- [${m.done?'x':' '}] ${m.text}`).join('\n'):''}` ).join('\n\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🎯 Goals\n\n${rows||'_No goals_'}\n`;
+  }
+  if(file==='Journal.md'){
+    const entries=load(K.journal).sort((a,b)=>b.date.localeCompare(a.date));
+    const moods=['','😩','😞','😐','😊','🔥'];
+    const rows=entries.slice(0,30).map(e=>`## ${e.date} ${moods[e.mood]||''}\n${e.dump?'**Brain Dump:** '+e.dump+'\n':''}${e.grat?'**Gratitude:** '+e.grat+'\n':''}${e.intent?'**Tomorrow\'s Priority:** '+e.intent+'\n':''}`).join('\n---\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🧠 Journal\n\n${rows||'_No entries_'}\n`;
+  }
+  if(file==='Knowledge.md'){
+    const items=load(K.knowledge);
+    const groups={};
+    items.forEach(i=>{const s=i.skill||'Other';if(!groups[s])groups[s]=[];groups[s].push(i);});
+    const rows=Object.entries(groups).map(([skill,list])=>`## ${skill}\n${list.map(i=>`- ${i.type==='Book'?'📖':i.type==='Course'?'🎓':'📌'} **${i.title}**${i.source?' · '+i.source:''} · ${i.status==='done'?'✅ Done':i.progress+'%'}${i.link?'\n  🔗 '+i.link:''}`).join('\n')}`).join('\n\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 📚 Knowledge\n\n${rows||'_No knowledge logged_'}\n`;
+  }
+  if(file==='Fitness.md'){
+    const workouts=load(K.workouts).sort((a,b)=>b.date.localeCompare(a.date));
+    const metrics=load(K.metrics).sort((a,b)=>b.date.localeCompare(a.date));
+    const wRows=workouts.slice(0,20).map(w=>`| ${w.date} | ${w.type} | ${w.name||'—'} | ${w.notes||'—'} |`).join('\n');
+    const mRows=metrics.slice(0,10).map(m=>`| ${m.date} | ${m.weight}kg | ${m.notes||'—'} |`).join('\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💪 Fitness\n\n## Workouts\n| Date | Type | Focus | Notes |\n|---|---|---|---|\n${wRows||'_None_'}\n\n## Body Metrics\n| Date | Weight | Notes |\n|---|---|---|\n${mRows||'_None_'}\n`;
+  }
+  if(file==='Weekly Reviews.md'){
+    const reviews=load(K.reviews).sort((a,b)=>b.week.localeCompare(a.week));
+    const rows=reviews.map(r=>`## Week of ${r.week}\n**Overall:** ${r.overall}/10 · **Energy:** ${r.energy}/10 · **Focus:** ${r.focus}/10\n${r.wins?'\n**3 Biggest Wins:**\n'+r.wins+'\n':''}${r.losses?'\n**What Held Me Back:**\n'+r.losses+'\n':''}${r.priority?'\n**Next Week Priority:** '+r.priority+'\n':''}`).join('\n---\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🧭 Weekly Reviews\n\n${rows||'_No reviews_'}\n`;
+  }
+  return '';
+}
+
+// Add sidebar Obsidian settings button
+function openObsSettings(){
+  const key=localStorage.getItem('obs_api_key')||'';
+  const folder=localStorage.getItem('obs_vault_folder')||'LeanHQ/Data';
+  $('modalTitle').textContent='Obsidian Sync Settings';
+  $('modalBody').innerHTML=`
+    <div class="field"><label>Local REST API Key</label><input class="input" id="obs-key" value="${esc(key)}" placeholder="Paste your API key here…" style="font-family:'JetBrains Mono',monospace;font-size:12px"></div>
+    <div class="field"><label>Vault Folder</label><input class="input" id="obs-folder" value="${esc(folder)}" placeholder="LeanHQ/Data"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Folder inside your vault where notes will be saved. Created automatically if it doesn't exist.</div></div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.7;padding:10px;background:var(--bg-alt);border-radius:var(--r-sm)">
+      Requires the <strong style="color:var(--text-secondary)">Local REST API</strong> community plugin in Obsidian.<br>
+      Only syncs when Obsidian is open on this PC.
+    </div>`;
+  $('modalFoot').innerHTML=`
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="testObsSync()" style="background:var(--bg-alt);color:var(--text-secondary)">Test</button>
+    <button class="btn btn-primary" style="background:var(--green);color:#000" onclick="saveObsSettings()">Save</button>`;
+  $('modalOverlay').classList.add('open');
+}
+
+function saveObsSettings(){
+  const key=$('obs-key').value.trim();
+  const folder=$('obs-folder').value.trim()||'LeanHQ/Data';
+  if(key) localStorage.setItem('obs_api_key',key); else localStorage.removeItem('obs_api_key');
+  localStorage.setItem('obs_vault_folder',folder);
+  closeModal();
+  if(key) obsFullSync();
+}
+
+async function testObsSync(){
+  const key=$('obs-key').value.trim();
+  if(!key){alert('Enter your API key first.');return;}
+  try{
+    const r=await fetch(`http://localhost:${OBS_PORT}/`,{headers:{'Authorization':`Bearer ${key}`}});
+    if(r.ok||r.status===200) showToast('✅ Obsidian connected successfully','var(--green)');
+    else showToast('Connection failed — check the key','var(--red)');
+  }catch(e){ showToast('Obsidian not reachable — is it open?','var(--red)'); }
+}
+
+function obsFullSync(){
+  Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i).forEach(file=>{
+    pushToObsidian(file,obsMarkdown(file));
+  });
+  showToast('📓 Synced to Obsidian','var(--green)');
+}
+
 // ── Supabase Cloud Sync ────────────────────────────────
 const _SB_URL = 'https://eewyzqyxwwkdimonltjy.supabase.co';
 const _SB_KEY = 'sb_publishable_qgfJXOAlB33B2mDNqeWAUQ_nFpBv-bN';
@@ -2924,6 +3068,7 @@ async function sbPullAndStart(){
   setSyncStatus('on', email.split('@')[0]);
   document.getElementById('auth-screen').style.display='none';
   init();
+  setTimeout(obsFullSync,2000);
 }
 
 async function sbPush(k,v){
@@ -3033,10 +3178,14 @@ function init(){
   $('pill-tasks').textContent=active;
 }
 
+// Set Obsidian API key on first run (stored in localStorage only, never sent externally)
+if(!localStorage.getItem('obs_api_key')) localStorage.setItem('obs_api_key','bce3935f101e19c7eb4a39e47add4fd6f3bfbea2d1366deb60e079e41f366d5a');
+if(!localStorage.getItem('obs_vault_folder')) localStorage.setItem('obs_vault_folder','LeanHQ/Data');
+
 // Boot — Supabase first, then render
 initSupabase();
 if(_sb){ sbCheckSession(); }
-else { document.getElementById('auth-screen').style.display='none'; init(); }
+else { document.getElementById('auth-screen').style.display='none'; init(); setTimeout(obsFullSync,2000); }
 </script>
 </body>
 </html>
