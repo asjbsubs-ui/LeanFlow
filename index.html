@@ -2225,26 +2225,60 @@ function disconnectGcal(){
   if(_meetView==='cal') renderMeetCal();
 }
 
-async function createGcalEvent(m){
-  if(!_gapiReady || localStorage.getItem('ahq_gcal_connected')!=='true') return;
+async function ensureGcalReady(){
+  const clientId=localStorage.getItem('ahq_gcal_client_id');
+  if(!clientId) return false;
   try{
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const startStr = `${m.date}T${m.time||'09:00'}:00`;
-    const endDt = new Date(startStr);
-    endDt.setHours(endDt.getHours()+1);
-    const endStr = `${endDt.getFullYear()}-${String(endDt.getMonth()+1).padStart(2,'0')}-${String(endDt.getDate()).padStart(2,'0')}T${String(endDt.getHours()).padStart(2,'0')}:${String(endDt.getMinutes()).padStart(2,'0')}:00`;
-    const desc = [m.attendees, m.notes].filter(Boolean).join('\n');
+    if(!_gapiReady){
+      await _loadScript('https://apis.google.com/js/api.js');
+      await new Promise(res=>gapi.load('client',res));
+      await gapi.client.init({discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']});
+      _gapiReady=true;
+    }
+    if(!_gcalTokenClient){
+      await _loadScript('https://accounts.google.com/gsi/client');
+      _gcalTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:clientId,
+        scope:'https://www.googleapis.com/auth/calendar',
+        callback:()=>{}
+      });
+    }
+    // Request a fresh token silently (no prompt if already authorised)
+    await new Promise((resolve,reject)=>{
+      _gcalTokenClient.callback=resp=>resp.error?reject(resp):resolve(resp);
+      _gcalTokenClient.requestAccessToken({prompt:''});
+    });
+    return true;
+  }catch(e){
+    // Silent token failed — needs user interaction; fall back to URL approach
+    return false;
+  }
+}
+
+async function createGcalEvent(m){
+  if(localStorage.getItem('ahq_gcal_connected')!=='true') return;
+  try{
+    const ready = await ensureGcalReady();
+    if(!ready){ addMeetingToGcal(m.id); return; } // fallback: open GCal in browser
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const startStr=`${m.date}T${m.time||'09:00'}:00`;
+    const endDt=new Date(startStr); endDt.setHours(endDt.getHours()+1);
+    const pad=n=>String(n).padStart(2,'0');
+    const endStr=`${endDt.getFullYear()}-${pad(endDt.getMonth()+1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:${pad(endDt.getMinutes())}:00`;
     await gapi.client.calendar.events.insert({
       calendarId:'primary',
       resource:{
-        summary: m.title,
-        description: desc,
-        start:{ dateTime: startStr, timeZone: tz },
-        end:  { dateTime: endStr,   timeZone: tz }
+        summary:m.title,
+        description:[m.attendees,m.notes].filter(Boolean).join('\n'),
+        start:{dateTime:startStr,timeZone:tz},
+        end:  {dateTime:endStr,  timeZone:tz}
       }
     });
     await _fetchGcalEvents();
-  }catch(e){ console.warn('GCal create error',e); }
+  }catch(e){
+    console.warn('GCal create error',e);
+    addMeetingToGcal(m.id); // fallback
+  }
 }
 function _loadScript(src){
   return new Promise((res,rej)=>{
