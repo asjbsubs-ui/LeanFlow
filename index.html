@@ -429,6 +429,15 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .eim-chip.on-important{border-color:var(--green);background:rgba(74,222,128,.1);color:var(--green)}
 .eim-chip.on-not-important{border-color:var(--text-muted);background:rgba(255,255,255,.05);color:var(--text-muted)}
 @media(max-width:768px){.matrix-grid{grid-template-columns:1fr!important}}
+/* ── Notes ── */
+.note-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;transition:border-color .15s}
+.note-card:hover{border-color:var(--border-md)}
+.note-text{font-size:13.5px;color:var(--text-primary);line-height:1.65;margin-bottom:10px;white-space:pre-wrap}
+.note-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.note-cat{font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(167,139,250,.12);color:#a78bfa;font-weight:600;flex-shrink:0}
+.note-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+.note-source{font-size:11px;color:#60a5fa;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.note-source:hover{text-decoration:underline}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-lg);padding:11px 20px;font-size:13px;font-weight:500;color:var(--text-primary);z-index:9000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .mob-header{display:none}
@@ -545,6 +554,9 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </button>
     <button class="nav-btn" data-tab="review" style="--tab-color:var(--t-review)" onclick="switchTab('review',this)">
       <span class="nav-emoji">📊</span>Weekly Review
+    </button>
+    <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
+      <span class="nav-emoji">💡</span>Notes
     </button>
   </div>
   <div class="sb-score">
@@ -915,6 +927,39 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 </div>
 
 
+<!-- NOTES -->
+<div id="tab-notes" class="tab-panel">
+  <div class="ph">
+    <div class="ph-left">
+      <div class="ph-eyebrow" style="color:#a78bfa">Capture</div>
+      <div class="ph-title" style="color:#a78bfa">Notes</div>
+      <div class="ph-sub">Capture ideas before they disappear.</div>
+    </div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost" onclick="openLogs('notes')">📋 Logs</button>
+    </div>
+  </div>
+  <!-- Quick capture -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-body">
+      <textarea class="textarea" id="note-input" style="min-height:96px;font-size:14px;resize:none;border:none;background:transparent;padding:0;margin-bottom:14px" placeholder="What's on your mind? Type and save… (Cmd+Enter to save)" onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();saveNote();}"></textarea>
+      <div style="margin-bottom:10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px">Category</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="note-cat-chips">
+          ${['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought'].map(c=>`<button type="button" onclick="selectNoteChip(this,'${c}')" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${c}</button>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="input" id="note-source" type="url" inputmode="url" placeholder="🔗 Source URL (YouTube, Instagram, article…)" style="flex:1;font-size:12px" autocapitalize="none">
+        <button class="btn btn-primary" style="background:#a78bfa;color:#000;padding:9px 20px;flex-shrink:0" onclick="saveNote()">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- Filter + feed -->
+  <div id="notes-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <div id="notesFeed"><div class="empty"><span class="empty-icon">💡</span><span class="empty-text">No notes yet. Start capturing ideas above.</span></div></div>
+</div>
+
 <!-- LOGS PAGE -->
 <div id="logs-page" style="display:none;height:100%;flex-direction:column">
   <div class="logs-bar">
@@ -956,7 +1001,7 @@ function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.to
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes'};
 
 function migrateKnowledge(){
   if(localStorage.getItem('ahq_km_done')) return;
@@ -1002,10 +1047,12 @@ function switchTab(id, btn){
   document.documentElement.style.setProperty('--tab-color',`var(--t-${id})`);
   activeTab = id;
   if(window.innerWidth<=768) closeMobSidebar();
-  const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview};
+  const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview,notes:renderNotes};
   if(renders[id]) renders[id]();
   // Auto-resync GCal when navigating to Meetings
   if(id==='meetings') gcalAutoSync();
+  // Auto-focus note input when navigating to Notes
+  if(id==='notes') setTimeout(()=>{ const el=$('note-input'); if(el) el.focus(); },80);
 }
 
 // ── Discipline score ───────────────────────────────────
@@ -1884,6 +1931,72 @@ function loadReview(id){
 function showReviewHistory(){}
 
 // ── MODAL ─────────────────────────────────────────────
+// ── Notes ─────────────────────────────────────────────
+let _noteChip = '', _noteCatFilter = '';
+
+function selectNoteChip(btn, cat){
+  document.querySelectorAll('#note-cat-chips button').forEach(b=>{
+    b.style.background='transparent';b.style.borderColor='var(--border-md)';b.style.color='var(--text-muted)';
+  });
+  if(_noteChip===cat){ _noteChip=''; return; }
+  _noteChip=cat;
+  btn.style.background='rgba(167,139,250,.15)';btn.style.borderColor='#a78bfa';btn.style.color='#a78bfa';
+}
+
+function saveNote(){
+  const text=$('note-input').value.trim();
+  if(!text){ $('note-input').focus(); return; }
+  const notes=load(K.notes);
+  notes.unshift({id:uid(),text,category:_noteChip,source:$('note-source').value.trim(),created:today(),ts:Date.now()});
+  save(K.notes,notes);
+  // Reset form
+  $('note-input').value='';
+  $('note-source').value='';
+  document.querySelectorAll('#note-cat-chips button').forEach(b=>{
+    b.style.background='transparent';b.style.borderColor='var(--border-md)';b.style.color='var(--text-muted)';
+  });
+  _noteChip='';
+  $('note-input').focus();
+  renderNotes();
+  showToast('💡 Note saved','#a78bfa');
+}
+
+function deleteNote(id){
+  save(K.notes,load(K.notes).filter(n=>n.id!==id));
+  renderNotes();
+  if(_logsTab==='notes') renderCurrentLogs('');
+}
+
+function setNoteCatFilter(cat){
+  _noteCatFilter=_noteCatFilter===cat?'':cat;
+  renderNotes();
+}
+
+function renderNotes(){
+  const all=load(K.notes);
+  // Build filter chips
+  const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
+  const filterEl=$('notes-filter');
+  if(filterEl) filterEl.innerHTML=[{v:'',l:'All'},...cats.map(c=>({v:c,l:c}))].map(({v,l})=>`<button onclick="setNoteCatFilter('${v.replace(/'/g,"\\'")}') " style="padding:4px 12px;border-radius:99px;border:1px solid ${_noteCatFilter===v?'#a78bfa':'var(--border-md)'};background:${_noteCatFilter===v?'rgba(167,139,250,.15)':'transparent'};color:${_noteCatFilter===v?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('');
+  const filtered=_noteCatFilter?all.filter(n=>n.category===_noteCatFilter):all;
+  const el=$('notesFeed');
+  if(!el) return;
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty"><span class="empty-icon">💡</span><span class="empty-text">${_noteCatFilter?'No notes in this category.':'No notes yet. Start capturing ideas above.'}</span></div>`;
+    return;
+  }
+  el.innerHTML=filtered.map(n=>`
+    <div class="note-card">
+      <div class="note-text">${esc(n.text)}</div>
+      <div class="note-footer">
+        ${n.category?`<span class="note-cat">${esc(n.category)}</span>`:''}
+        ${n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(n.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
+        <span class="note-date" style="margin-left:auto">${fmtDateShort(n.created)}</span>
+        <button class="delete-btn" onclick="deleteNote('${n.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
 // ── Eisenhower Matrix ─────────────────────────────────
 let _eimUrgency=null, _eimImportance=null;
 const EIM_Q=[
@@ -2625,7 +2738,7 @@ function addMeetingToGcal(id){
 
 // ── LOGS PAGE ─────────────────────────────────────────
 let _logsTab = null;
-const LOG_TITLES = {tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Self-Development',fitness:'Fitness',review:'Weekly Review'};
+const LOG_TITLES = {tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Self-Development',fitness:'Fitness',review:'Weekly Review',notes:'Notes'};
 
 function openLogs(tab){
   _logsTab = tab;
@@ -2649,7 +2762,7 @@ function closeLogs(){
 
 function renderCurrentLogs(q){
   if(!_logsTab) return;
-  const renders = {tasks:renderLogsT,meetings:renderLogsM,habits:renderLogsH,goals:renderLogsG,journal:renderLogsJ,selfdev:renderLogsSD,fitness:renderLogsF,review:renderLogsR};
+  const renders = {tasks:renderLogsT,meetings:renderLogsM,habits:renderLogsH,goals:renderLogsG,journal:renderLogsJ,selfdev:renderLogsSD,fitness:renderLogsF,review:renderLogsR,notes:renderLogsN};
   if(renders[_logsTab]) renders[_logsTab](q||'');
 }
 
@@ -2914,7 +3027,8 @@ const OBS_KEY_MAP = {
   [K.goals]:'Goals.md', [K.journal]:'Journal.md',
   [K.knowledge]:'Knowledge.md',
   [K.workouts]:'Fitness.md', [K.metrics]:'Fitness.md',
-  [K.reviews]:'Weekly Reviews.md'
+  [K.reviews]:'Weekly Reviews.md',
+  [K.notes]:'Notes.md'
 };
 const _obsThrottle={};
 
@@ -2990,6 +3104,13 @@ function obsMarkdown(file){
     const wRows=workouts.slice(0,20).map(w=>`| ${w.date} | ${w.type} | ${w.name||'—'} | ${w.notes||'—'} |`).join('\n');
     const mRows=metrics.slice(0,10).map(m=>`| ${m.date} | ${m.weight}kg | ${m.notes||'—'} |`).join('\n');
     return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💪 Fitness\n\n## Workouts\n| Date | Type | Focus | Notes |\n|---|---|---|---|\n${wRows||'_None_'}\n\n## Body Metrics\n| Date | Weight | Notes |\n|---|---|---|\n${mRows||'_None_'}\n`;
+  }
+  if(file==='Notes.md'){
+    const notes=load(K.notes);
+    const groups={};
+    notes.forEach(n=>{const c=n.category||'Uncategorised';if(!groups[c])groups[c]=[];groups[c].push(n);});
+    const rows=Object.entries(groups).map(([cat,list])=>`## ${cat}\n${list.map(n=>`### ${fmtDateShort(n.created)}\n${n.text}${n.source?'\n🔗 '+n.source:''}`).join('\n\n')}`).join('\n\n');
+    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💡 Notes\n\n${rows||'_No notes_'}\n`;
   }
   if(file==='Weekly Reviews.md'){
     const reviews=load(K.reviews).sort((a,b)=>b.week.localeCompare(a.week));
@@ -3139,6 +3260,23 @@ function switchAuthTab(t){
   document.getElementById('auth-tab-up').classList.toggle('on',t==='up');
   document.getElementById('auth-btn').textContent=t==='in'?'Sign In':'Sign Up';
   document.getElementById('auth-err').textContent='';
+}
+
+// ── Notes Logs ────────────────────────────────────────
+function renderLogsN(q){
+  const q_=(q||'').toLowerCase();
+  const all=load(K.notes).filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
+  logsCount(all.length+' notes');
+  if(!all.length){logsHtml('<div class="db-empty">No notes yet.</div>');return;}
+  const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
+  const rows=all.map(n=>dbRow([
+    `<span style="max-width:300px;display:block;white-space:pre-wrap;color:var(--text-primary)">${esc(n.text.slice(0,120))}${n.text.length>120?'…':''}</span>`,
+    n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
+    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa;text-decoration:none" title="${esc(n.source)}">🔗 Open</a>`:'—',
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(n.created)}</span>`,
+    dbDelBtn('deleteNote',n.id)
+  ]));
+  logsHtml(dbTable(['Note','Category','Source','Date',''],rows));
 }
 
 // ── Workout focus chip selector ───────────────────────
