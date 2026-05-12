@@ -409,6 +409,26 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .sync-dot.syncing{background:var(--yellow);animation:pulse-sync .8s infinite}
 @keyframes pulse-sync{0%,100%{opacity:1}50%{opacity:.3}}
 /* ── Mobile / iOS ── */
+/* ── Eisenhower Matrix ── */
+.matrix-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.matrix-q{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border)}
+.matrix-qh{padding:10px 14px;display:flex;align-items:center;gap:8px}
+.matrix-qh-label{font-family:'Orbitron',monospace;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.matrix-qh-sub{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+.matrix-qb{background:var(--bg-card);padding:8px;min-height:80px;max-height:260px;overflow-y:auto}
+.matrix-task{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:var(--r-xs);cursor:default;transition:background .1s}
+.matrix-task:hover{background:var(--bg-hover)}
+.matrix-task.done .matrix-task-title{text-decoration:line-through;color:var(--text-muted)}
+.matrix-task-title{font-size:12px;flex:1;line-height:1.4;color:var(--text-primary)}
+.matrix-empty{padding:18px 8px;text-align:center;font-size:11px;color:var(--text-muted)}
+.matrix-unsorted{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:10px}
+/* Urgency/importance chips in modal */
+.eim-chip{flex:1;padding:7px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-weight:600;font-size:12px;text-align:center;transition:all .15s}
+.eim-chip.on-urgent{border-color:var(--red);background:rgba(248,113,113,.1);color:var(--red)}
+.eim-chip.on-not-urgent{border-color:#60a5fa;background:rgba(96,165,250,.1);color:#60a5fa}
+.eim-chip.on-important{border-color:var(--green);background:rgba(74,222,128,.1);color:var(--green)}
+.eim-chip.on-not-important{border-color:var(--text-muted);background:rgba(255,255,255,.05);color:var(--text-muted)}
+@media(max-width:768px){.matrix-grid{grid-template-columns:1fr!important}}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-lg);padding:11px 20px;font-size:13px;font-weight:500;color:var(--text-primary);z-index:9000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .mob-header{display:none}
@@ -597,7 +617,11 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="ph-sub">Work and personal — separated and prioritised.</div>
     </div>
     <div class="ph-actions">
-      <select class="input" id="taskFilter" style="width:130px" onchange="renderTasks()">
+      <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px">
+        <button class="btn btn-sm" id="task-view-list" onclick="setTaskView('list')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">≡ List</button>
+        <button class="btn btn-sm" id="task-view-matrix" onclick="setTaskView('matrix')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">⊞ Matrix</button>
+      </div>
+      <select class="input" id="taskFilter" style="width:120px" onchange="renderTasks()">
         <option value="all">All tasks</option>
         <option value="active">Active</option>
         <option value="done">Done</option>
@@ -609,9 +633,14 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </div>
   </div>
   <div id="tasksAiSuggest"></div>
-  <div class="card">
-    <div class="card-body" id="taskList"><div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks yet. Add your first task.</span></div></div>
+  <!-- List view -->
+  <div id="task-list-view">
+    <div class="card">
+      <div class="card-body" id="taskList"><div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks yet. Add your first task.</span></div></div>
+    </div>
   </div>
+  <!-- Matrix view -->
+  <div id="task-matrix-view" style="display:none"></div>
 </div>
 
 <!-- MEETINGS -->
@@ -1168,6 +1197,7 @@ function editTask(id){
       dc.forEach(b=>{if(b.textContent===t.dept)selectTaskChip('dept',b,t.dept);});
       if($('m-task-dept')) $('m-task-dept').value=t.dept;
     }
+    prefillEim(t.urgency,t.importance);
     if($('modalTitle')) $('modalTitle').textContent='Edit Task';
   },60);
 }
@@ -1201,6 +1231,7 @@ function deleteTask(id){
   save(K.tasks,load(K.tasks).filter(t=>t.id!==id));
   renderTasks();if(activeTab==='home')renderHome();
   if(_logsTab==='tasks')renderCurrentLogs('');
+  if(_taskView==='matrix')renderMatrix();
 }
 
 // ── HABITS ────────────────────────────────────────────
@@ -1845,6 +1876,98 @@ function loadReview(id){
 function showReviewHistory(){}
 
 // ── MODAL ─────────────────────────────────────────────
+// ── Eisenhower Matrix ─────────────────────────────────
+let _eimUrgency=null, _eimImportance=null;
+const EIM_Q=[
+  {u:'urgent',   i:'important',     key:'q1', label:'DO FIRST',  sub:'Urgent + Important',     color:'var(--red)',    bg:'rgba(248,113,113,.08)'},
+  {u:'not-urgent',i:'important',    key:'q2', label:'SCHEDULE',  sub:'Not Urgent + Important',  color:'#60a5fa',      bg:'rgba(96,165,250,.08)'},
+  {u:'urgent',   i:'not-important', key:'q3', label:'DELEGATE',  sub:'Urgent + Not Important',  color:'var(--yellow)', bg:'rgba(251,191,36,.08)'},
+  {u:'not-urgent',i:'not-important',key:'q4', label:'ELIMINATE', sub:'Not Urgent + Not Important',color:'var(--text-muted)',bg:'rgba(255,255,255,.03)'},
+];
+
+function setEim(dim,val){
+  if(dim==='urgency'){
+    _eimUrgency=_eimUrgency===val?null:val;
+    const urgent=$('eim-urgent'), notUrgent=$('eim-not-urgent');
+    if(urgent){urgent.className='eim-chip'+(_eimUrgency==='urgent'?' on-urgent':'');}
+    if(notUrgent){notUrgent.className='eim-chip'+(_eimUrgency==='not-urgent'?' on-not-urgent':'');}
+  } else {
+    _eimImportance=_eimImportance===val?null:val;
+    const imp=$('eim-important'), notImp=$('eim-not-important');
+    if(imp){imp.className='eim-chip'+(_eimImportance==='important'?' on-important':'');}
+    if(notImp){notImp.className='eim-chip'+(_eimImportance==='not-important'?' on-not-important':'');}
+  }
+}
+
+function resetEim(){
+  _eimUrgency=null;_eimImportance=null;
+  ['eim-urgent','eim-not-urgent','eim-important','eim-not-important'].forEach(id=>{const el=$(id);if(el)el.className='eim-chip';});
+}
+
+function prefillEim(urgency,importance){
+  resetEim();
+  if(urgency) setEim('urgency',urgency);
+  if(importance) setEim('importance',importance);
+}
+
+// ── Task view toggle ───────────────────────────────────
+let _taskView='list';
+function setTaskView(v){
+  _taskView=v;
+  const lv=$('task-list-view'),mv=$('task-matrix-view');
+  const bl=$('task-view-list'),bm=$('task-view-matrix');
+  lv.style.display=v==='list'?'block':'none';
+  mv.style.display=v==='matrix'?'block':'none';
+  bl.style.background=v==='list'?'rgba(255,255,255,.08)':'transparent';
+  bl.style.color=v==='list'?'var(--text-primary)':'var(--text-muted)';
+  bm.style.background=v==='matrix'?'rgba(255,255,255,.08)':'transparent';
+  bm.style.color=v==='matrix'?'var(--text-primary)':'var(--text-muted)';
+  if(v==='matrix') renderMatrix();
+}
+
+function renderMatrix(){
+  const all=load(K.tasks);
+  const el=$('task-matrix-view'); if(!el) return;
+  const assigned={q1:[],q2:[],q3:[],q4:[]};
+  const unsorted=[];
+  all.forEach(t=>{
+    const q=EIM_Q.find(q=>q.u===t.urgency&&q.i===t.importance);
+    if(q) assigned[q.key].push(t); else unsorted.push(t);
+  });
+  const taskRow=(t)=>`
+    <div class="matrix-task ${t.done?'done':''}">
+      <div class="check-box" onclick="toggleTask('${t.id}');if(_taskView==='matrix')renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+      <div style="flex:1;min-width:0">
+        <div class="matrix-task-title">${esc(t.title)}</div>
+        ${t.due?`<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">📅 ${fmtDateShort(t.due)}</div>`:''}
+      </div>
+      <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
+    </div>`;
+  const quadrant=(q)=>`
+    <div class="matrix-q">
+      <div class="matrix-qh" style="background:${q.bg};border-bottom:2px solid ${q.color}">
+        <div>
+          <div class="matrix-qh-label" style="color:${q.color}">${q.label}</div>
+          <div class="matrix-qh-sub">${q.sub}</div>
+        </div>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:${q.color}">${assigned[q.key].length}</span>
+      </div>
+      <div class="matrix-qb">
+        ${assigned[q.key].length?assigned[q.key].map(taskRow).join(''):`<div class="matrix-empty">Empty</div>`}
+      </div>
+    </div>`;
+  const unsortedSection=unsorted.length?`
+    <div class="matrix-unsorted">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">⊡ Unsorted — open task to assign quadrant</div>
+      ${unsorted.map(t=>`<div class="matrix-task ${t.done?'done':''}">
+        <div class="check-box" onclick="toggleTask('${t.id}');if(_taskView==='matrix')renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+        <div style="flex:1"><div class="matrix-task-title">${esc(t.title)}</div></div>
+        <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
+      </div>`).join('')}
+    </div>`:'';
+  el.innerHTML=`<div class="matrix-grid">${EIM_Q.map(quadrant).join('')}</div>${unsortedSection}`;
+}
+
 let _taskTypeDefault='work';
 function setTaskType(btn){
   document.querySelectorAll('.task-type-btn').forEach(b=>{b.classList.remove('active-work','active-personal');});
@@ -1918,6 +2041,21 @@ const MODAL_FORMS = {
     <div class="field-row">
       <div class="field"><label>Priority</label><select class="select" id="m-task-priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
       <div class="field"><label>Due Date</label><input class="input" id="m-task-due" type="date"></div>
+    </div>
+    <div class="field">
+      <label>Eisenhower — Urgency</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="eim-chip" id="eim-urgent" onclick="setEim('urgency','urgent')">⚡ Urgent</button>
+        <button type="button" class="eim-chip" id="eim-not-urgent" onclick="setEim('urgency','not-urgent')">📅 Not Urgent</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Eisenhower — Importance</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="eim-chip" id="eim-important" onclick="setEim('importance','important')">⭐ Important</button>
+        <button type="button" class="eim-chip" id="eim-not-important" onclick="setEim('importance','not-important')">○ Not Important</button>
+      </div>
+    </div>
     </div>`,
     save:()=>{
       const title=$('m-task-title').value.trim();if(!title)return alert('Title required');
@@ -1925,7 +2063,8 @@ const MODAL_FORMS = {
       const isWork=_taskTypeDefault==='work';
       const fields={title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
         business:isWork?($('m-task-biz').value.trim()||''):'',
-        dept:isWork?($('m-task-dept').value.trim()||''):''};
+        dept:isWork?($('m-task-dept').value.trim()||''):'',
+        urgency:_eimUrgency||null,importance:_eimImportance||null};
       if(_editingTaskId){
         const i=tasks.findIndex(t=>t.id===_editingTaskId);
         if(i>=0) tasks[i]={...tasks[i],...fields};
@@ -1933,7 +2072,7 @@ const MODAL_FORMS = {
       } else {
         tasks.unshift({id:uid(),...fields,done:false,created:today()});
       }
-      save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
+      save(K.tasks,tasks);closeModal();renderTasks();if(_taskView==='matrix')renderMatrix();if(activeTab==='home')renderHome();
     }},
   habit:{title:'New Habit',html:`
     <div class="field-row">
@@ -2089,7 +2228,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
