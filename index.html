@@ -618,8 +618,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </div>
     <div class="ph-actions">
       <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px">
-        <button class="btn btn-sm" id="task-view-list" onclick="setTaskView('list')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">≡ List</button>
-        <button class="btn btn-sm" id="task-view-matrix" onclick="setTaskView('matrix')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">⊞ Matrix</button>
+        <button class="btn btn-sm" id="task-view-list" onclick="setTaskView('list')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">≡ List</button>
+        <button class="btn btn-sm" id="task-view-matrix" onclick="setTaskView('matrix')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">⊞ Matrix</button>
       </div>
       <select class="input" id="taskFilter" style="width:120px" onchange="renderTasks()">
         <option value="all">All tasks</option>
@@ -634,13 +634,13 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
   <div id="tasksAiSuggest"></div>
   <!-- List view -->
-  <div id="task-list-view">
+  <div id="task-list-view" style="display:none">
     <div class="card">
       <div class="card-body" id="taskList"><div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks yet. Add your first task.</span></div></div>
     </div>
   </div>
   <!-- Matrix view -->
-  <div id="task-matrix-view" style="display:none"></div>
+  <div id="task-matrix-view"></div>
 </div>
 
 <!-- MEETINGS -->
@@ -1128,6 +1128,7 @@ function taskCard(t){
   </div>`;
 }
 function renderTasks(){
+  if(_taskView==='matrix'){renderMatrix();return;}
   // Athena AI suggestion block
   const allOpen = load(K.tasks).filter(t=>!t.done);
   const topTask = allOpen.sort((a,b)=>{const p={High:0,Medium:1,Low:2};return(p[a.priority]||1)-(p[b.priority]||1);})[0];
@@ -1911,7 +1912,7 @@ function prefillEim(urgency,importance){
 }
 
 // ── Task view toggle ───────────────────────────────────
-let _taskView='list';
+let _taskView='matrix';
 function setTaskView(v){
   _taskView=v;
   const lv=$('task-list-view'),mv=$('task-matrix-view');
