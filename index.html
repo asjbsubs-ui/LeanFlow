@@ -1967,6 +1967,19 @@ function saveNote(){
   showToast('💡 Note saved','#a78bfa');
 }
 
+function noteToTask(id){
+  const n=load(K.notes).find(x=>x.id===id);if(!n)return;
+  // Pre-fill task title from note text (first line, max 100 chars)
+  const title=n.text.split('\n')[0].slice(0,100);
+  _taskTypeDefault='work';
+  _editingTaskId=null;
+  openModal('task','work');
+  setTimeout(()=>{
+    if($('m-task-title')) $('m-task-title').value=title;
+    if($('modalTitle')) $('modalTitle').textContent='Convert Note → Task';
+  },60);
+}
+
 function deleteNote(id){
   save(K.notes,load(K.notes).filter(n=>n.id!==id));
   renderNotes();
@@ -1998,6 +2011,7 @@ function renderNotes(){
         ${n.category?`<span class="note-cat">${esc(n.category)}</span>`:''}
         ${n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(n.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
         <span class="note-date" style="margin-left:auto">${fmtDateShort(n.created)}</span>
+        <button onclick="noteToTask('${n.id}')" title="Convert to task" style="background:transparent;border:1px solid var(--border-md);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-muted);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--t-tasks)';this.style.color='var(--t-tasks)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">→ Task</button>
         <button class="delete-btn" onclick="deleteNote('${n.id}')">✕</button>
       </div>
     </div>`).join('');
