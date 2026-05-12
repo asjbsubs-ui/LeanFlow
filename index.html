@@ -1547,7 +1547,40 @@ function renderJournalAI(){
 }
 
 // ── MEETINGS ─────────────────────────────────────────
-function deleteMeeting(id){save(K.meetings,load(K.meetings).filter(m=>m.id!==id));renderMeetings();if(_logsTab==='meetings')renderCurrentLogs('');}
+let _editingMeetingId=null;
+
+function editMeeting(id){
+  const m=load(K.meetings).find(x=>x.id===id);if(!m)return;
+  _editingMeetingId=id;
+  openModal('meeting');
+  setTimeout(()=>{
+    if($('m-mtg-title'))  $('m-mtg-title').value=m.title||'';
+    if($('m-mtg-date'))   $('m-mtg-date').value=m.date||'';
+    if($('m-mtg-time'))   $('m-mtg-time').value=m.time||'';
+    if($('m-mtg-attendees')) $('m-mtg-attendees').value=m.attendees||'';
+    if($('m-mtg-notes'))  $('m-mtg-notes').value=m.notes||'';
+    if(m.business){
+      document.querySelectorAll('#m-mtg-biz-chips button').forEach(b=>{
+        if(b.textContent===m.business) selectMtgBiz(b,m.business);
+      });
+    }
+    if($('modalTitle')) $('modalTitle').textContent='Edit Meeting';
+  },60);
+}
+
+function deleteMeeting(id){
+  const m=load(K.meetings).find(x=>x.id===id);
+  // Delete from GCal if we have the event ID
+  if(m&&m.gcalEventId){
+    const token=localStorage.getItem('ahq_gcal_token');
+    const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
+    if(token&&Date.now()<exp){
+      fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${m.gcalEventId}`,
+        {method:'DELETE',headers:{Authorization:`Bearer ${token}`}}).catch(()=>{});
+    }
+  }
+  save(K.meetings,load(K.meetings).filter(m=>m.id!==id));renderMeetings();if(_logsTab==='meetings')renderCurrentLogs('');
+}
 
 // ── SELF-DEV ─────────────────────────────────────────
 const SKILL_ICONS = {'Marketing':'📢','Business':'💼','Sales':'📈','Finance':'💰','Technical':'💻','Personal Development':'🧠','Health & Fitness':'💪','Leadership':'🎯','Mindset':'🧘','Other':'📦'};
@@ -1928,10 +1961,17 @@ const MODAL_FORMS = {
     save:()=>{
       const title=$('m-mtg-title').value.trim();if(!title)return alert('Title required');
       const meetings=load(K.meetings);
-      const newMtg={id:uid(),title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean'};
-      meetings.push(newMtg);
+      const fields={title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean'};
+      if(_editingMeetingId){
+        const i=meetings.findIndex(m=>m.id===_editingMeetingId);
+        if(i>=0){ meetings[i]={...meetings[i],...fields}; updateGcalEvent(meetings[i]); }
+        _editingMeetingId=null;
+      } else {
+        const newMtg={id:uid(),...fields};
+        meetings.push(newMtg);
+        createGcalEvent(newMtg);
+      }
       save(K.meetings,meetings);closeModal();renderMeetings();if(activeTab==='home')renderHome();
-      createGcalEvent(newMtg);
     }},
   goal:{title:'New Goal',html:`
     <div class="field"><label>Goal Title *</label><input class="input" id="m-goal-title" placeholder="What do you want to achieve?"></div>
@@ -2042,7 +2082,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -2111,7 +2151,7 @@ function renderMeetings(){
   const meetings=load(K.meetings).sort((a,b)=>a.date>b.date?1:a.date<b.date?-1:a.time>b.time?1:-1);
   const el=$('meetingList');
   if(!meetings.length){el.innerHTML='<div class="empty"><span class="empty-icon">📅</span><span class="empty-text">No meetings yet.</span></div>';return;}
-  el.innerHTML=meetings.map(m=>`<div class="meeting-row"><div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}</div><div class="meeting-date-sm">${fmtDateShort(m.date)}</div></div><div class="meeting-info"><div class="meeting-title">${esc(m.title)}</div>${m.business?`<div style="margin-top:2px"><span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span></div>`:''} ${m.attendees?`<div class="meeting-attendees">${esc(m.attendees)}</div>`:''} ${m.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.notes)}</div>`:''}</div><button class="delete-btn" onclick="deleteMeeting('${m.id}')">✕</button></div>`).join('');
+  el.innerHTML=meetings.map(m=>`<div class="meeting-row"><div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}</div><div class="meeting-date-sm">${fmtDateShort(m.date)}</div></div><div class="meeting-info"><div class="meeting-title">${esc(m.title)}</div>${m.business?`<div style="margin-top:2px"><span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span></div>`:''} ${m.attendees?`<div class="meeting-attendees">${esc(m.attendees)}</div>`:''} ${m.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.notes)}</div>`:''}</div><div style="display:flex;gap:4px;flex-shrink:0"><button class="delete-btn" title="Edit" onclick="editMeeting('${m.id}')" style="font-size:13px">✏️</button><button class="delete-btn" onclick="deleteMeeting('${m.id}')">✕</button></div></div>`).join('');
   if(_meetView==='cal') renderMeetCal();
 }
 
@@ -2183,6 +2223,7 @@ function showMeetDay(ds){
     const borderCol=isGcal?'#4285f4':'var(--t-meetings)';
     const badge=isGcal?`<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:rgba(66,133,244,.12);color:#4285f4;border:1px solid rgba(66,133,244,.2)">GCal</span>`:'';
     const gcalBtn=!isGcal?`<button onclick="addMeetingToGcal('${ev.id}')" title="Add to Google Calendar" style="background:transparent;border:none;cursor:pointer;font-size:13px;padding:0;flex-shrink:0">📅</button>`:'';
+    const editBtn=!isGcal?`<button class="delete-btn" title="Edit" onclick="editMeeting('${ev.id}')" style="font-size:13px">✏️</button>`:'';
     const delBtn=!isGcal?`<button class="delete-btn" onclick="deleteMeeting('${ev.id}');showMeetDay('${ds}')">✕</button>`:'';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${isGcal?'rgba(66,133,244,.05)':'rgba(52,211,153,.05)'};border:1px solid ${isGcal?'rgba(66,133,244,.2)':'rgba(52,211,153,.2)'};border-radius:var(--r-sm);margin-bottom:6px">
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${borderCol};flex-shrink:0;min-width:40px">${ev.time||'—'}</span>
@@ -2191,7 +2232,7 @@ function showMeetDay(ds){
         ${ev.attendees||ev.location?`<div style="font-size:11px;color:var(--text-muted)">${esc(ev.attendees||ev.location||'')}</div>`:''}
         ${ev.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(ev.notes)}</div>`:''}
       </div>
-      ${badge}${gcalBtn}${delBtn}
+      ${badge}${editBtn}${gcalBtn}${delBtn}
     </div>`;
   }).join('');
 }
@@ -2349,9 +2390,43 @@ async function _pushGcalEvent(m,token){
         end:  {dateTime:endStr,  timeZone:tz}
       })
     });
-    if(r.ok) await _fetchGcalEvents();
-    else console.warn('GCal event create failed',r.status,await r.text());
+    if(r.ok){
+      const created=await r.json();
+      // Store GCal event ID in the meeting so we can update/delete it later
+      if(created.id){
+        const meetings=load(K.meetings);
+        const mtg=meetings.find(x=>x.id===m.id);
+        if(mtg){mtg.gcalEventId=created.id;save(K.meetings,meetings);}
+      }
+      await _fetchGcalEvents();
+    } else console.warn('GCal event create failed',r.status,await r.text());
   }catch(e){console.warn('GCal push error',e);}
+}
+
+async function updateGcalEvent(m){
+  if(!m.gcalEventId) return createGcalEvent(m);
+  const token=localStorage.getItem('ahq_gcal_token');
+  const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
+  if(!token||Date.now()>exp) return;
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startStr=`${m.date}T${m.time||'09:00'}:00`;
+  const endDt=new Date(startStr);endDt.setHours(endDt.getHours()+1);
+  const pad=n=>String(n).padStart(2,'0');
+  const endStr=`${endDt.getFullYear()}-${pad(endDt.getMonth()+1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:${pad(endDt.getMinutes())}:00`;
+  try{
+    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${m.gcalEventId}`,{
+      method:'PATCH',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        summary:m.title,
+        description:[m.attendees,m.notes].filter(Boolean).join('\n'),
+        start:{dateTime:startStr,timeZone:tz},
+        end:  {dateTime:endStr,  timeZone:tz}
+      })
+    });
+    if(r.ok) await _fetchGcalEvents();
+    else console.warn('GCal update failed',r.status);
+  }catch(e){console.warn('GCal update error',e);}
 }
 function _loadScript(src){
   return new Promise((res,rej)=>{
