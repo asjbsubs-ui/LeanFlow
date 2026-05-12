@@ -1088,7 +1088,11 @@ function taskCard(t){
         ${t.due?`<span class="task-cat">📅 ${fmtDateShort(t.due)}</span>`:''}
       </div>
     </div>
-    <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+    <div style="display:flex;gap:4px;flex-shrink:0">
+      <button class="delete-btn" title="Edit" onclick="editTask('${t.id}')" style="font-size:13px">✏️</button>
+      ${t.due?`<button class="delete-btn" title="Add to Calendar" onclick="addTaskToGcal('${t.id}')" style="font-size:13px">📅</button>`:''}
+      <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+    </div>
   </div>`;
 }
 function renderTasks(){
@@ -1139,6 +1143,57 @@ function toggleTask(id){
   if(t){t.done=!t.done;save(K.tasks,tasks);}
   renderTasks();if(activeTab==='home')renderHome();
 }
+function editTask(id){
+  const t=load(K.tasks).find(x=>x.id===id);if(!t)return;
+  _taskTypeDefault=t.type||'work';
+  _editingTaskId=id;
+  openModal('task',t.type||'work');
+  // Pre-fill form after modal opens
+  setTimeout(()=>{
+    if($('m-task-title')) $('m-task-title').value=t.title||'';
+    if($('m-task-priority')) $('m-task-priority').value=t.priority||'Medium';
+    if($('m-task-due')) $('m-task-due').value=t.due||'';
+    // Business chip
+    if(t.business){
+      const bc=document.querySelectorAll('#m-task-biz-chips button');
+      bc.forEach(b=>{if(b.textContent===t.business)selectTaskChip('biz',b,t.business);});
+      if($('m-task-biz')) $('m-task-biz').value=t.business;
+    }
+    // Dept chip
+    if(t.dept){
+      const dc=document.querySelectorAll('#m-task-dept-chips button');
+      dc.forEach(b=>{if(b.textContent===t.dept)selectTaskChip('dept',b,t.dept);});
+      if($('m-task-dept')) $('m-task-dept').value=t.dept;
+    }
+    if($('modalTitle')) $('modalTitle').textContent='Edit Task';
+  },60);
+}
+let _editingTaskId=null;
+
+async function addTaskToGcal(id){
+  const t=load(K.tasks).find(x=>x.id===id);
+  if(!t||!t.due) return;
+  const token=localStorage.getItem('ahq_gcal_token');
+  const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startStr=`${t.due}T09:00:00`;
+  const endStr=`${t.due}T10:00:00`;
+  const desc=[t.business,t.dept,t.priority?`Priority: ${t.priority}`:''].filter(Boolean).join(' · ');
+  if(token&&Date.now()<exp){
+    try{
+      const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+        method:'POST',
+        headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+        body:JSON.stringify({summary:`✅ ${t.title}`,description:desc,start:{dateTime:startStr,timeZone:tz},end:{dateTime:endStr,timeZone:tz}})
+      });
+      if(r.ok){if(_meetView==='cal')await _fetchGcalEvents();return;}
+    }catch(e){}
+  }
+  // Fallback: open Google Calendar pre-filled
+  const start=t.due.replace(/-/g,'');
+  window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('✅ '+t.title)}&dates=${start}/${start}&details=${encodeURIComponent(desc)}`,'_blank','noopener');
+}
+
 function deleteTask(id){
   save(K.tasks,load(K.tasks).filter(t=>t.id!==id));
   renderTasks();if(activeTab==='home')renderHome();
@@ -1832,10 +1887,16 @@ const MODAL_FORMS = {
       const title=$('m-task-title').value.trim();if(!title)return alert('Title required');
       const tasks=load(K.tasks);
       const isWork=_taskTypeDefault==='work';
-      tasks.unshift({id:uid(),title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
+      const fields={title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
         business:isWork?($('m-task-biz').value.trim()||''):'',
-        dept:isWork?($('m-task-dept').value.trim()||''):'',
-        done:false,created:today()});
+        dept:isWork?($('m-task-dept').value.trim()||''):''};
+      if(_editingTaskId){
+        const i=tasks.findIndex(t=>t.id===_editingTaskId);
+        if(i>=0) tasks[i]={...tasks[i],...fields};
+        _editingTaskId=null;
+      } else {
+        tasks.unshift({id:uid(),...fields,done:false,created:today()});
+      }
       save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
     }},
   habit:{title:'New Habit',html:`
@@ -1981,7 +2042,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
