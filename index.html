@@ -409,6 +409,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .sync-dot.syncing{background:var(--yellow);animation:pulse-sync .8s infinite}
 @keyframes pulse-sync{0%,100%{opacity:1}50%{opacity:.3}}
 /* ── Mobile / iOS ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-lg);padding:11px 20px;font-size:13px;font-weight:500;color:var(--text-primary);z-index:9000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .mob-header{display:none}
 @media(max-width:768px){
   html,body{overflow:auto;height:auto}
@@ -476,6 +478,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
 </div>
 
+<div class="toast" id="appToast"></div>
 <div class="mob-backdrop" id="mobBackdrop" onclick="closeMobSidebar()"></div>
 <div class="shell">
 
@@ -1956,7 +1959,11 @@ const MODAL_FORMS = {
       <div class="field"><label>Date *</label><input class="input" id="m-mtg-date" type="date"></div>
       <div class="field"><label>Time</label><input class="input" id="m-mtg-time" type="time"></div>
     </div>
-    <div class="field"><label>Attendee Emails <span style="font-weight:400;color:var(--text-muted);font-size:10px">(Google invite will be sent)</span></label><input class="input" id="m-mtg-attendees" type="email" placeholder="email@example.com, another@example.com…"></div>
+    <div class="field">
+      <label>Attendee Emails <span style="font-weight:400;color:var(--text-muted);font-size:10px">(Google Calendar invite sent automatically)</span></label>
+      <input class="input" id="m-mtg-attendees" type="text" inputmode="email" placeholder="john@email.com, jane@email.com" autocomplete="off" autocapitalize="none">
+      <div style="font-size:10px;color:var(--text-muted);margin-top:5px">Separate multiple emails with a comma</div>
+    </div>
     <div class="field"><label>Notes</label><textarea class="textarea" id="m-mtg-notes" placeholder="Agenda or prep notes…"></textarea></div>`,
     save:()=>{
       const title=$('m-mtg-title').value.trim();if(!title)return alert('Title required');
@@ -2379,30 +2386,38 @@ async function _pushGcalEvent(m,token){
   const endDt=new Date(startStr);endDt.setHours(endDt.getHours()+1);
   const pad=n=>String(n).padStart(2,'0');
   const endStr=`${endDt.getFullYear()}-${pad(endDt.getMonth()+1)}-${pad(endDt.getDate())}T${pad(endDt.getHours())}:${pad(endDt.getMinutes())}:00`;
+  // Parse attendee emails — strips names, spaces, anything that's not a valid email
+  const attendees=(m.attendees||'').split(/[,;]+/).map(e=>e.trim()).filter(e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).map(email=>({email}));
+  const body={
+    summary:m.title,
+    description:m.notes||'',
+    start:{dateTime:startStr,timeZone:tz},
+    end:  {dateTime:endStr,  timeZone:tz}
+  };
+  if(attendees.length) body.attendees=attendees;
+  const sendParam=attendees.length?'?sendUpdates=all':'';
   try{
-    const attendees=(m.attendees||'').split(',').map(e=>e.trim()).filter(e=>e.includes('@')).map(email=>({email}));
-    const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',{
+    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events${sendParam}`,{
       method:'POST',
       headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        summary:m.title,
-        description:m.notes||'',
-        start:{dateTime:startStr,timeZone:tz},
-        end:  {dateTime:endStr,  timeZone:tz},
-        attendees
-      })
+      body:JSON.stringify(body)
     });
     if(r.ok){
       const created=await r.json();
-      // Store GCal event ID in the meeting so we can update/delete it later
       if(created.id){
         const meetings=load(K.meetings);
         const mtg=meetings.find(x=>x.id===m.id);
         if(mtg){mtg.gcalEventId=created.id;save(K.meetings,meetings);}
       }
+      if(attendees.length) showToast(`📅 Invite sent to ${attendees.map(a=>a.email).join(', ')}`,'var(--green)');
+      else showToast('📅 Added to Google Calendar','var(--green)');
       await _fetchGcalEvents();
-    } else console.warn('GCal event create failed',r.status,await r.text());
-  }catch(e){console.warn('GCal push error',e);}
+    } else {
+      const err=await r.json().catch(()=>({}));
+      console.warn('GCal create failed',r.status,err);
+      showToast('GCal error: '+(err.error?.message||r.status),'var(--red)');
+    }
+  }catch(e){console.warn('GCal push error',e);showToast('GCal push failed','var(--red)');}
 }
 
 async function updateGcalEvent(m){
@@ -2705,6 +2720,16 @@ function renderLogsF(q){
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
     dbTable(['Date','Weight','Notes',''],mRows)
   );
+}
+
+// ── Toast ─────────────────────────────────────────────
+let _toastTimer=null;
+function showToast(msg,color='var(--green)'){
+  const t=document.getElementById('appToast');if(!t)return;
+  t.textContent=msg;t.style.borderColor=color;t.style.color=color;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
 }
 
 // ── Mobile sidebar ────────────────────────────────────
