@@ -1865,8 +1865,10 @@ const MODAL_FORMS = {
     save:()=>{
       const title=$('m-mtg-title').value.trim();if(!title)return alert('Title required');
       const meetings=load(K.meetings);
-      meetings.push({id:uid(),title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean'});
+      const newMtg={id:uid(),title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean'};
+      meetings.push(newMtg);
       save(K.meetings,meetings);closeModal();renderMeetings();if(activeTab==='home')renderHome();
+      createGcalEvent(newMtg);
     }},
   goal:{title:'New Goal',html:`
     <div class="field"><label>Goal Title *</label><input class="input" id="m-goal-title" placeholder="What do you want to achieve?"></div>
@@ -2190,7 +2192,7 @@ async function connectGcal(){
     await _loadScript('https://accounts.google.com/gsi/client');
     _gcalTokenClient=google.accounts.oauth2.initTokenClient({
       client_id:clientId,
-      scope:'https://www.googleapis.com/auth/calendar.readonly',
+      scope:'https://www.googleapis.com/auth/calendar',
       callback:async resp=>{if(resp.error){alert('Auth error: '+resp.error);return;}await _fetchGcalEvents();}
     });
     _gcalTokenClient.requestAccessToken({prompt:'consent'});
@@ -2221,6 +2223,28 @@ function disconnectGcal(){
   localStorage.removeItem('ahq_gcal_client_id');
   renderMeetSyncPanel();
   if(_meetView==='cal') renderMeetCal();
+}
+
+async function createGcalEvent(m){
+  if(!_gapiReady || localStorage.getItem('ahq_gcal_connected')!=='true') return;
+  try{
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const startStr = `${m.date}T${m.time||'09:00'}:00`;
+    const endDt = new Date(startStr);
+    endDt.setHours(endDt.getHours()+1);
+    const endStr = `${endDt.getFullYear()}-${String(endDt.getMonth()+1).padStart(2,'0')}-${String(endDt.getDate()).padStart(2,'0')}T${String(endDt.getHours()).padStart(2,'0')}:${String(endDt.getMinutes()).padStart(2,'0')}:00`;
+    const desc = [m.attendees, m.notes].filter(Boolean).join('\n');
+    await gapi.client.calendar.events.insert({
+      calendarId:'primary',
+      resource:{
+        summary: m.title,
+        description: desc,
+        start:{ dateTime: startStr, timeZone: tz },
+        end:  { dateTime: endStr,   timeZone: tz }
+      }
+    });
+    await _fetchGcalEvents();
+  }catch(e){ console.warn('GCal create error',e); }
 }
 function _loadScript(src){
   return new Promise((res,rej)=>{
