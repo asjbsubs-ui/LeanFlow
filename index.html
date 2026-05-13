@@ -1271,7 +1271,20 @@ function renderHomeMeetings(){
   const meetings = load(K.meetings).filter(m=>m.date===t).sort((a,b)=>a.time>b.time?1:-1);
   const el = $('homeMeetings');
   if(!meetings.length){el.innerHTML='<div class="empty"><span class="empty-icon">📅</span><span class="empty-text">No meetings today</span></div>';return;}
-  el.innerHTML = meetings.map(m=>`<div class="meeting-row"><div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}</div></div><div class="meeting-info"><div class="meeting-title">${esc(m.title)}</div><div class="meeting-attendees">${esc(m.attendees||'')}</div></div></div>`).join('');
+  el.innerHTML = meetings.map(m=>{
+    const oc=_OUTCOME_COLORS[m.outcome]||'';
+    const outcomeBadge=m.outcome?`<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,${oc} 14%,transparent);color:${oc};border:1px solid color-mix(in srgb,${oc} 28%,transparent);margin-top:3px;display:inline-block">${esc(m.outcome)}</span>`:'';
+    const outcomeNotes=m.outcomeNotes?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.outcomeNotes)}</div>`:'';
+    return `<div class="meeting-row${m.done?' done':''}">
+      <div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}</div></div>
+      <div class="meeting-info">
+        <div class="meeting-title">${esc(m.title)}</div>
+        ${m.attendees?`<div class="meeting-attendees">${esc(m.attendees)}</div>`:''}
+        ${outcomeBadge}${outcomeNotes}
+      </div>
+      <button class="mtg-check${m.done?' done':''}" onclick="openOutcomeModal('${m.id}')" title="${m.done?'Edit outcome':'Mark complete'}" style="flex-shrink:0">${m.done?'✓':''}</button>
+    </div>`;
+  }).join('');
 }
 
 // ── TASKS ─────────────────────────────────────────────
