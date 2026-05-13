@@ -35,14 +35,14 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 /* ── Sidebar ── */
 .sidebar{width:var(--nav-w);flex-shrink:0;background:rgba(4,14,7,.97);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;z-index:100}
 .sidebar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent)}
-.sb-head{padding:22px 18px 16px;border-bottom:1px solid var(--border)}
-.sb-logo{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;letter-spacing:.08em;color:var(--text-bright);margin-bottom:3px}
+.sb-head{padding:10px 18px 8px;border-bottom:1px solid var(--border)}
+.sb-logo{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:.08em;color:var(--text-bright);margin-bottom:1px}
 .sb-logo span{color:var(--purple)}
 .sb-sub{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)}
-.sb-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);margin-top:8px;opacity:.7}
+.sb-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);margin-top:3px;opacity:.7}
 
-.sb-nav{flex:1;padding:10px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
-.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:500;width:100%;text-align:left;transition:all .15s;position:relative}
+.sb-nav{flex:1;padding:4px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:500;width:100%;text-align:left;transition:all .15s;position:relative}
 .nav-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
 .nav-btn.active{color:var(--tab-color);background:color-mix(in srgb,var(--tab-color) 10%,transparent)}
 .nav-btn.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:2px;border-radius:0 2px 2px 0;background:var(--tab-color)}
@@ -73,7 +73,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .section-divider{height:1px;background:var(--border);margin:20px 0;position:relative}
 .section-divider-label{position:absolute;top:50%;left:0;transform:translateY(-50%);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:var(--bg-card);padding:0 10px;color:var(--text-muted)}
 
-.sb-score{padding:14px 16px;border-top:1px solid var(--border)}
+.sb-score{padding:10px 16px;border-top:1px solid var(--border)}
 .score-label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
 .score-bar-wrap{height:4px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:6px}
 .score-bar-fill{height:100%;background:var(--green);border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
@@ -360,7 +360,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .meet-day-panel-hd{font-family:'Orbitron',monospace;font-size:11px;font-weight:800;color:var(--text-bright);letter-spacing:.04em;margin-bottom:12px}
 .cal-day{position:relative}
 /* ── Athena merged components ── */
-.nav-section-label{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted);padding:18px 18px 5px;opacity:.55;display:block}
+.nav-section-label{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px 4px;opacity:.55;display:block}
 .ai-instruction{border:1px solid var(--purple-border);border-radius:var(--r-md);background:var(--purple-dim);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px}
 .ai-inst-icon{font-size:22px;flex-shrink:0;margin-top:2px}
 .ai-inst-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--purple);letter-spacing:2px;margin-bottom:5px;text-transform:uppercase}
@@ -647,12 +647,12 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div class="score-val" id="sbScoreVal">0%</div>
     <div class="score-caption" id="sbScoreCap">Start checking off habits</div>
   </div>
-  <div style="padding:10px 16px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
+  <div style="padding:8px 16px 8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px">
     <span class="sync-dot off" id="syncDot"></span>
     <span style="font-size:11px;color:var(--text-muted);flex:1" id="syncLabel">Not signed in</span>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
-  <div style="padding:0 16px 14px;display:flex;gap:6px">
+  <div style="padding:0 16px 10px;display:flex;gap:6px">
     <button onclick="openObsSettings()" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
