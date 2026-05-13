@@ -538,7 +538,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <header class="mob-header">
   <button class="mob-hamburger" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
   <div class="mob-title">Lean<span>HQ</span></div>
-  <button class="btn btn-primary btn-sm" style="background:var(--green);color:#000;padding:6px 14px;flex-shrink:0" onclick="openModal('task','work')">+ Task</button>
+  <button class="btn btn-primary btn-sm" id="mobActionBtn" style="background:var(--green);color:#000;padding:6px 14px;flex-shrink:0" onclick="openModal('task','work')">+ Task</button>
 </header>
 
 <!-- ── Sidebar ── -->
@@ -1135,6 +1135,17 @@ function seedIfEmpty(){
 let activeTab = 'home';
 const TAB_COLORS = {home:'--t-home',tasks:'--t-tasks',meetings:'--t-meetings',habits:'--t-habits',goals:'--t-goals',journal:'--t-journal',selfdev:'--t-selfdev',fitness:'--t-fitness',review:'--t-review',directory:'--t-directory'};
 
+const MOB_BTN = {
+  home:     {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
+  tasks:    {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
+  meetings: {label:'+ Meeting',  color:'var(--t-meetings)',  fn:"openModal('meeting')"},
+  habits:   {label:'+ Habit',    color:'var(--t-habits)',    fn:"openModal('habit')"},
+  goals:    {label:'+ Goal',     color:'var(--t-goals)',     fn:"openModal('goal')"},
+  selfdev:  {label:'+ Knowledge',color:'var(--t-selfdev)',   fn:"openModal('knowledge')"},
+  fitness:  {label:'+ Workout',  color:'var(--t-fitness)',   fn:"openModal('workout')"},
+  directory:{label:'+ Contact',  color:'var(--t-directory)', fn:"openModal('contact')"},
+};
+
 function switchTab(id, btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -1142,6 +1153,13 @@ function switchTab(id, btn){
   if(btn) btn.classList.add('active');
   document.documentElement.style.setProperty('--tab-color',`var(--t-${id})`);
   activeTab = id;
+  // Update mobile action button
+  const mb=$('mobActionBtn');
+  if(mb){
+    const cfg=MOB_BTN[id];
+    if(cfg){mb.textContent=cfg.label;mb.style.background=cfg.color;mb.onclick=new Function(cfg.fn);mb.style.display='';}
+    else mb.style.display='none';
+  }
   if(window.innerWidth<=768) closeMobSidebar();
   const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview,notes:renderNotes,directory:renderDirectory};
   if(renders[id]) renders[id]();
