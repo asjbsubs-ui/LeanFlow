@@ -556,7 +556,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <!-- ── Mobile Header ── -->
 <header class="mob-header">
   <button class="mob-hamburger" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
-  <div class="mob-title">Lean<span>HQ</span></div>
+  <div class="mob-title" id="mobTitle">Lean<span>HQ</span></div>
   <button class="btn btn-primary btn-sm" id="mobActionBtn" style="background:var(--green);color:#000;padding:6px 14px;flex-shrink:0" onclick="openModal('task','work')">+ Task</button>
 </header>
 
@@ -1154,6 +1154,8 @@ function seedIfEmpty(){
 let activeTab = 'home';
 const TAB_COLORS = {home:'--t-home',tasks:'--t-tasks',meetings:'--t-meetings',habits:'--t-habits',goals:'--t-goals',journal:'--t-journal',selfdev:'--t-selfdev',fitness:'--t-fitness',review:'--t-review',directory:'--t-directory'};
 
+const TAB_NAMES = {home:'LeanHQ',notes:'Capture',goals:'Goals',tasks:'Tasks',meetings:'Meetings',habits:'Habits',fitness:'Fitness',selfdev:'Growth',journal:'Journal',review:'Weekly Review',directory:'Directory'};
+
 const MOB_BTN = {
   home:     {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
   tasks:    {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
@@ -1172,6 +1174,9 @@ function switchTab(id, btn){
   if(btn) btn.classList.add('active');
   document.documentElement.style.setProperty('--tab-color',`var(--t-${id})`);
   activeTab = id;
+  // Update mobile header title
+  const mt=$('mobTitle');
+  if(mt) mt.textContent=TAB_NAMES[id]||'LeanHQ';
   // Update mobile action button
   const mb=$('mobActionBtn');
   if(mb){
