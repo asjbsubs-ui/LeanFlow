@@ -1204,7 +1204,7 @@ function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.to
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos'};
 
 function migrateKnowledge(){
   if(localStorage.getItem('ahq_km_done')) return;
@@ -2352,14 +2352,23 @@ function setNoteCatFilter(cat){
 
 async function renderNotes(){
   const all=load(K.notes);
-  const videos=await vmGetAll().catch(()=>[]);
+  const idbMemos=await vmGetAll().catch(()=>[]);
+  // Merge local IDB blobs with remote-only metadata (from other devices)
+  const metaMemos=load(K.mediaMemos)||[];
+  const idbIds=new Set(idbMemos.map(m=>m.id));
+  const remoteOnly=metaMemos.filter(m=>!idbIds.has(m.id)&&m.storagePath);
+  const remoteWithUrls=await Promise.all(remoteOnly.map(async m=>({...m,_remoteUrl:await sbStorageUrl(m.storagePath)})));
+  const allMedia=[
+    ...idbMemos.map(m=>({...m,_kind:m.kind||'video'})),
+    ...remoteWithUrls.map(m=>({...m,_kind:m.kind||'video'}))
+  ];
   // Build filter chips (text notes only)
   const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
   const filterEl=$('notes-filter');
   if(filterEl) filterEl.innerHTML=[{v:'',l:'All'},...cats.map(c=>({v:c,l:c}))].map(({v,l})=>`<button onclick="setNoteCatFilter('${v.replace(/'/g,"\\'")}') " style="padding:4px 12px;border-radius:99px;border:1px solid ${_noteCatFilter===v?'#a78bfa':'var(--border-md)'};background:${_noteCatFilter===v?'rgba(167,139,250,.15)':'transparent'};color:${_noteCatFilter===v?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('');
   const filteredNotes=(_noteCatFilter?all.filter(n=>n.category===_noteCatFilter):all).map(n=>({...n,_kind:'note'}));
-  const filteredVideos=_noteCatFilter?[]:videos.map(v=>({...v,_kind:v.kind||'video'}));
-  const merged=[...filteredNotes,...filteredVideos].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const filteredMedia=_noteCatFilter?[]:allMedia;
+  const merged=[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const el=$('notesFeed');
   if(!el) return;
   if(!merged.length){
@@ -2369,7 +2378,7 @@ async function renderNotes(){
   el.innerHTML=merged.map(item=>{
     if(item._kind==='video'||item._kind==='audio'){
       const isAudio=item._kind==='audio';
-      const url=item.blob?URL.createObjectURL(item.blob):'';
+      const url=item.blob?URL.createObjectURL(item.blob):(item._remoteUrl||'');
       const ext=(item.mimeType||'').includes('mp4')?'mp4':(item.mimeType||'').includes('ogg')?'ogg':'webm';
       const filename=`${(item.title||'memo').replace(/[^a-z0-9]/gi,'_')}.${ext}`;
       const mediaEl=isAudio
@@ -3755,6 +3764,26 @@ function renderLogsDir(q){
   logsHtml(dbTable(['Name','Category','Company','Email','Phone','Tags','Notes',''],rows));
 }
 
+// ── Supabase Storage helpers ─────────────────────────
+async function sbStorageUpload(blob,id){
+  if(!_sb||!_sbUser)return null;
+  const ext=blob.type.includes('mp4')?'mp4':blob.type.includes('ogg')?'ogg':'webm';
+  const path=`${_sbUser.id}/${id}.${ext}`;
+  const {error}=await _sb.storage.from('leanhq-media').upload(path,blob,{contentType:blob.type,upsert:true});
+  if(error){console.warn('Storage upload:',error.message);return null;}
+  return path;
+}
+async function sbStorageUrl(path){
+  if(!_sb||!_sbUser||!path)return null;
+  const {data,error}=await _sb.storage.from('leanhq-media').createSignedUrl(path,3600);
+  if(error||!data)return null;
+  return data.signedUrl;
+}
+async function sbStorageDelete(path){
+  if(!_sb||!_sbUser||!path)return;
+  await _sb.storage.from('leanhq-media').remove([path]).catch(()=>{});
+}
+
 // ── VIDEO MEMOS ──────────────────────────────────────
 const _VM_DB='leanhq_vids', _VM_STORE='memos';
 let _vmIDB=null, _vmStream=null, _vmRecorder=null, _vmChunks=[], _vmBlob=null;
@@ -3879,14 +3908,15 @@ async function saveVideoMemo(){
   if(!_vmBlob){closeVideoRecorder();return;}
   const title=($('vmTitle')||{value:''}).value.trim()||'Video Memo';
   const id=uid();
+  showToast('Saving…');
+  const storagePath=await sbStorageUpload(_vmBlob,id);
+  const meta={id,title,date:today(),ts:Date.now(),mimeType:_vmBlob.type,kind:'video',storagePath};
   try{
-    await vmSaveRecord({id,title,date:today(),ts:Date.now(),mimeType:_vmBlob.type,blob:_vmBlob,kind:'video'});
-    showToast('Video memo saved 🎥');
-    closeVideoRecorder();
-    if(activeTab==='notes')renderNotes();
-  }catch(e){
-    showToast('Save failed: '+e.message,'var(--red)');
-  }
+    await vmSaveRecord({...meta,blob:_vmBlob});
+    const memos=load(K.mediaMemos)||[];memos.push(meta);save(K.mediaMemos,memos);
+    showToast(storagePath?'Video memo saved & synced 🎥':'Video memo saved locally 🎥');
+    closeVideoRecorder();if(activeTab==='notes')renderNotes();
+  }catch(e){showToast('Save failed: '+e.message,'var(--red)');}
 }
 
 // ── VOICE MEMOS ───────────────────────────────────────
@@ -3971,16 +4001,24 @@ function discardVoice(){
 async function saveVoiceMemo(){
   if(!_vaBlob){closeVoiceRecorder();return;}
   const title=($('vmVoiceTitle')||{value:''}).value.trim()||'Voice Memo';
+  const id=uid();
+  showToast('Saving…');
+  const storagePath=await sbStorageUpload(_vaBlob,id);
+  const meta={id,title,date:today(),ts:Date.now(),mimeType:_vaBlob.type,kind:'audio',storagePath};
   try{
-    await vmSaveRecord({id:uid(),title,date:today(),ts:Date.now(),mimeType:_vaBlob.type,blob:_vaBlob,kind:'audio'});
-    showToast('Voice memo saved 🎙️');
-    closeVoiceRecorder();
-    if(activeTab==='notes')renderNotes();
+    await vmSaveRecord({...meta,blob:_vaBlob});
+    const memos=load(K.mediaMemos)||[];memos.push(meta);save(K.mediaMemos,memos);
+    showToast(storagePath?'Voice memo saved & synced 🎙️':'Voice memo saved locally 🎙️');
+    closeVoiceRecorder();if(activeTab==='notes')renderNotes();
   }catch(e){showToast('Save failed: '+e.message,'var(--red)');}
 }
 
 async function deleteVideoMemo(id){
   await vmDelete(id).catch(()=>{});
+  const memos=load(K.mediaMemos)||[];
+  const meta=memos.find(m=>m.id===id);
+  if(meta?.storagePath) await sbStorageDelete(meta.storagePath);
+  save(K.mediaMemos,memos.filter(m=>m.id!==id));
   renderNotes();
 }
 
@@ -4236,20 +4274,31 @@ function switchAuthTab(t){
 }
 
 // ── Notes Logs ────────────────────────────────────────
-function renderLogsN(q){
+async function renderLogsN(q){
   const q_=(q||'').toLowerCase();
-  const all=load(K.notes).filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
-  logsCount(all.length+' notes');
-  if(!all.length){logsHtml('<div class="db-empty">No notes yet.</div>');return;}
-  const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
-  const rows=all.map(n=>dbRow([
-    `<span style="max-width:300px;display:block;white-space:pre-wrap;color:var(--text-primary)">${esc(n.text.slice(0,120))}${n.text.length>120?'…':''}</span>`,
+  const textNotes=load(K.notes).filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
+  const idbMemos=await vmGetAll().catch(()=>[]);
+  const metaMemos=(load(K.mediaMemos)||[]);
+  const idbIds=new Set(idbMemos.map(m=>m.id));
+  const allMemos=[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
+  logsCount(`${textNotes.length} notes · ${allMemos.length} media`);
+  const memoRows=allMemos.sort((a,b)=>(b.ts||0)-(a.ts||0)).map(m=>dbRow([
+    `<span style="font-size:15px">${m.kind==='audio'?'🎙️':'📹'}</span>`,
+    `<strong style="color:var(--text-primary)">${esc(m.title||'Memo')}</strong>`,
+    `<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;font-weight:600">${m.kind==='audio'?'Voice':'Video'}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(m.date)}</span>`,
+    m.storagePath?`<span style="font-size:10px;color:var(--green)">☁ synced</span>`:`<span style="font-size:10px;color:var(--text-muted)">local</span>`,
+    dbDelBtn('deleteVideoMemo',m.id)
+  ]));
+  const noteRows=textNotes.map(n=>dbRow([
+    `<span style="font-size:15px">💡</span>`,
+    `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
     n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
-    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa;text-decoration:none" title="${esc(n.source)}">🔗 Open</a>`:'—',
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(n.created)}</span>`,
+    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗</a>`:'—',
     dbDelBtn('deleteNote',n.id)
   ]));
-  logsHtml(dbTable(['Note','Category','Source','Date',''],rows));
+  logsHtml(dbTable(['','Content / Title','Type','Date','Sync',''],[ ...memoRows,...noteRows]));
 }
 
 // ── Workout focus chip selector ───────────────────────
