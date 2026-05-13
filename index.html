@@ -722,10 +722,9 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
         <button class="btn btn-sm" id="task-view-matrix" onclick="setTaskView('matrix')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">⊞ Matrix</button>
       </div>
       <select class="input" id="taskFilter" style="width:120px" onchange="renderTasks()">
-        <option value="all">All tasks</option>
-        <option value="active" selected>Active</option>
-        <option value="done">Done</option>
+        <option value="all" selected>All active</option>
         <option value="high">High priority</option>
+        <option value="done">✓ Done</option>
       </select>
       <button class="btn btn-ghost" onclick="openModal('task','personal')" style="gap:5px">🏠 Personal</button>
       <button class="btn btn-primary" style="background:var(--t-tasks);color:#000;gap:5px" onclick="openModal('task','work')">💼 Work</button>
@@ -1443,9 +1442,8 @@ function renderTasks(){
     : '';
   const filter=($('taskFilter')||{value:'all'}).value;
   let all=load(K.tasks);
-  if(filter==='active') all=all.filter(t=>!t.done);
-  else if(filter==='done') all=all.filter(t=>t.done);
-  else if(filter==='high') all=all.filter(t=>t.priority==='High');
+  if(filter==='done') all=all.filter(t=>t.done);
+  else{all=all.filter(t=>!t.done);if(filter==='high')all=all.filter(t=>t.priority==='High');}
   const _p={High:0,Medium:1,Low:2};
   const _due=t=>t.due||'9999-99-99';
   all.sort((a,b)=>{
@@ -1490,11 +1488,6 @@ function toggleTask(id){
   if(!t)return;
   t.done=!t.done;
   save(K.tasks,tasks);
-  // Archive immediately: switch to active filter when marking done
-  if(t.done){
-    const f=$('taskFilter');
-    if(f&&f.value==='all') f.value='active';
-  }
   renderTasks();if(activeTab==='home')renderHome();
 }
 function editTask(id){
@@ -2480,7 +2473,7 @@ function setTaskView(v){
 }
 
 function renderMatrix(){
-  const all=load(K.tasks);
+  const all=load(K.tasks).filter(t=>!t.done);
   const el=$('task-matrix-view'); if(!el) return;
   const assigned={q1:[],q2:[],q3:[],q4:[]};
   const unsorted=[];
