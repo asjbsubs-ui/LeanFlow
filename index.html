@@ -572,6 +572,12 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button class="nav-btn active" data-tab="home" style="--tab-color:var(--t-home)" onclick="switchTab('home',this)">
       <span class="nav-emoji">🏠</span>Home
     </button>
+    <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
+      <span class="nav-emoji">💡</span>Capture
+    </button>
+    <button class="nav-btn" data-tab="goals" style="--tab-color:var(--t-goals)" onclick="switchTab('goals',this)">
+      <span class="nav-emoji">🎯</span>Goals
+    </button>
     <button class="nav-btn" data-tab="tasks" style="--tab-color:var(--t-tasks)" onclick="switchTab('tasks',this)">
       <span class="nav-emoji">✅</span>Tasks
       <span class="nav-pill" id="pill-tasks" style="background:rgba(96,165,250,.15);color:#60a5fa">0</span>
@@ -582,23 +588,17 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button class="nav-btn" data-tab="habits" style="--tab-color:var(--t-habits)" onclick="switchTab('habits',this)">
       <span class="nav-emoji">⭐</span>Habits
     </button>
-    <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
-      <span class="nav-emoji">📚</span>Self-Dev
-    </button>
     <button class="nav-btn" data-tab="fitness" style="--tab-color:var(--t-fitness)" onclick="switchTab('fitness',this)">
       <span class="nav-emoji">💪</span>Fitness
+    </button>
+    <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
+      <span class="nav-emoji">📚</span>Growth
     </button>
     <button class="nav-btn" data-tab="journal" style="--tab-color:var(--t-journal)" onclick="switchTab('journal',this)">
       <span class="nav-emoji">📔</span>Journal
     </button>
-    <button class="nav-btn" data-tab="goals" style="--tab-color:var(--t-goals)" onclick="switchTab('goals',this)">
-      <span class="nav-emoji">🎯</span>Goals
-    </button>
     <button class="nav-btn" data-tab="review" style="--tab-color:var(--t-review)" onclick="switchTab('review',this)">
       <span class="nav-emoji">📊</span>Weekly Review
-    </button>
-    <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
-      <span class="nav-emoji">💡</span>Notes
     </button>
     <button class="nav-btn" data-tab="directory" style="--tab-color:var(--t-directory)" onclick="switchTab('directory',this)">
       <span class="nav-emoji">👥</span>Directory
@@ -867,7 +867,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <div class="ph">
     <div class="ph-left">
       <div class="ph-eyebrow" style="color:var(--t-selfdev)">Growth</div>
-      <div class="ph-title" style="color:var(--t-selfdev)">Self-Development</div>
+      <div class="ph-title" style="color:var(--t-selfdev)">Growth</div>
       <div class="ph-sub">Everything you're learning — grouped by skill.</div>
     </div>
     <div class="ph-actions">
@@ -978,7 +978,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <div class="ph">
     <div class="ph-left">
       <div class="ph-eyebrow" style="color:#a78bfa">Capture</div>
-      <div class="ph-title" style="color:#a78bfa">Notes</div>
+      <div class="ph-title" style="color:#a78bfa">Capture</div>
       <div class="ph-sub">Capture ideas before they disappear.</div>
     </div>
     <div class="ph-actions">
@@ -3105,7 +3105,7 @@ function addMeetingToGcal(id){
 
 // ── LOGS PAGE ─────────────────────────────────────────
 let _logsTab = null;
-const LOG_TITLES = {tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Self-Development',fitness:'Fitness',review:'Weekly Review',notes:'Notes',directory:'Directory'};
+const LOG_TITLES = {tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',fitness:'Fitness',review:'Weekly Review',notes:'Capture',directory:'Directory'};
 
 function openLogs(tab){
   _logsTab = tab;
