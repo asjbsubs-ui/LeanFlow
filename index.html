@@ -547,6 +547,9 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </div>
     <button class="btn btn-primary" style="width:100%;background:var(--green);color:#000;padding:11px;font-size:13px;margin-top:4px" id="auth-btn" onclick="doAuth()">Sign In</button>
     <div class="auth-footer">Your data syncs across all your devices.<br>Each account is private and secure.</div>
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="skipAuth()" style="background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);text-decoration:underline;font-family:'Outfit',sans-serif" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Use without account (local only)</button>
+    </div>
   </div>
 </div>
 
@@ -3843,30 +3846,37 @@ async function sbPush(k,v){
   }catch(e){ console.warn('Push error',e); }
 }
 
+function skipAuth(){
+  document.getElementById('auth-screen').style.display='none';
+  init();
+  setTimeout(obsFullSync,2000);
+}
+
 async function doAuth(){
-  const email=$('auth-email').value.trim();
-  const pass=$('auth-password').value;
-  const isSignUp=document.getElementById('auth-tab-up').classList.contains('on');
+  const email=($('auth-email')||{value:''}).value.trim();
+  const pass=($('auth-password')||{value:''}).value;
+  const isSignUp=(document.getElementById('auth-tab-up')||{classList:{contains:()=>false}}).classList.contains('on');
   const errEl=$('auth-err');
   const btn=$('auth-btn');
-  if(!email||!pass){errEl.textContent='Email and password required.';return;}
-  btn.textContent='Loading…';btn.disabled=true;errEl.textContent='';
+  const showErr=msg=>{if(errEl){errEl.style.color='var(--red)';errEl.textContent=msg;}};
+  if(!email||!pass){showErr('Email and password required.');return;}
+  if(!_sb){showErr('Connection unavailable. Use "Use without account" to continue offline.');return;}
+  if(btn){btn.textContent='Loading…';btn.disabled=true;}
+  if(errEl) errEl.textContent='';
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Request timed out — check your connection and try again.')),12000));
   try{
     if(isSignUp){
-      const {error:e} = await _sb.auth.signUp({email,password:pass});
+      const {error:e} = await Promise.race([_sb.auth.signUp({email,password:pass}),timeout]);
       if(e) throw e;
-      errEl.style.color='var(--green)';
-      errEl.textContent='Account created! Signing you in…';
+      if(errEl){errEl.style.color='var(--green)';errEl.textContent='Account created! Signing you in…';}
     }
-    const {data,error} = await _sb.auth.signInWithPassword({email,password:pass});
+    const {data,error} = await Promise.race([_sb.auth.signInWithPassword({email,password:pass}),timeout]);
     if(error) throw error;
     _sbUser=data.user;
     await sbPullAndStart();
   }catch(e){
-    errEl.style.color='var(--red)';
-    errEl.textContent=e.message||'Authentication failed.';
-    btn.textContent=isSignUp?'Sign Up':'Sign In';
-    btn.disabled=false;
+    showErr(e.message||'Authentication failed.');
+    if(btn){btn.textContent=isSignUp?'Sign Up':'Sign In';btn.disabled=false;}
   }
 }
 
