@@ -3062,18 +3062,25 @@ function renderLogsT(q){
 // ── Meetings Logs ─────────────────────────────────────
 function renderLogsM(q){
   const q_=(q||'').toLowerCase();
-  const all=load(K.meetings).filter(m=>!q_||m.title.toLowerCase().includes(q_)||(m.attendees||'').toLowerCase().includes(q_)||(m.notes||'').toLowerCase().includes(q_));
+  const all=load(K.meetings).filter(m=>!q_||m.title.toLowerCase().includes(q_)||(m.attendees||'').toLowerCase().includes(q_)||(m.notes||'').toLowerCase().includes(q_)||(m.outcome||'').toLowerCase().includes(q_)||(m.outcomeNotes||'').toLowerCase().includes(q_));
   logsCount(all.length+' meetings');
-  const rows=[...all].sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')).map(m=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)||'—'}</span>`,
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${m.time||'—'}</span>`,
-    `<strong style="color:var(--text-primary)">${esc(m.title)}</strong>`,
-    m.business?`<span style="font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span>`:'—',
-    esc(m.attendees||'—'),
-    `<span style="max-width:220px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.notes||'—')}</span>`,
-    dbDelBtn('deleteMeeting',m.id)
-  ]));
-  logsHtml(dbTable(['Date','Time','Title','Business','Attendees','Notes',''],rows));
+  const rows=[...all].sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')).map(m=>{
+    const oc=_OUTCOME_COLORS[m.outcome]||'';
+    const outcomeBadge=m.outcome
+      ?`<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,${oc} 14%,transparent);color:${oc};border:1px solid color-mix(in srgb,${oc} 28%,transparent)">${esc(m.outcome)}</span>`
+      :'—';
+    return dbRow([
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)||'—'}</span>`,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${m.time||'—'}</span>`,
+      `<strong style="color:var(--text-primary)${m.done?';text-decoration:line-through;opacity:.6':''}">${esc(m.title)}</strong>`,
+      m.business?`<span style="font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span>`:'—',
+      esc(m.attendees||'—'),
+      outcomeBadge,
+      m.outcomeNotes?`<span style="max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px">${esc(m.outcomeNotes)}</span>`:'—',
+      dbDelBtn('deleteMeeting',m.id)
+    ]);
+  });
+  logsHtml(dbTable(['Date','Time','Title','Business','Attendees','Outcome','Post-Meeting Notes',''],rows));
 }
 
 // ── Habits Logs (30-day heatmap) ──────────────────────
