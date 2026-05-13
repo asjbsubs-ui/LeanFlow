@@ -2656,12 +2656,13 @@ const MODAL_FORMS = {
     return `
     <div class="field"><label>Name *</label><input class="input" id="m-con-name" placeholder="Full name" autocomplete="name"></div>
     <div class="field">
-      <label>Category <span style="font-weight:400;color:var(--text-muted);font-size:10px">(tap to select, tap again to clear)</span></label>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px" id="m-con-cat-chips">
+      <label>Category</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="m-con-cat-chips">
         ${_cats.map(cat=>`<button type="button" data-cat="${cat}" onclick="selectDirCatChip(this,'${cat}')" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;transition:all .15s">${cat}</button>`).join('')}
       </div>
+      <input class="input" id="m-con-cat-custom" placeholder="Or type a custom category…" oninput="dirCatCustomInput(this)" style="font-size:12px">
       <input type="hidden" id="m-con-cat" value="">
-    </div>`;
+    </div>
     <div class="field-row">
       <div class="field"><label>Company / Organization</label><input class="input" id="m-con-company" placeholder="Company name" autocomplete="organization"></div>
       <div class="field"><label>Email</label><input class="input" id="m-con-email" type="email" placeholder="email@example.com" autocomplete="email" autocapitalize="none"></div>
@@ -3507,9 +3508,9 @@ function editContact(id){
     if($('m-con-tags'))     $('m-con-tags').value=c.tags||'';
     if($('m-con-notes'))    $('m-con-notes').value=c.notes||'';
     if(c.category){
-      document.querySelectorAll('#m-con-cat-chips button').forEach(b=>{
-        if(b.dataset.cat===c.category) selectDirCatChip(b,c.category);
-      });
+      const chip=[...document.querySelectorAll('#m-con-cat-chips button')].find(b=>b.dataset.cat===c.category);
+      if(chip) selectDirCatChip(chip,c.category);
+      else{if($('m-con-cat'))$('m-con-cat').value=c.category;if($('m-con-cat-custom'))$('m-con-cat-custom').value=c.category;}
     }
     if($('modalTitle')) $('modalTitle').textContent='Edit Contact';
   },60);
@@ -3531,9 +3532,17 @@ function selectDirCatChip(btn,cat){
     btn.style.background='color-mix(in srgb,var(--t-directory) 12%,transparent)';
     btn.style.color='var(--t-directory)';
     if($('m-con-cat')) $('m-con-cat').value=cat;
+    if($('m-con-cat-custom')) $('m-con-cat-custom').value='';
   } else {
     if($('m-con-cat')) $('m-con-cat').value='';
   }
+}
+function dirCatCustomInput(input){
+  // Typing in custom field clears any chip selection and sets the value
+  document.querySelectorAll('#m-con-cat-chips button').forEach(b=>{
+    b.style.cssText='padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:\'Outfit\',sans-serif;font-size:12px;font-weight:500;transition:all .15s';
+  });
+  if($('m-con-cat')) $('m-con-cat').value=input.value.trim();
 }
 
 // ── CSV Import / Export ───────────────────────────────
