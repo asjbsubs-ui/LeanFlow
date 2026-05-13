@@ -1548,6 +1548,14 @@ function deleteTask(id){
   if(_logsTab==='tasks')renderCurrentLogs('');
   if(_taskView==='matrix')renderMatrix();
 }
+function restoreTask(id){
+  const tasks=load(K.tasks);
+  const t=tasks.find(t=>t.id===id);
+  if(t){t.done=false;save(K.tasks,tasks);}
+  renderTasks();if(activeTab==='home')renderHome();
+  if(_logsTab==='tasks')renderCurrentLogs('');
+  showToast('Task restored ↩');
+}
 
 // ── HABITS ────────────────────────────────────────────
 // ── Habit view toggle ─────────────────────────────────
@@ -3307,7 +3315,9 @@ function renderLogsT(q){
     t.business?`<span style="font-size:11px;color:var(--green)">🏢 ${esc(t.business)}</span>`:'—',
     t.dept?`<span style="font-size:11px;color:#60a5fa">◈ ${esc(t.dept)}</span>`:'—',
     t.due?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(t.due)}</span>`:'—',
-    t.done?'<span class="lbl lbl-g">Done</span>':'<span class="lbl lbl-a">Open</span>',
+    t.done
+      ?`<button onclick="restoreTask('${t.id}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(96,165,250,.2)'" onmouseout="this.style.background='rgba(96,165,250,.1)'">↩ Restore</button>`
+      :'<span class="lbl lbl-a">Open</span>',
     dbDelBtn('deleteTask',t.id)
   ]));
   logsHtml(dbTable(['Title','Type','Priority','Business','Area','Due','Status',''],rows));
