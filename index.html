@@ -470,6 +470,21 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .note-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .note-cat{font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(167,139,250,.12);color:#a78bfa;font-weight:600;flex-shrink:0}
 .note-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+/* ── Video Memo ── */
+.vm-overlay{position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;display:none}
+.vm-live{width:100%;height:100%;object-fit:cover;display:block}
+.vm-top-bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.65),transparent)}
+.vm-bottom-bar{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:40px;padding:20px 20px calc(28px + env(safe-area-inset-bottom));background:linear-gradient(to top,rgba(0,0,0,.7),transparent)}
+.vm-rec-btn{width:72px;height:72px;border-radius:50%;border:4px solid rgba(255,255,255,.9);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:border-color .2s}
+.vm-dot{width:30px;height:30px;border-radius:50%;background:#f87171;transition:all .25s}
+.vm-rec-btn.recording{border-color:var(--red)}
+.vm-rec-btn.recording .vm-dot{border-radius:7px;animation:vmpulse 1.1s ease-in-out infinite}
+@keyframes vmpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.65;transform:scale(.88)}}
+.vm-icon-btn{width:46px;height:46px;border-radius:50%;border:none;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;font-size:19px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;backdrop-filter:blur(6px)}
+.vm-timer{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:#fff;background:rgba(248,113,113,.8);padding:4px 12px;border-radius:99px;letter-spacing:.05em}
+.vm-close-btn{background:rgba(255,255,255,.14);border:none;color:#fff;cursor:pointer;font-size:13px;font-family:'Outfit',sans-serif;font-weight:600;padding:8px 14px;border-radius:var(--r-sm);backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent}
+.vm-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:10px}
+.vm-card video{width:100%;display:block;max-height:300px;background:#000;outline:none}
 .note-source{font-size:11px;color:#60a5fa;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
 .note-source:hover{text-decoration:underline}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-lg);padding:11px 20px;font-size:13px;font-weight:500;color:var(--text-primary);z-index:9000;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
@@ -986,6 +1001,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="ph-sub">Capture ideas before they disappear.</div>
     </div>
     <div class="ph-actions">
+      <button class="btn btn-ghost" onclick="openVideoRecorder()">📹 Record</button>
       <button class="btn btn-ghost" onclick="openLogs('notes')">📋 Logs</button>
     </div>
   </div>
@@ -1089,6 +1105,35 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div style="padding:12px 20px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeOutcomeModal()">Cancel</button>
       <button class="btn btn-primary" style="background:var(--t-meetings);color:#000" onclick="saveOutcome()">Save Outcome</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIDEO RECORDER -->
+<div id="vmOverlay" class="vm-overlay">
+  <div id="vmLivePhase" style="position:relative;flex:1;overflow:hidden">
+    <video id="vmLive" class="vm-live" autoplay muted playsinline webkit-playsinline></video>
+    <div class="vm-top-bar">
+      <button class="vm-close-btn" onclick="closeVideoRecorder()">✕ Close</button>
+      <div class="vm-timer" id="vmTimer" style="display:none">0:00</div>
+      <button class="vm-icon-btn" onclick="switchCamera()" title="Flip camera">🔄</button>
+    </div>
+    <div class="vm-bottom-bar">
+      <div style="width:46px"></div>
+      <button class="vm-rec-btn" id="vmRecBtn" onclick="toggleRecording()">
+        <div class="vm-dot"></div>
+      </button>
+      <div style="width:46px"></div>
+    </div>
+  </div>
+  <div id="vmReviewPhase" style="display:none;flex-direction:column;flex:1;min-height:0">
+    <video id="vmPlayback" playsinline controls style="width:100%;flex:1;background:#000;min-height:0;outline:none"></video>
+    <div style="padding:16px 20px calc(20px + env(safe-area-inset-bottom));background:rgba(4,13,7,.97);border-top:1px solid rgba(255,255,255,.08)">
+      <input class="input" id="vmTitle" placeholder="Add a title (optional)…" style="margin-bottom:12px;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.12);color:#fff;font-size:14px">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1;border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.7)" onclick="discardRecording()">Re-record</button>
+        <button class="btn btn-primary" style="flex:2;background:#a78bfa;color:#000;font-size:13px" onclick="saveVideoMemo()">💾 Save Memo</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2266,30 +2311,45 @@ function setNoteCatFilter(cat){
   renderNotes();
 }
 
-function renderNotes(){
+async function renderNotes(){
   const all=load(K.notes);
-  // Build filter chips
+  const videos=await vmGetAll().catch(()=>[]);
+  // Build filter chips (text notes only)
   const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
   const filterEl=$('notes-filter');
   if(filterEl) filterEl.innerHTML=[{v:'',l:'All'},...cats.map(c=>({v:c,l:c}))].map(({v,l})=>`<button onclick="setNoteCatFilter('${v.replace(/'/g,"\\'")}') " style="padding:4px 12px;border-radius:99px;border:1px solid ${_noteCatFilter===v?'#a78bfa':'var(--border-md)'};background:${_noteCatFilter===v?'rgba(167,139,250,.15)':'transparent'};color:${_noteCatFilter===v?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('');
-  const filtered=_noteCatFilter?all.filter(n=>n.category===_noteCatFilter):all;
+  const filteredNotes=(_noteCatFilter?all.filter(n=>n.category===_noteCatFilter):all).map(n=>({...n,_kind:'note'}));
+  const filteredVideos=_noteCatFilter?[]:videos.map(v=>({...v,_kind:'video'}));
+  const merged=[...filteredNotes,...filteredVideos].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const el=$('notesFeed');
   if(!el) return;
-  if(!filtered.length){
-    el.innerHTML=`<div class="empty"><span class="empty-icon">💡</span><span class="empty-text">${_noteCatFilter?'No notes in this category.':'No notes yet. Start capturing ideas above.'}</span></div>`;
+  if(!merged.length){
+    el.innerHTML=`<div class="empty"><span class="empty-icon">💡</span><span class="empty-text">${_noteCatFilter?'No notes in this category.':'No captures yet. Write a note or record a video memo above.'}</span></div>`;
     return;
   }
-  el.innerHTML=filtered.map(n=>`
-    <div class="note-card">
-      <div class="note-text">${esc(n.text)}</div>
+  el.innerHTML=merged.map(item=>{
+    if(item._kind==='video'){
+      const url=item.blob?URL.createObjectURL(item.blob):'';
+      return `<div class="vm-card">
+        ${url?`<video src="${url}" controls playsinline preload="metadata" style="width:100%;display:block;max-height:300px;background:#000"></video>`:''}
+        <div style="padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary);flex:1">${esc(item.title||'Video Memo')}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)">${fmtDateShort(item.date)}</span>
+          <button class="delete-btn" onclick="deleteVideoMemo('${item.id}')">✕</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="note-card">
+      <div class="note-text">${esc(item.text)}</div>
       <div class="note-footer">
-        ${n.category?`<span class="note-cat">${esc(n.category)}</span>`:''}
-        ${n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(n.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
-        <span class="note-date" style="margin-left:auto">${fmtDateShort(n.created)}</span>
-        <button onclick="noteToTask('${n.id}')" title="Convert to task" style="background:transparent;border:1px solid var(--border-md);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-muted);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--t-tasks)';this.style.color='var(--t-tasks)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">→ Task</button>
-        <button class="delete-btn" onclick="deleteNote('${n.id}')">✕</button>
+        ${item.category?`<span class="note-cat">${esc(item.category)}</span>`:''}
+        ${item.source?`<a href="${esc(item.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(item.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
+        <span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}</span>
+        <button onclick="noteToTask('${item.id}')" title="Convert to task" style="background:transparent;border:1px solid var(--border-md);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-muted);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--t-tasks)';this.style.color='var(--t-tasks)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">→ Task</button>
+        <button class="delete-btn" onclick="deleteNote('${item.id}')">✕</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── Eisenhower Matrix ─────────────────────────────────
@@ -3645,6 +3705,145 @@ function renderLogsDir(q){
     dbDelBtn('deleteContact',c.id)
   ]));
   logsHtml(dbTable(['Name','Category','Company','Email','Phone','Tags','Notes',''],rows));
+}
+
+// ── VIDEO MEMOS ──────────────────────────────────────
+const _VM_DB='leanhq_vids', _VM_STORE='memos';
+let _vmIDB=null, _vmStream=null, _vmRecorder=null, _vmChunks=[], _vmBlob=null;
+let _vmFacing='user', _vmSecs=0, _vmTimerInt=null, _vmRecording=false;
+
+function _vmOpenDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(_VM_DB,1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(_VM_STORE,{keyPath:'id'});
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function _vmGetDB(){if(!_vmIDB)_vmIDB=await _vmOpenDB();return _vmIDB;}
+async function vmSaveRecord(rec){
+  const db=await _vmGetDB();
+  return new Promise((res,rej)=>{const tx=db.transaction(_VM_STORE,'readwrite');tx.objectStore(_VM_STORE).put(rec);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});
+}
+async function vmGetAll(){
+  const db=await _vmGetDB();
+  return new Promise((res,rej)=>{const r=db.transaction(_VM_STORE,'readonly').objectStore(_VM_STORE).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});
+}
+async function vmDelete(id){
+  const db=await _vmGetDB();
+  return new Promise((res,rej)=>{const tx=db.transaction(_VM_STORE,'readwrite');tx.objectStore(_VM_STORE).delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});
+}
+
+async function openVideoRecorder(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showToast('Camera not supported on this browser','var(--red)');return;
+  }
+  try{
+    _vmStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:_vmFacing,width:{ideal:1280},height:{ideal:720}},audio:true
+    });
+    const lv=$('vmLive');if(lv){lv.srcObject=_vmStream;lv.play().catch(()=>{});}
+    $('vmLivePhase').style.display='block';
+    $('vmReviewPhase').style.display='none';
+    const ov=$('vmOverlay');if(ov)ov.style.display='flex';
+  }catch(e){
+    showToast('Camera access denied — check browser permissions','var(--red)');
+  }
+}
+
+function closeVideoRecorder(){
+  _vmStopStream();_vmStopTimer();
+  _vmBlob=null;_vmChunks=[];_vmRecording=false;
+  const btn=$('vmRecBtn');if(btn)btn.classList.remove('recording');
+  const t=$('vmTimer');if(t)t.style.display='none';
+  const ov=$('vmOverlay');if(ov)ov.style.display='none';
+}
+
+function _vmStopStream(){
+  if(_vmStream){_vmStream.getTracks().forEach(t=>t.stop());_vmStream=null;}
+  const v=$('vmLive');if(v)v.srcObject=null;
+}
+function _vmStopTimer(){
+  clearInterval(_vmTimerInt);_vmTimerInt=null;_vmSecs=0;
+  const t=$('vmTimer');if(t){t.textContent='0:00';t.style.display='none';}
+}
+
+async function switchCamera(){
+  _vmFacing=_vmFacing==='user'?'environment':'user';
+  _vmStopStream();
+  try{
+    _vmStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:_vmFacing},audio:true});
+    const lv=$('vmLive');if(lv){lv.srcObject=_vmStream;lv.play().catch(()=>{});}
+  }catch(e){showToast('Could not switch camera','var(--red)');}
+}
+
+function toggleRecording(){
+  if(_vmRecording) stopRecording(); else startRecording();
+}
+
+function startRecording(){
+  if(!_vmStream)return;
+  _vmChunks=[];
+  const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+  const mime=types.find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch{return false}})||'';
+  try{_vmRecorder=new MediaRecorder(_vmStream,mime?{mimeType:mime}:{});}
+  catch{_vmRecorder=new MediaRecorder(_vmStream);}
+  _vmRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_vmChunks.push(e.data);};
+  _vmRecorder.onstop=()=>{
+    const type=_vmRecorder.mimeType||mime||'video/webm';
+    _vmBlob=new Blob(_vmChunks,{type});
+    _vmShowReview();
+  };
+  _vmRecorder.start(500);
+  _vmRecording=true;
+  const btn=$('vmRecBtn');if(btn)btn.classList.add('recording');
+  const t=$('vmTimer');if(t)t.style.display='block';
+  _vmTimerInt=setInterval(()=>{
+    _vmSecs++;
+    const m=Math.floor(_vmSecs/60),s=_vmSecs%60;
+    const t=$('vmTimer');if(t)t.textContent=`${m}:${String(s).padStart(2,'0')}`;
+  },1000);
+}
+
+function stopRecording(){
+  if(_vmRecorder&&_vmRecorder.state!=='inactive')_vmRecorder.stop();
+  _vmRecording=false;
+  const btn=$('vmRecBtn');if(btn)btn.classList.remove('recording');
+  _vmStopTimer();
+}
+
+function _vmShowReview(){
+  _vmStopStream();
+  $('vmLivePhase').style.display='none';
+  const rv=$('vmReviewPhase');rv.style.display='flex';
+  const pb=$('vmPlayback');
+  if(pb&&_vmBlob){pb.src=URL.createObjectURL(_vmBlob);pb.play().catch(()=>{});}
+  const ti=$('vmTitle');if(ti){ti.value='';setTimeout(()=>ti.focus(),120);}
+}
+
+function discardRecording(){
+  const pb=$('vmPlayback');if(pb){pb.pause();pb.src='';}
+  _vmBlob=null;_vmChunks=[];
+  openVideoRecorder();
+}
+
+async function saveVideoMemo(){
+  if(!_vmBlob){closeVideoRecorder();return;}
+  const title=($('vmTitle')||{value:''}).value.trim()||'Video Memo';
+  const id=uid();
+  try{
+    await vmSaveRecord({id,title,date:today(),ts:Date.now(),mimeType:_vmBlob.type,blob:_vmBlob});
+    showToast('Video memo saved 🎥');
+    closeVideoRecorder();
+    if(activeTab==='notes')renderNotes();
+  }catch(e){
+    showToast('Save failed: '+e.message,'var(--red)');
+  }
+}
+
+async function deleteVideoMemo(id){
+  await vmDelete(id).catch(()=>{});
+  renderNotes();
 }
 
 // ── Obsidian Sync ─────────────────────────────────────
