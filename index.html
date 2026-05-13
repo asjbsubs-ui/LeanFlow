@@ -1321,7 +1321,7 @@ function taskCard(t){
         ${t.priority?`<span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span>`:''}
         ${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color:var(--green);border-radius:99px">🏢 ${esc(t.business)}</span>`:''}
         ${t.dept?`<span class="task-cat" style="background:rgba(96,165,250,.1);color:#60a5fa;border-radius:99px">◈ ${esc(t.dept)}</span>`:''}
-        ${t.due?`<span class="task-cat">📅 ${fmtDateShort(t.due)}</span>`:''}
+        ${t.due?(()=>{const overdue=t.due<today()&&!t.done,isToday=t.due===today()&&!t.done;return `<span class="task-cat" style="${overdue?'background:rgba(248,113,113,.15);color:var(--red);border-color:rgba(248,113,113,.3)':isToday?'background:rgba(251,191,36,.12);color:var(--yellow);border-color:rgba(251,191,36,.3)':''}">📅 ${fmtDateShort(t.due)}</span>`})():''}
       </div>
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0">
@@ -1345,12 +1345,14 @@ function renderTasks(){
   if(filter==='active') all=all.filter(t=>!t.done);
   else if(filter==='done') all=all.filter(t=>t.done);
   else if(filter==='high') all=all.filter(t=>t.priority==='High');
+  const _p={High:0,Medium:1,Low:2};
+  const _due=t=>t.due||'9999-99-99';
   all.sort((a,b)=>{
-    if(a.done!==b.done) return a.done-b.done;
-    const da=a.due||'9999-99-99', db=b.due||'9999-99-99';
-    if(da!==db) return da.localeCompare(db);
-    const p={High:0,Medium:1,Low:2};
-    return (p[a.priority]||1)-(p[b.priority]||1);
+    const ad=a.done?1:0, bd=b.done?1:0;
+    if(ad!==bd) return ad-bd;
+    const da=_due(a), db=_due(b);
+    if(da!==db) return da<db?-1:1;
+    return (_p[a.priority]||1)-(_p[b.priority]||1);
   });
   const work=all.filter(t=>(t.type||'work')==='work');
   const personal=all.filter(t=>t.type==='personal');
