@@ -185,8 +185,13 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .disc-fill{height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1)}
 
 /* ── Habit tracker ── */
-.habit-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.habit-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);transition:opacity .15s}
 .habit-row:last-child{border-bottom:none}
+.habit-row.drag-over{border-top:2px solid var(--t-habits);margin-top:-1px}
+.habit-row.habit-dragging{opacity:.3}
+.habit-drag{cursor:grab;color:var(--text-muted);font-size:15px;flex-shrink:0;padding:2px 2px;line-height:1;-webkit-user-select:none;user-select:none;transition:color .15s;touch-action:none}
+.habit-drag:hover{color:var(--t-habits)}
+.habit-drag:active{cursor:grabbing}
 .habit-icon{font-size:18px;flex-shrink:0}
 .habit-info{flex:1;min-width:0}
 .habit-name{font-size:13px;font-weight:600;color:var(--text-primary)}
@@ -1527,7 +1532,8 @@ function renderHabits(){
       <div style="width:28px"></div>
     </div>`+
     habits.map(h=>`
-    <div class="habit-row">
+    <div class="habit-row" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
+      <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
       <div class="habit-icon">${h.icon||'⭐'}</div>
       <div class="habit-info" style="flex:1;min-width:0">
         <div class="habit-name">${esc(h.name)}</div>
@@ -1557,6 +1563,39 @@ function toggleHabitHome(id){
   if(activeTab==='home')renderHomeHabits();
 }
 function deleteHabit(id){save(K.habits,load(K.habits).filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
+
+let _habitDragId=null;
+function habitDragStart(e,id){
+  _habitDragId=id;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id);
+  setTimeout(()=>{const row=e.target.closest('.habit-row');if(row)row.classList.add('habit-dragging');},0);
+}
+function habitDragOver(e,id){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  if(id===_habitDragId)return;
+  document.querySelectorAll('.habit-row').forEach(r=>r.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function habitDrop(e,id){
+  e.preventDefault();
+  document.querySelectorAll('.habit-row').forEach(r=>r.classList.remove('drag-over','habit-dragging'));
+  if(!_habitDragId||_habitDragId===id)return;
+  const habits=load(K.habits);
+  const from=habits.findIndex(h=>h.id===_habitDragId);
+  const to=habits.findIndex(h=>h.id===id);
+  if(from<0||to<0)return;
+  const [item]=habits.splice(from,1);
+  habits.splice(to,0,item);
+  _habitDragId=null;
+  save(K.habits,habits);
+  renderHabits();
+}
+function habitDragEnd(){
+  document.querySelectorAll('.habit-row').forEach(r=>r.classList.remove('drag-over','habit-dragging'));
+  _habitDragId=null;
+}
 
 // ── GOALS ─────────────────────────────────────────────
 function renderGoals(){
