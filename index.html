@@ -492,12 +492,18 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .nchip{padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s}
 .nchip:hover{border-color:var(--border-strong);color:var(--text-secondary)}
 .nchip.on{border-color:#a78bfa;background:rgba(167,139,250,.15);color:#a78bfa}
-.note-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;transition:border-color .15s}
+.note-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;transition:border-color .15s,opacity .15s}
 .note-card:hover{border-color:var(--border-md)}
+.note-card.note-done{opacity:.6}
+.note-card.note-done .note-text{text-decoration:line-through;color:var(--text-muted)}
+.note-card.note-rejected{opacity:.4}
+.note-card.note-rejected .note-text{text-decoration:line-through;color:var(--text-muted)}
 .note-text{font-size:13.5px;color:var(--text-primary);line-height:1.65;margin-bottom:10px;white-space:pre-wrap}
 .note-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .note-cat{font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(167,139,250,.12);color:#a78bfa;font-weight:600;flex-shrink:0}
 .note-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+.note-status-btn{font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;cursor:pointer;border:none;font-family:'Outfit',sans-serif;letter-spacing:.06em;text-transform:uppercase;transition:all .15s;flex-shrink:0}
+.note-status-btn:hover{filter:brightness(1.15)}
 /* ── Video Memo ── */
 .vm-overlay{position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;display:none}
 .vm-live{width:100%;height:100%;object-fit:cover;display:block}
@@ -1051,7 +1057,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <textarea class="textarea" id="note-input" style="min-height:96px;font-size:14px;resize:none;border:none;background:transparent;padding:0;margin-bottom:14px" placeholder="What's on your mind? Type and save… (Cmd+Enter to save)" onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();saveNote();}"></textarea>
       <div style="margin-bottom:10px">
         <div style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px">Category</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px" id="note-cat-chips">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="note-cat-chips">
           <button type="button" onclick="selectNoteChip(this,'💡 Business Idea')" class="nchip">💡 Business Idea</button>
           <button type="button" onclick="selectNoteChip(this,'🎬 Content Idea')" class="nchip">🎬 Content Idea</button>
           <button type="button" onclick="selectNoteChip(this,'💬 Quote')" class="nchip">💬 Quote</button>
@@ -1061,6 +1067,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
           <button type="button" onclick="selectNoteChip(this,'🎯 Goal Idea')" class="nchip">🎯 Goal Idea</button>
           <button type="button" onclick="selectNoteChip(this,'⚡ Quick Thought')" class="nchip">⚡ Quick Thought</button>
         </div>
+        <input class="input" id="note-cat-custom" placeholder="Or type a custom category…" oninput="noteCatCustomInput(this)" style="font-size:12px" autocomplete="off">
       </div>
       <div style="display:flex;gap:10px;align-items:center">
         <input class="input" id="note-source" type="url" inputmode="url" placeholder="🔗 Source URL (YouTube, Instagram, article…)" style="flex:1;font-size:12px" autocapitalize="none">
@@ -2376,29 +2383,68 @@ function showReviewHistory(){}
 
 // ── MODAL ─────────────────────────────────────────────
 // ── Notes ─────────────────────────────────────────────
-let _noteChip = '', _noteCatFilter = '';
+let _noteChip='', _noteCatFilter='', _editingNoteId=null;
+
+const NOTE_STATUSES=[
+  {v:null,          l:'Open',        col:'var(--text-muted)',  bg:'rgba(255,255,255,.07)'},
+  {v:'in-progress', l:'In Progress', col:'var(--yellow)',      bg:'rgba(251,191,36,.12)'},
+  {v:'done',        l:'Done',        col:'var(--green)',       bg:'rgba(74,222,128,.12)'},
+  {v:'rejected',    l:'Rejected',    col:'var(--red)',         bg:'rgba(248,113,113,.12)'},
+];
 
 function selectNoteChip(btn, cat){
   document.querySelectorAll('#note-cat-chips button').forEach(b=>b.classList.remove('on'));
   if(_noteChip===cat){ _noteChip=''; return; }
   _noteChip=cat;
   btn.classList.add('on');
+  const custom=$('note-cat-custom');if(custom)custom.value='';
+}
+
+function noteCatCustomInput(input){
+  document.querySelectorAll('#note-cat-chips button').forEach(b=>b.classList.remove('on'));
+  _noteChip=input.value.trim();
 }
 
 function saveNote(){
-  const text=$('note-input').value.trim();
+  const text=($('note-input').value||'').trim();
   if(!text){ $('note-input').focus(); return; }
+  const custom=$('note-cat-custom');
+  const cat=custom&&custom.value.trim()?custom.value.trim():_noteChip;
   const notes=load(K.notes);
-  notes.unshift({id:uid(),text,category:_noteChip,source:$('note-source').value.trim(),created:today(),ts:Date.now()});
+  notes.unshift({id:uid(),text,category:cat,source:($('note-source').value||'').trim(),status:null,created:today(),ts:Date.now()});
   save(K.notes,notes);
-  // Reset form
   $('note-input').value='';
   $('note-source').value='';
+  if(custom)custom.value='';
   document.querySelectorAll('#note-cat-chips button').forEach(b=>b.classList.remove('on'));
   _noteChip='';
   $('note-input').focus();
   renderNotes();
   showToast('💡 Note saved','#a78bfa');
+}
+
+function cycleNoteStatus(id){
+  const notes=load(K.notes);
+  const n=notes.find(x=>x.id===id);if(!n)return;
+  const idx=NOTE_STATUSES.findIndex(s=>s.v===n.status);
+  n.status=NOTE_STATUSES[(idx+1)%NOTE_STATUSES.length].v;
+  save(K.notes,notes);
+  renderNotes();
+}
+
+function editNote(id){
+  const n=load(K.notes).find(x=>x.id===id);if(!n)return;
+  _editingNoteId=id;
+  openModal('noteEdit');
+}
+
+function _noteEditCatChip(btn,cat){
+  document.querySelectorAll('#m-note-chips button').forEach(b=>{
+    b.style.borderColor='var(--border-md)';b.style.background='transparent';b.style.color='var(--text-muted)';
+  });
+  btn.style.borderColor='#a78bfa';btn.style.background='rgba(167,139,250,.15)';btn.style.color='#a78bfa';
+  if($('m-note-cat'))$('m-note-cat').value=cat;
+  if($('m-note-cat-input'))$('m-note-cat-input').value='';
 }
 
 function noteToTask(id){
@@ -2471,12 +2517,15 @@ async function renderNotes(){
         </div>
       </div>`;
     }
-    return `<div class="note-card">
+    const ns=NOTE_STATUSES.find(s=>s.v===item.status)||NOTE_STATUSES[0];
+    return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}">
       <div class="note-text">${esc(item.text)}</div>
       <div class="note-footer">
+        <button class="note-status-btn" onclick="cycleNoteStatus('${item.id}')" style="background:${ns.bg};color:${ns.col};border:1px solid color-mix(in srgb,${ns.col} 30%,transparent)">${ns.l}</button>
         ${item.category?`<span class="note-cat">${esc(item.category)}</span>`:''}
         ${item.source?`<a href="${esc(item.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(item.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
-        <span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}</span>
+        <span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}${item.edited?' ✎':''}</span>
+        <button class="delete-btn" title="Edit" onclick="editNote('${item.id}')" style="font-size:13px">✏️</button>
         <button onclick="noteToTask('${item.id}')" title="Convert to task" style="background:transparent;border:1px solid var(--border-md);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-muted);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--t-tasks)';this.style.color='var(--t-tasks)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">→ Task</button>
         <button class="delete-btn" onclick="deleteNote('${item.id}')">✕</button>
       </div>
@@ -2888,6 +2937,31 @@ const MODAL_FORMS = {
       }
       save(K.directory,contacts);closeModal();renderDirectory();
     }},
+  noteEdit:{title:'Edit Note',html:()=>{
+    const n=_editingNoteId?load(K.notes).find(x=>x.id===_editingNoteId):null;
+    const defaultCats=['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought'];
+    const extraCats=[...new Set(load(K.notes).map(x=>x.category).filter(Boolean))].filter(c=>!defaultCats.includes(c));
+    const allCats=[...defaultCats,...extraCats];
+    const curCat=n?.category||'';
+    return `
+    <div class="field"><label>Note *</label><textarea class="textarea" id="m-note-text" style="min-height:130px">${esc(n?.text||'')}</textarea></div>
+    <div class="field">
+      <label>Category</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="m-note-chips">
+        ${allCats.map(cat=>`<button type="button" onclick="_noteEditCatChip(this,'${cat.replace(/'/g,"\\'")}')" style="padding:4px 12px;border-radius:99px;border:1px solid ${curCat===cat?'#a78bfa':'var(--border-md)'};background:${curCat===cat?'rgba(167,139,250,.15)':'transparent'};color:${curCat===cat?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${cat}</button>`).join('')}
+      </div>
+      <input class="input" id="m-note-cat-input" value="${esc(defaultCats.includes(curCat)?'':curCat)}" placeholder="Or type a custom category…" oninput="if($('m-note-cat'))$('m-note-cat').value=this.value.trim();document.querySelectorAll('#m-note-chips button').forEach(b=>{b.style.borderColor='var(--border-md)';b.style.background='transparent';b.style.color='var(--text-muted)'})" style="font-size:12px">
+      <input type="hidden" id="m-note-cat" value="${esc(curCat)}">
+    </div>
+    <div class="field"><label>Source URL</label><input class="input" id="m-note-source" type="url" value="${esc(n?.source||'')}" placeholder="https://…" autocapitalize="none"></div>`;
+  },save:()=>{
+    const text=($('m-note-text').value||'').trim();if(!text)return alert('Note required');
+    const cat=($('m-note-cat').value||'').trim();
+    const notes=load(K.notes);
+    const i=notes.findIndex(n=>n.id===_editingNoteId);
+    if(i>=0)notes[i]={...notes[i],text,category:cat,source:($('m-note-source').value||'').trim(),edited:Date.now()};
+    save(K.notes,notes);closeModal();renderNotes();
+  }},
 };
 
 let currentSaveFn=null;
@@ -2911,7 +2985,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
