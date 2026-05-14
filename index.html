@@ -1076,7 +1076,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </div>
   </div>
   <!-- Filter + feed -->
-  <div id="notes-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="notes-filter"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="notes-status-filter"></div>
   <div id="notesFeed"><div class="empty"><span class="empty-icon">💡</span><span class="empty-text">No notes yet. Start capturing ideas above.</span></div></div>
 </div>
 
@@ -2383,7 +2384,7 @@ function showReviewHistory(){}
 
 // ── MODAL ─────────────────────────────────────────────
 // ── Notes ─────────────────────────────────────────────
-let _noteChip='', _noteCatFilter='', _editingNoteId=null;
+let _noteChip='', _noteCatFilter='', _noteStatusFilter='', _editingNoteId=null;
 
 const NOTE_STATUSES=[
   {v:null,          l:'Open',        col:'var(--text-muted)',  bg:'rgba(255,255,255,.07)'},
@@ -2483,11 +2484,28 @@ async function renderNotes(){
     ...idbMemos.map(m=>({...m,_kind:m.kind||'video'})),
     ...remoteWithUrls.map(m=>({...m,_kind:m.kind||'video'}))
   ];
-  // Build filter chips (text notes only)
+  // Category filter chips
   const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
   const filterEl=$('notes-filter');
   if(filterEl) filterEl.innerHTML=[{v:'',l:'All'},...cats.map(c=>({v:c,l:c}))].map(({v,l})=>`<button onclick="setNoteCatFilter('${v.replace(/'/g,"\\'")}') " style="padding:4px 12px;border-radius:99px;border:1px solid ${_noteCatFilter===v?'#a78bfa':'var(--border-md)'};background:${_noteCatFilter===v?'rgba(167,139,250,.15)':'transparent'};color:${_noteCatFilter===v?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('');
-  const filteredNotes=(_noteCatFilter?all.filter(n=>n.category===_noteCatFilter):all).map(n=>({...n,_kind:'note'}));
+  // Status filter chips — '' = all, '__open__' = status null, else literal status value
+  const sfEl=$('notes-status-filter');
+  if(sfEl){
+    const sfChips=[{key:'',l:'All statuses',col:'var(--text-muted)',bg:'transparent',border:'var(--border-md)'},...NOTE_STATUSES.map(s=>({key:s.v===null?'__open__':s.v,l:s.l,col:s.col,bg:s.bg,border:`color-mix(in srgb,${s.col} 40%,transparent)`}))];
+    sfEl.innerHTML=sfChips.map(c=>{
+      const on=_noteStatusFilter===c.key;
+      const matchStatus=c.key==='__open__'?null:c.key||null;
+      const cnt=c.key===''?all.length:all.filter(n=>(n.status||null)===matchStatus).length;
+      if(cnt===0&&c.key!=='') return '';
+      return `<button onclick="_noteStatusFilter='${c.key}';renderNotes()" style="padding:4px 12px;border-radius:99px;border:1px solid ${on?c.border:'var(--border-md)'};background:${on?c.bg:'transparent'};color:${on?c.col:'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;transition:all .15s">${c.l}<span style="opacity:.65;font-size:9px;margin-left:3px">${cnt}</span></button>`;
+    }).join('');
+  }
+  let filteredByStatus=all;
+  if(_noteStatusFilter!==''){
+    const target=_noteStatusFilter==='__open__'?null:_noteStatusFilter;
+    filteredByStatus=all.filter(n=>(n.status||null)===target);
+  }
+  const filteredNotes=(_noteCatFilter?filteredByStatus.filter(n=>n.category===_noteCatFilter):filteredByStatus).map(n=>({...n,_kind:'note'}));
   const filteredMedia=_noteCatFilter?[]:allMedia;
   const merged=[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const el=$('notesFeed');
