@@ -2549,6 +2549,7 @@ function renderMatrix(){
         <div class="matrix-task-title">${esc(t.title)}</div>
         ${t.due?`<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">📅 ${fmtDateShort(t.due)}</div>`:''}
       </div>
+      <button class="delete-btn" title="Pomodoro" onclick="openPomodoro('${t.id}')" style="font-size:11px;padding:2px 4px">🍅</button>
       <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
       <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
     </div>`;
@@ -2571,6 +2572,7 @@ function renderMatrix(){
       ${unsorted.map(t=>`<div class="matrix-task ${t.done?'done':''}">
         <div class="check-box" onclick="toggleTask('${t.id}');if(_taskView==='matrix')renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
         <div style="flex:1"><div class="matrix-task-title">${esc(t.title)}</div></div>
+        <button class="delete-btn" title="Pomodoro" onclick="openPomodoro('${t.id}')" style="font-size:11px;padding:2px 4px">🍅</button>
         <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
         <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
       </div>`).join('')}
