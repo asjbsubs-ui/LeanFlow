@@ -2190,6 +2190,11 @@ function deleteKnowledge(id){
   renderSelfDev();
   if(_logsTab==='selfdev') renderCurrentLogs('');
 }
+let _editingKnowledgeId=null;
+function editKnowledge(id){
+  _editingKnowledgeId=id;
+  openModal('knowledge');
+}
 
 // ── FITNESS ───────────────────────────────────────────
 function renderFitness(){
@@ -2847,45 +2852,59 @@ const MODAL_FORMS = {
       }
       save(K.goals,goals);closeModal();renderGoals();if(activeTab==='home')renderHome();
     }},
-  knowledge:{title:'Add Knowledge',html:`
-    <div class="field"><label>Name *</label><input class="input" id="m-kn-title" placeholder="e.g. Content Creation Masterclass, Sell Like Crazy…"></div>
+  knowledge:{title:'Add Knowledge',html:()=>{
+    const k=_editingKnowledgeId?load(K.knowledge).find(x=>x.id===_editingKnowledgeId):null;
+    $('modalTitle').textContent=k?'Edit Knowledge':'Add Knowledge';
+    const sel=(id,val)=>`<option value="${id}"${k&&k.type===id?' selected':''}>`;
+    const selSk=(id,val)=>`<option value="${id}"${k&&k.skill===id?' selected':''}>`;
+    const selSt=(id)=>`<option value="${id}"${k&&k.status===id?' selected':''}>`;
+    return `
+    <div class="field"><label>Name *</label><input class="input" id="m-kn-title" placeholder="e.g. Content Creation Masterclass, Sell Like Crazy…" value="${esc(k?.title||'')}"></div>
     <div class="field-row">
       <div class="field"><label>Type</label><select class="select" id="m-kn-type">
-        <option value="Book">📖 Book</option>
-        <option value="Course">🎓 Course</option>
-        <option value="Video">🎥 Video / YouTube</option>
-        <option value="Podcast">🎙️ Podcast</option>
-        <option value="Article">📝 Article</option>
-        <option value="Other">📌 Other</option>
+        ${sel('Book')}📖 Book</option>
+        ${sel('Course')}🎓 Course</option>
+        ${sel('Video')}🎥 Video / YouTube</option>
+        ${sel('Podcast')}🎙️ Podcast</option>
+        ${sel('Article')}📝 Article</option>
+        ${sel('Other')}📌 Other</option>
       </select></div>
       <div class="field"><label>Skill Category</label><select class="select" id="m-kn-skill">
-        <option value="Marketing">📢 Marketing</option>
-        <option value="Business">💼 Business</option>
-        <option value="Sales">📈 Sales</option>
-        <option value="Finance">💰 Finance</option>
-        <option value="Technical">💻 Technical</option>
-        <option value="Personal Development">🧠 Personal Development</option>
-        <option value="Health & Fitness">💪 Health & Fitness</option>
-        <option value="Leadership">🎯 Leadership</option>
-        <option value="Mindset">🧘 Mindset</option>
-        <option value="Other">📦 Other</option>
+        ${selSk('Marketing')}📢 Marketing</option>
+        ${selSk('Business')}💼 Business</option>
+        ${selSk('Sales')}📈 Sales</option>
+        ${selSk('Finance')}💰 Finance</option>
+        ${selSk('Technical')}💻 Technical</option>
+        ${selSk('Personal Development')}🧠 Personal Development</option>
+        ${selSk('Health & Fitness')}💪 Health & Fitness</option>
+        ${selSk('Leadership')}🎯 Leadership</option>
+        ${selSk('Mindset')}🧘 Mindset</option>
+        ${selSk('Other')}📦 Other</option>
       </select></div>
     </div>
-    <div class="field"><label>Author / Platform / Creator</label><input class="input" id="m-kn-source" placeholder="e.g. Alex Hormozi, Udemy, Andrew Huberman…"></div>
-    <div class="field"><label>Source Link</label><input class="input" id="m-kn-link" type="url" placeholder="https://…"></div>
+    <div class="field"><label>Author / Platform / Creator</label><input class="input" id="m-kn-source" placeholder="e.g. Alex Hormozi, Udemy, Andrew Huberman…" value="${esc(k?.source||'')}"></div>
+    <div class="field"><label>Source Link</label><input class="input" id="m-kn-link" type="url" placeholder="https://…" value="${esc(k?.link||'')}"></div>
     <div class="field-row">
       <div class="field"><label>Status</label><select class="select" id="m-kn-status">
-        <option value="active">In Progress</option>
-        <option value="todo">To Start</option>
-        <option value="done">Completed</option>
+        ${selSt('active')}In Progress</option>
+        ${selSt('todo')}To Start</option>
+        ${selSt('done')}Completed</option>
       </select></div>
-      <div class="field"><label>Progress (%)</label><input class="input" id="m-kn-progress" type="number" min="0" max="100" placeholder="0"></div>
-    </div>`,
+      <div class="field"><label>Progress (%)</label><input class="input" id="m-kn-progress" type="number" min="0" max="100" placeholder="0" value="${k?k.progress||0:''}"></div>
+    </div>`;
+  },
     save:()=>{
       const title=$('m-kn-title').value.trim();if(!title)return alert('Name required');
       const items=load(K.knowledge);
-      items.push({id:uid(),title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0});
+      const entry={title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0};
+      if(_editingKnowledgeId){
+        const i=items.findIndex(x=>x.id===_editingKnowledgeId);
+        if(i>=0)items[i]={...items[i],...entry};
+      } else {
+        items.push({id:uid(),...entry});
+      }
       save(K.knowledge,items);closeModal();renderSelfDev();
+      if(_logsTab==='selfdev') renderCurrentLogs('');
     }},
   workout:{title:'Log Workout',html:`
     <div class="field-row">
@@ -3008,7 +3027,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -3603,7 +3622,7 @@ function renderLogsSD(q){
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t-selfdev)">${pct}%</span>
       </div>`,
       stLbl[i.status]||'—',
-      dbDelBtn('deleteKnowledge',i.id)
+      `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
     ]);
   });
 
