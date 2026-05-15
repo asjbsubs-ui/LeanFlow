@@ -2057,6 +2057,8 @@ let _editingMeetingId=null;
 function editMeeting(id){
   const m=load(K.meetings).find(x=>x.id===id);if(!m)return;
   _editingMeetingId=id;
+  const contacts=load(K.directory);
+  _mtgSelectedContacts=(m.contactIds||[]).map(cid=>contacts.find(c=>c.id===cid)).filter(Boolean).map(c=>({id:c.id,name:c.name}));
   openModal('meeting');
   setTimeout(()=>{
     if($('m-mtg-title'))  $('m-mtg-title').value=m.title||'';
@@ -2071,6 +2073,7 @@ function editMeeting(id){
       });
     }
     if($('modalTitle')) $('modalTitle').textContent='Edit Meeting';
+    renderMtgContactTags();
   },60);
 }
 
@@ -2088,6 +2091,26 @@ function deleteMeeting(id){
   save(K.meetings,load(K.meetings).filter(m=>m.id!==id));renderMeetings();if(_logsTab==='meetings')renderCurrentLogs('');
 }
 
+let _mtgSelectedContacts=[];
+function mtgContactSearch(q){
+  const res=document.getElementById('m-mtg-contact-results');if(!res)return;
+  const q_=(q||'').toLowerCase().trim();
+  if(!q_){res.innerHTML='';return;}
+  const selectedIds=new Set(_mtgSelectedContacts.map(c=>c.id));
+  const matches=load(K.directory).filter(c=>!selectedIds.has(c.id)&&((c.name||'').toLowerCase().includes(q_)||(c.company||'').toLowerCase().includes(q_))).slice(0,8);
+  res.innerHTML=matches.map(c=>`<button type="button" onclick="mtgSelectContact('${c.id}')" style="padding:3px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s" onmouseover="this.style.borderColor='var(--t-meetings)';this.style.color='var(--t-meetings)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">${esc(c.name)}${c.company?' <span style=\"opacity:.6\">· '+esc(c.company)+'</span>':''}</button>`).join('');
+}
+function mtgSelectContact(id){
+  const c=load(K.directory).find(x=>x.id===id);if(!c||_mtgSelectedContacts.find(x=>x.id===id))return;
+  _mtgSelectedContacts.push({id,name:c.name});
+  renderMtgContactTags();
+  if($('m-mtg-contact-search')){$('m-mtg-contact-search').value='';document.getElementById('m-mtg-contact-results').innerHTML='';}
+}
+function mtgRemoveContact(id){_mtgSelectedContacts=_mtgSelectedContacts.filter(c=>c.id!==id);renderMtgContactTags();}
+function renderMtgContactTags(){
+  const el=document.getElementById('m-mtg-contact-tags');if(!el)return;
+  el.innerHTML=_mtgSelectedContacts.map(c=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.25);color:var(--t-meetings);font-size:11px;font-weight:500">${esc(c.name)}<button type="button" onclick="mtgRemoveContact('${c.id}')" style="background:none;border:none;cursor:pointer;color:var(--t-meetings);font-size:13px;padding:0;line-height:1;margin-left:2px">×</button></span>`).join('');
+}
 const _OUTCOME_COLORS={'Closed':'#4ade80','Follow-Up':'#fbbf24','No Show':'#f87171','Cancelled':'#fb923c','Rescheduled':'#22d3ee'};
 let _outcomeId=null;
 
@@ -2813,11 +2836,17 @@ const MODAL_FORMS = {
       <input class="input" id="m-mtg-attendees" type="text" inputmode="email" placeholder="john@email.com, jane@email.com" autocomplete="off" autocapitalize="none">
       <div style="font-size:10px;color:var(--text-muted);margin-top:5px">Separate multiple emails with a comma</div>
     </div>
-    <div class="field"><label>Notes</label><textarea class="textarea" id="m-mtg-notes" placeholder="Agenda or prep notes…"></textarea></div>`,
+    <div class="field"><label>Notes</label><textarea class="textarea" id="m-mtg-notes" placeholder="Agenda or prep notes…"></textarea></div>
+    <div class="field">
+      <label>Tagged Contacts</label>
+      <div id="m-mtg-contact-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <input class="input" id="m-mtg-contact-search" placeholder="Search contacts to tag…" oninput="mtgContactSearch(this.value)" style="font-size:12px" autocomplete="off">
+      <div id="m-mtg-contact-results" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+    </div>`,
     save:()=>{
       const title=$('m-mtg-title').value.trim();if(!title)return alert('Title required');
       const meetings=load(K.meetings);
-      const fields={title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,endTime:$('m-mtg-end').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean'};
+      const fields={title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,endTime:$('m-mtg-end').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean',contactIds:_mtgSelectedContacts.map(c=>c.id)};
       if(_editingMeetingId){
         const i=meetings.findIndex(m=>m.id===_editingMeetingId);
         if(i>=0){ meetings[i]={...meetings[i],...fields}; updateGcalEvent(meetings[i]); }
@@ -3053,7 +3082,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -3123,12 +3152,16 @@ function meetingCard(m){
   const outcomeBadge=m.outcome?`<span class="outcome-badge" style="background:color-mix(in srgb,${oc} 12%,transparent);color:${oc};border:1px solid color-mix(in srgb,${oc} 28%,transparent)">${m.outcome}</span>`:'';
   const outcomeNotes=m.outcomeNotes?`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${esc(m.outcomeNotes)}</div>`:'';
   const preMtgNotes=m.notes&&!m.done?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.notes)}</div>`:'';
+  const dirContacts=load(K.directory);
+  const taggedNames=(m.contactIds||[]).map(id=>dirContacts.find(c=>c.id===id)?.name).filter(Boolean);
+  const contactTags=taggedNames.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${taggedNames.map(n=>`<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(34,211,238,.1);color:var(--t-meetings);border:1px solid rgba(34,211,238,.2)">👤 ${esc(n)}</span>`).join('')}</div>`:'';
   return `<div class="meeting-row${m.done?' done':''}">
     <div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}${m.endTime?'–'+m.endTime:''}</div><div class="meeting-date-sm">${fmtDateShort(m.date)}</div></div>
     <div class="meeting-info">
       <div class="meeting-title">${esc(m.title)}</div>
       ${m.business?`<div style="margin-top:2px"><span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span></div>`:''}
       ${m.attendees?`<div class="meeting-attendees">${esc(m.attendees)}</div>`:''}
+      ${contactTags}
       ${preMtgNotes}${outcomeBadge}${outcomeNotes}
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
@@ -3530,18 +3563,21 @@ function renderLogsM(q){
     const outcomeBadge=m.outcome
       ?`<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,${oc} 14%,transparent);color:${oc};border:1px solid color-mix(in srgb,${oc} 28%,transparent)">${esc(m.outcome)}</span>`
       :'—';
+    const logContacts=load(K.directory);
+    const logTagNames=(m.contactIds||[]).map(id=>logContacts.find(c=>c.id===id)?.name).filter(Boolean);
     return dbRow([
       `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)||'—'}</span>`,
       `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${m.time||'—'}</span>`,
       `<strong style="color:var(--text-primary)${m.done?';text-decoration:line-through;opacity:.6':''}">${esc(m.title)}</strong>`,
       m.business?`<span style="font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span>`:'—',
       esc(m.attendees||'—'),
+      logTagNames.length?logTagNames.map(n=>`<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:rgba(34,211,238,.1);color:var(--t-meetings);border:1px solid rgba(34,211,238,.2)">👤 ${esc(n)}</span>`).join(' '):'—',
       outcomeBadge,
       m.outcomeNotes?`<span style="max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px">${esc(m.outcomeNotes)}</span>`:'—',
       `<button onclick="editMeeting('${m.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-meetings)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteMeeting',m.id)
     ]);
   });
-  logsHtml(dbTable(['Date','Time','Title','Business','Attendees','Outcome','Post-Meeting Notes',''],rows));
+  logsHtml(dbTable(['Date','Time','Title','Business','Attendees','Contacts','Outcome','Post-Meeting Notes',''],rows));
 }
 
 // ── Habits Logs (30-day heatmap) ──────────────────────
