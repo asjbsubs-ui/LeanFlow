@@ -2165,6 +2165,7 @@ function renderSelfDev(){
         <div class="book-info" style="flex:1;min-width:0">
           <div class="book-title">${esc(i.title)}</div>
           <div class="book-author">${i.type}${i.source?' · '+esc(i.source):''}</div>
+          ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes)}</div>`:''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <div class="progress-track" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--t-selfdev)"></div></div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${statusCol};white-space:nowrap">${i.status==='done'?'✓ Done':pct+'%'}</span>
@@ -2892,12 +2893,13 @@ const MODAL_FORMS = {
         ${selSt('done')}Completed</option>
       </select></div>
       <div class="field"><label>Progress (%)</label><input class="input" id="m-kn-progress" type="number" min="0" max="100" placeholder="0" value="${k?k.progress||0:''}"></div>
-    </div>`;
+    </div>
+    <div class="field"><label>Notes</label><textarea class="textarea" id="m-kn-notes" placeholder="Key takeaways, thoughts, highlights…" style="min-height:80px">${esc(k?.notes||'')}</textarea></div>`;
   },
     save:()=>{
       const title=$('m-kn-title').value.trim();if(!title)return alert('Name required');
       const items=load(K.knowledge);
-      const entry={title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0};
+      const entry={title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0,notes:$('m-kn-notes').value.trim()};
       if(_editingKnowledgeId){
         const i=items.findIndex(x=>x.id===_editingKnowledgeId);
         if(i>=0)items[i]={...items[i],...entry};
@@ -3623,6 +3625,7 @@ function renderLogsSD(q){
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t-selfdev)">${pct}%</span>
       </div>`,
       stLbl[i.status]||'—',
+      `<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes||'—')}</span>`,
       `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
     ]);
   });
@@ -3642,7 +3645,7 @@ function renderLogsSD(q){
         ${statusChips}
       </div>
     </div>
-    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status',''],rows)}
+    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status','Notes',''],rows)}
   `);
 }
 
