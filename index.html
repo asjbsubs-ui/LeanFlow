@@ -1901,7 +1901,11 @@ function saveJournal(){
   const existing=entries.findIndex(e=>e.date===t);
   const entry={id:uid(),date:t,mood:selectedMood,dump,grat,intent,ts:Date.now()};
   if(existing>=0)entries[existing]=entry;else entries.unshift(entry);
-  save(K.journal,entries);renderJournal();showToast('Entry saved ✓','#10b981');
+  save(K.journal,entries);renderJournal();
+  $('journalDump').value='';$('journalGratitude').value='';$('journalIntention').value='';
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+  selectedMood=0;
+  showToast('Entry saved ✓','#10b981');
 }
 function renderJournal(){
   $('journalDateLabel').textContent='Today — '+fmtDate(today());
