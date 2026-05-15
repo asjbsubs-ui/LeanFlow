@@ -914,7 +914,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
             <label>Tomorrow's #1 Priority</label>
             <textarea class="textarea" id="journalIntention" style="min-height:56px" placeholder="The one thing that will make tomorrow a win…"></textarea>
           </div>
-          <button class="btn btn-primary" style="background:var(--t-journal);color:#fff;width:100%" onclick="saveJournal()">Save Entry</button>
+          <button class="btn btn-primary" style="background:#10b981;color:#fff;width:100%" onclick="saveJournal()">Save Entry</button>
         </div>
       </div>
     </div>
@@ -1901,7 +1901,7 @@ function saveJournal(){
   const existing=entries.findIndex(e=>e.date===t);
   const entry={id:uid(),date:t,mood:selectedMood,dump,grat,intent,ts:Date.now()};
   if(existing>=0)entries[existing]=entry;else entries.unshift(entry);
-  save(K.journal,entries);renderJournal();
+  save(K.journal,entries);renderJournal();showToast('Entry saved ✓','#10b981');
 }
 function renderJournal(){
   $('journalDateLabel').textContent='Today — '+fmtDate(today());
