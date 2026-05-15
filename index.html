@@ -3173,9 +3173,9 @@ function meetingCard(m){
 }
 
 function renderMeetings(){
-  const meetings=load(K.meetings).sort((a,b)=>a.date>b.date?1:a.date<b.date?-1:a.time>b.time?1:-1);
+  const meetings=load(K.meetings).filter(m=>m.date>=today()).sort((a,b)=>a.date>b.date?1:a.date<b.date?-1:a.time>b.time?1:-1);
   const el=$('meetingList');
-  if(!meetings.length){el.innerHTML='<div class="empty"><span class="empty-icon">📅</span><span class="empty-text">No meetings yet.</span></div>';return;}
+  if(!meetings.length){el.innerHTML='<div class="empty"><span class="empty-icon">📅</span><span class="empty-text">No upcoming meetings.</span></div>';return;}
   el.innerHTML=meetings.map(meetingCard).join('');
   if(_meetView==='cal') renderMeetCal();
 }
