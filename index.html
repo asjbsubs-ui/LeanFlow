@@ -2227,6 +2227,8 @@ function renderFitness(){
   else mel.innerHTML=[...metrics].reverse().map(m=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${fmtDate(m.date)}</div><div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t-fitness);line-height:1">${toLbs(m.weight)}<span style="font-size:13px">lbs</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${m.weight}kg</div></div>${m.notes?`<div style="font-size:11px;color:var(--text-muted)">${esc(m.notes)}</div>`:''}<button class="delete-btn" onclick="deleteMetric('${m.id}')">✕</button></div>`).join('');
 }
 function deleteWorkout(id){save(K.workouts,load(K.workouts).filter(w=>w.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
+let _editingWorkoutId=null;
+function editWorkout(id){_editingWorkoutId=id;openModal('workout');}
 function deleteMetric(id){save(K.metrics,load(K.metrics).filter(m=>m.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
 
 // ── WEEKLY REVIEW ─────────────────────────────────────
@@ -2916,22 +2918,36 @@ const MODAL_FORMS = {
       save(K.knowledge,items);closeModal();renderSelfDev();
       if(_logsTab==='selfdev') renderCurrentLogs('');
     }},
-  workout:{title:'Log Workout',html:`
+  workout:{title:'Log Workout',html:()=>{
+    const w=_editingWorkoutId?load(K.workouts).find(x=>x.id===_editingWorkoutId):null;
+    $('modalTitle').textContent=w?'Edit Workout':'Log Workout';
+    const focusChips=['Push','Pull','Legs','Upper Body','Full Body','Chest & Shoulders','Chest & Back','Back & Biceps','Arms','Core','Cardio','Basketball','Golf','Pickleball','Yoga'];
+    const presetFocus=w&&focusChips.includes(w.name)?w.name:'';
+    return `
     <div class="field-row">
-      <div class="field"><label>Workout Type</label><select class="select" id="m-wo-type"><option>Weights</option><option>Running</option><option>Sports</option><option>Other</option></select></div>
-      <div class="field"><label>Date</label><input class="input" id="m-wo-date" type="date"></div>
+      <div class="field"><label>Workout Type</label><select class="select" id="m-wo-type">
+        ${['Weights','Running','Sports','Other'].map(t=>`<option${w&&w.type===t?' selected':''}>${t}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>Date</label><input class="input" id="m-wo-date" type="date" value="${w?w.date:today()}"></div>
     </div>
     <div class="field">
       <label>Name / Focus</label>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="m-wo-focus-chips">
-        ${['Push','Pull','Legs','Upper Body','Full Body','Chest & Shoulders','Chest & Back','Back & Biceps','Arms','Core','Cardio','Basketball','Golf','Pickleball','Yoga'].map(f=>`<button type="button" onclick="selectWorkoutFocus(this,'${f}')" style="padding:5px 11px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s" onmouseover="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-strong)'" onmouseout="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-md)'">${f}</button>`).join('')}
+        ${focusChips.map(f=>`<button type="button" onclick="selectWorkoutFocus(this,'${f}')" class="${presetFocus===f?'focus-active':''}" style="padding:5px 11px;border-radius:99px;border:1px solid ${presetFocus===f?'var(--t-fitness)':'var(--border-md)'};background:${presetFocus===f?'rgba(74,222,128,.15)':'transparent'};color:${presetFocus===f?'var(--t-fitness)':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s" onmouseover="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-strong)'" onmouseout="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-md)'">${f}</button>`).join('')}
       </div>
-      <input class="input" id="m-wo-name" placeholder="Or type a custom focus…" oninput="clearWorkoutChips()" style="font-size:12px">
+      <input class="input" id="m-wo-name" placeholder="Or type a custom focus…" oninput="clearWorkoutChips()" style="font-size:12px" value="${esc(presetFocus?'':w?.name||'')}">
     </div>
-    <div class="field"><label>Notes</label><textarea class="textarea" id="m-wo-notes" placeholder="How did it go? PRs?"></textarea></div>`,
+    <div class="field"><label>Notes</label><textarea class="textarea" id="m-wo-notes" placeholder="How did it go? PRs?">${esc(w?.notes||'')}</textarea></div>`;
+  },
     save:()=>{
       const workouts=load(K.workouts);
-      workouts.push({id:uid(),type:$('m-wo-type').value,date:$('m-wo-date').value||today(),name:$('m-wo-name').value.trim(),notes:$('m-wo-notes').value.trim()});
+      const entry={type:$('m-wo-type').value,date:$('m-wo-date').value||today(),name:$('m-wo-name').value.trim(),notes:$('m-wo-notes').value.trim()};
+      if(_editingWorkoutId){
+        const i=workouts.findIndex(x=>x.id===_editingWorkoutId);
+        if(i>=0)workouts[i]={...workouts[i],...entry};
+      } else {
+        workouts.push({id:uid(),...entry});
+      }
       save(K.workouts,workouts);closeModal();renderFitness();
       if(_logsTab==='fitness')renderCurrentLogs('');
     }},
@@ -3037,7 +3053,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -3695,7 +3711,7 @@ function renderLogsF(q){
     `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     esc(w.name||'—'),
     `<span style="max-width:220px;display:block">${esc(w.notes||'—')}</span>`,
-    dbDelBtn('deleteWorkout',w.id)
+    `<button onclick="editWorkout('${w.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-fitness)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteWorkout',w.id)
   ]));
   const mRows=[...metrics].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)}</span>`,
