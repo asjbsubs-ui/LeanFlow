@@ -2894,7 +2894,7 @@ const MODAL_FORMS = {
       </select></div>
       <div class="field"><label>Progress (%)</label><input class="input" id="m-kn-progress" type="number" min="0" max="100" placeholder="0" value="${k?k.progress||0:''}"></div>
     </div>
-    <div class="field"><label>Notes</label><textarea class="textarea" id="m-kn-notes" placeholder="Key takeaways, thoughts, highlights…" style="min-height:80px">${esc(k?.notes||'')}</textarea></div>`;
+    <div class="field"><label>Notes</label><textarea class="textarea" id="m-kn-notes" placeholder="Key takeaways, thoughts, highlights…" style="min-height:220px">${esc(k?.notes||'')}</textarea></div>`;
   },
     save:()=>{
       const title=$('m-kn-title').value.trim();if(!title)return alert('Name required');
