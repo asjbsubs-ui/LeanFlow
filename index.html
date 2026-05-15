@@ -3158,7 +3158,7 @@ function meetingCard(m){
   return `<div class="meeting-row${m.done?' done':''}">
     <div class="meeting-time-block"><div class="meeting-time">${m.time||'—'}${m.endTime?'–'+m.endTime:''}</div><div class="meeting-date-sm">${fmtDateShort(m.date)}</div></div>
     <div class="meeting-info">
-      <div class="meeting-title">${esc(m.title)}</div>
+      <div class="meeting-title">${esc(m.title)}${m.source==='gcal'?'<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:rgba(66,133,244,.12);color:#4285f4;border:1px solid rgba(66,133,244,.2);margin-left:6px;vertical-align:middle">📅 GCal</span>':''}</div>
       ${m.business?`<div style="margin-top:2px"><span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span></div>`:''}
       ${m.attendees?`<div class="meeting-attendees">${esc(m.attendees)}</div>`:''}
       ${contactTags}
@@ -3182,7 +3182,8 @@ function renderMeetings(){
 
 function renderMeetCal(){
   const meetings=load(K.meetings);
-  const gcalEvents=JSON.parse(localStorage.getItem('ahq_gcal_events')||'[]');
+  const importedGcalIds=new Set(meetings.map(m=>m.gcalEventId).filter(Boolean));
+  const gcalEvents=JSON.parse(localStorage.getItem('ahq_gcal_events')||'[]').filter(e=>!importedGcalIds.has(e.id));
   const year=calYear, month=calMonth;
   const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
@@ -3238,7 +3239,8 @@ function calGoToday(){ calYear=new Date().getFullYear();calMonth=new Date().getM
 function showMeetDay(ds){
   const panel=$('meetDayPanel'); if(!panel) return;
   const meetings=load(K.meetings).filter(m=>m.date===ds);
-  const gcalEvents=JSON.parse(localStorage.getItem('ahq_gcal_events')||'[]').filter(e=>e.date===ds);
+  const importedIds=new Set(meetings.map(m=>m.gcalEventId).filter(Boolean));
+  const gcalEvents=JSON.parse(localStorage.getItem('ahq_gcal_events')||'[]').filter(e=>e.date===ds&&!importedIds.has(e.id));
   const allTimed=[...meetings.map(m=>({...m,_src:'local'})),...gcalEvents.map(e=>({...e,_src:'gcal'}))].sort((a,b)=>(a.time||'')>(b.time||'')?1:-1);
   const label=new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
   if(!allTimed.length){ panel.style.display='none'; return; }
@@ -3351,12 +3353,28 @@ async function _fetchGcalEvents(){
       id:e.id,title:e.summary||'(no title)',
       date:(e.start.dateTime||e.start.date||'').slice(0,10),
       time:e.start.dateTime?e.start.dateTime.slice(11,16):'',
+      endTime:e.end?.dateTime?e.end.dateTime.slice(11,16):'',
       location:e.location||'',attendees:(e.attendees||[]).map(a=>a.email).join(', '),source:'gcal'
     }));
     localStorage.setItem('ahq_gcal_events',JSON.stringify(events));
     localStorage.setItem('ahq_gcal_connected','true');
+    // Upsert all GCal events into K.meetings
+    const meetings=load(K.meetings);
+    let changed=false;
+    events.forEach(e=>{
+      const idx=meetings.findIndex(m=>m.gcalEventId===e.id);
+      if(idx>=0){
+        meetings[idx]={...meetings[idx],title:e.title,date:e.date,time:e.time,endTime:e.endTime,attendees:e.attendees};
+        changed=true;
+      } else {
+        meetings.push({id:uid(),gcalEventId:e.id,source:'gcal',title:e.title,date:e.date,time:e.time,endTime:e.endTime,attendees:e.attendees,notes:'',business:'',contactIds:[]});
+        changed=true;
+      }
+    });
+    if(changed){save(K.meetings,meetings);}
     renderMeetSyncPanel();
     if(_meetView==='cal') renderMeetCal();
+    else renderMeetings();
   }catch(e){console.warn('GCal fetch error',e);}
 }
 
