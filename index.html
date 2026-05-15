@@ -1067,6 +1067,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
           <button type="button" onclick="selectNoteChip(this,'🎯 Goal Idea')" class="nchip">🎯 Goal Idea</button>
           <button type="button" onclick="selectNoteChip(this,'⚡ Quick Thought')" class="nchip">⚡ Quick Thought</button>
           <button type="button" onclick="selectNoteChip(this,'🛒 Grocery')" class="nchip">🛒 Grocery</button>
+          <button type="button" onclick="selectNoteChip(this,'🐛 Bug')" class="nchip">🐛 Bug</button>
+          <button type="button" onclick="selectNoteChip(this,'💻 App Development')" class="nchip">💻 App Development</button>
         </div>
         <input class="input" id="note-cat-custom" placeholder="Or type a custom category…" oninput="noteCatCustomInput(this)" style="font-size:12px" autocomplete="off">
       </div>
@@ -3036,7 +3038,7 @@ const MODAL_FORMS = {
     }},
   noteEdit:{title:'Edit Note',html:()=>{
     const n=_editingNoteId?load(K.notes).find(x=>x.id===_editingNoteId):null;
-    const defaultCats=['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought','🛒 Grocery'];
+    const defaultCats=['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought','🛒 Grocery','🐛 Bug','💻 App Development'];
     const extraCats=[...new Set(load(K.notes).map(x=>x.category).filter(Boolean))].filter(c=>!defaultCats.includes(c));
     const allCats=[...defaultCats,...extraCats];
     const curCat=n?.category||'';
