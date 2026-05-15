@@ -2165,7 +2165,7 @@ function renderSelfDev(){
         <div class="book-info" style="flex:1;min-width:0">
           <div class="book-title">${esc(i.title)}</div>
           <div class="book-author">${i.type}${i.source?' · '+esc(i.source):''}</div>
-          ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes)}</div>`:''}
+          ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes.slice(0,100))}${i.notes.length>100?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">Read more</button>`:''}</div>`:''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <div class="progress-track" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--t-selfdev)"></div></div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${statusCol};white-space:nowrap">${i.status==='done'?'✓ Done':pct+'%'}</span>
@@ -2196,6 +2196,13 @@ let _editingKnowledgeId=null;
 function editKnowledge(id){
   _editingKnowledgeId=id;
   openModal('knowledge');
+}
+function viewKnowledgeNotes(id){
+  const k=load(K.knowledge).find(x=>x.id===id);if(!k)return;
+  $('modalTitle').textContent=k.title;
+  $('modalBody').innerHTML=`<div style="white-space:pre-wrap;line-height:1.8;font-size:14px;color:var(--text-primary)">${esc(k.notes||'')}</div>`;
+  $('modalFoot').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="closeModal();editKnowledge('${id}')">Edit</button>`;
+  $('modalOverlay').classList.add('open');
 }
 
 // ── FITNESS ───────────────────────────────────────────
@@ -3625,7 +3632,7 @@ function renderLogsSD(q){
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t-selfdev)">${pct}%</span>
       </div>`,
       stLbl[i.status]||'—',
-      `<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes||'—')}</span>`,
+      i.notes?`<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes.slice(0,60))}${i.notes.length>60?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">more</button>`:''}</span>`:'<span style="color:var(--text-muted)">—</span>',
       `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
     ]);
   });
