@@ -2170,6 +2170,7 @@ function renderSelfDev(){
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${statusCol};white-space:nowrap">${i.status==='done'?'✓ Done':pct+'%'}</span>
           </div>
         </div>
+        <button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editKnowledge('${i.id}')">✏️</button>
         <button class="delete-btn" onclick="deleteKnowledge('${i.id}')">✕</button>
       </div>`;
     }).join('');
