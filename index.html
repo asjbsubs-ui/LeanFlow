@@ -2496,8 +2496,7 @@ function _noteEditCatChip(btn,cat){
 
 function noteToTask(id){
   const n=load(K.notes).find(x=>x.id===id);if(!n)return;
-  // Pre-fill task title from note text (first line, max 100 chars)
-  const title=n.text.split('\n')[0].slice(0,100);
+  const title=n.text.trim();
   _taskTypeDefault='work';
   _editingTaskId=null;
   openModal('task','work');
