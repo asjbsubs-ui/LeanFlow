@@ -3805,7 +3805,7 @@ function renderTrashSection(type){
   if(!trash.length) return '';
   const rows=trash.map(t=>dbRow([
     `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.deletedAt)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDate(t.deletedAt)}</span>`,
     `<button onclick="restoreFromTrash('${t.id}','${type}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif">↩ Restore</button>`,
     `<button onclick="deleteForever('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete permanently">✕</button>`
   ]));
@@ -3826,7 +3826,7 @@ function openTrashView(){
   el.innerHTML=emptyBtn+Object.entries(byType).map(([type,items])=>{
     const rows=items.map(t=>dbRow([
       `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.deletedAt)}</span>`,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDate(t.deletedAt)}</span>`,
       `<button onclick="restoreFromTrash('${t.id}','${type}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif">↩ Restore</button>`,
       `<button onclick="deleteForever('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete permanently">✕</button>`
     ]));
@@ -3891,7 +3891,7 @@ function renderLogsT(q){
     imp[t.priority]||'<span class="lbl" style="background:rgba(255,255,255,.05);color:var(--text-muted)">—</span>',
     t.business?`<span style="font-size:11px;color:var(--green)">🏢 ${esc(t.business)}</span>`:'—',
     t.dept?`<span style="font-size:11px;color:#60a5fa">◈ ${esc(t.dept)}</span>`:'—',
-    t.due?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(t.due)}</span>`:'—',
+    t.due?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(t.due)}</span>`:'—',
     t.done
       ?`<button onclick="restoreTask('${t.id}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(96,165,250,.2)'" onmouseout="this.style.background='rgba(96,165,250,.1)'">↩ Restore</button>`
       :'<span class="lbl lbl-a">Open</span>',
@@ -3913,7 +3913,7 @@ function renderLogsM(q){
     const logContacts=load(K.directory);
     const logTagNames=(m.contactIds||[]).map(id=>logContacts.find(c=>c.id===id)?.name).filter(Boolean);
     return dbRow([
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)||'—'}</span>`,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(m.date)||'—'}</span>`,
       `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${m.time||'—'}</span>`,
       `<strong style="color:var(--text-primary)${m.done?';text-decoration:line-through;opacity:.6':''}">${esc(m.title)}</strong>`,
       m.business?`<span style="font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span>`:'—',
@@ -3967,7 +3967,7 @@ function renderLogsG(q){
       </div>
       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${g.color||'var(--t-goals)'};font-weight:700">${g.progress}%</span>
     </div>`,
-    g.deadline?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(g.deadline)}</span>`:'—',
+    g.deadline?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(g.deadline)}</span>`:'—',
     g.milestones&&g.milestones.length?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${g.milestones.filter(m=>m.done).length}/${g.milestones.length}</span>`:'—',
     dbDelBtn('deleteGoal',g.id)
   ]));
@@ -3981,7 +3981,7 @@ function renderLogsJ(q){
   const all=load(K.journal).filter(e=>!q_||(e.dump||'').toLowerCase().includes(q_)||(e.grat||'').toLowerCase().includes(q_)||(e.intent||'').toLowerCase().includes(q_));
   logsCount(all.length+' entries');
   const rows=[...all].sort(dateSortFn('journal','date')).map(e=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(e.date)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(e.date)}</span>`,
     `<span style="font-size:18px">${moods[e.mood]||'—'}</span>`,
     `<span style="max-width:220px;display:block;color:var(--text-secondary)">${esc((e.dump||'').slice(0,100))}${(e.dump||'').length>100?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.grat||'').slice(0,70))}${(e.grat||'').length>70?'…':''}</span>`,
@@ -4031,7 +4031,7 @@ function renderLogsSD(q){
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t-selfdev)">${pct}%</span>
       </div>`,
       stLbl[i.status]||'—',
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${i.date?fmtDateShort(i.date):'—'}</span>`,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${i.date?fmtDate(i.date):'—'}</span>`,
       i.notes?`<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes.slice(0,60))}${i.notes.length>60?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">more</button>`:''}</span>`:'<span style="color:var(--text-muted)">—</span>',
       `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
     ]);
@@ -4072,7 +4072,7 @@ function renderLogsR(q){
 
   const scoreCol=(n)=>n>=8?'var(--green)':n>=5?'var(--yellow)':'var(--red)';
   const rows=[...all].sort(dateSortFn('review','week')).map(r=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">Week of ${fmtDateShort(r.week)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">Week of ${fmtDate(r.week)}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${scoreCol(r.overall)}">${r.overall}<span style="font-size:10px;color:var(--text-muted)">/10</span></span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.energy)}">${r.energy}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.focus)}">${r.focus}</span>`,
@@ -4096,14 +4096,14 @@ function renderLogsF(q){
   const chkHdr=`<input type="checkbox" ${allSel?'checked':''} onchange="toggleFitSelectAll(this.checked)" style="cursor:pointer;accent-color:var(--t-fitness)">`;
   const wRows=[...workouts].sort(dateSortFn('fitness','date')).map(w=>dbRow([
     `<input type="checkbox" ${_fitSel.has(w.id)?'checked':''} onchange="toggleFitSelect('${w.id}',this.checked)" style="cursor:pointer;accent-color:var(--t-fitness)">`,
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(w.date)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(w.date)}</span>`,
     `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     esc(w.name||'—'),
     `<span style="max-width:220px;display:block">${esc(w.notes||'—')}</span>`,
     `<button onclick="editWorkout('${w.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-fitness)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteWorkout',w.id)
   ]));
   const mRows=[...metrics].sort(dateSortFn('fitness','date')).map(m=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(m.date)}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--t-fitness)">${toLbs(m.weight)}lbs</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:4px">${m.weight}kg</span>`,
     esc(m.notes||'—'),
     dbDelBtn('deleteMetric',m.id)
@@ -5147,7 +5147,7 @@ async function renderLogsN(q){
     `<span style="font-size:15px">${m.kind==='audio'?'🎙️':'📹'}</span>`,
     `<strong style="color:var(--text-primary)">${esc(m.title||'Memo')}</strong>`,
     `<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;font-weight:600">${m.kind==='audio'?'Voice':'Video'}</span>`,
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(m.date)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(m.date)}</span>`,
     m.storagePath?`<span style="font-size:10px;color:var(--green)">☁ synced</span>`:`<span style="font-size:10px;color:var(--text-muted)">local</span>`,
     dbDelBtn('deleteVideoMemo',m.id)
   ]));
@@ -5155,7 +5155,7 @@ async function renderLogsN(q){
     `<span style="font-size:15px">💡</span>`,
     `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
     n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDateShort(n.created)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(n.created)}</span>`,
     n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗</a>`:'—',
     dbDelBtn('deleteNote',n.id)
   ]));
