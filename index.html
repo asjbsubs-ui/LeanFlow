@@ -2347,7 +2347,7 @@ function _parseFitnessCSV(text){
       const lbs=parseFloat(get(row,'weight'));if(isNaN(lbs)||lbs<=0)return;
       metrics.push({id:uid(),date,weight:Math.round(lbs/2.20462*100)/100,notes:get(row,'note')});mCount++;
     } else {
-      workouts.push({id:uid(),date,type:get(row,'type')||'Other',name:get(row,'name'),notes:get(row,'note')});wCount++;
+      workouts.push({id:uid(),date,type:get(row,'type')||'Weights',name:get(row,'name'),notes:get(row,'note')});wCount++;
     }
   });
   if(wCount)save(K.workouts,workouts);if(mCount)save(K.metrics,metrics);
@@ -2365,7 +2365,7 @@ function _parseFitnessJSON(text){
       const kg=item.weight_lbs?Math.round(item.weight_lbs/2.20462*100)/100:item.weight;
       metrics.push({id:uid(),date,weight:kg,notes:item.notes||''});mCount++;
     } else if(item.type!==undefined||item.name!==undefined){
-      workouts.push({id:uid(),date,type:item.type||'Other',name:item.name||'',notes:item.notes||''});wCount++;
+      workouts.push({id:uid(),date,type:item.type||'Weights',name:item.name||'',notes:item.notes||''});wCount++;
     }
   });
   if(wCount)save(K.workouts,workouts);if(mCount)save(K.metrics,metrics);
