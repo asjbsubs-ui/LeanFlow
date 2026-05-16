@@ -2451,7 +2451,7 @@ function renderNoteCatChips(){
   const btn=$('note-cat-edit-btn');
   if(btn){btn.textContent=_noteCatEditMode?'✓ Done':'✏️ Edit';btn.style.color=_noteCatEditMode?'var(--t-selfdev)':'var(--text-muted)';}
   if(_noteCatEditMode){
-    el.innerHTML=cats.map((cat,i)=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 6px 3px 10px;border-radius:99px;border:1px solid var(--border-md);background:rgba(255,255,255,.04);font-size:12px;font-family:'Outfit',sans-serif;color:var(--text-secondary)">${esc(cat)}<button onclick="removeNoteCat('${encodeURIComponent(cat)}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:11px;padding:1px 3px;line-height:1;border-radius:50%" title="Remove">✕</button></span>`).join('')+`<span style="display:inline-flex;align-items:center;gap:4px"><input id="note-cat-new" class="input" placeholder="New category…" style="height:28px;font-size:12px;padding:0 10px;width:140px" onkeydown="if(event.key==='Enter'){event.preventDefault();addNoteCat();}"><button onclick="addNoteCat()" style="height:28px;padding:0 10px;border-radius:99px;border:1px solid var(--border-md);background:rgba(255,255,255,.06);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif">Add</button></span>`;
+    el.innerHTML=cats.map((cat,i)=>`<span id="ncat-${i}" draggable="true" ondragstart="noteCatDragStart(event,${i})" ondragover="noteCatDragOver(event,${i})" ondrop="noteCatDrop(event,${i})" ondragend="noteCatDragEnd()" style="display:inline-flex;align-items:center;gap:3px;padding:3px 6px 3px 8px;border-radius:99px;border:1px solid var(--border-md);background:rgba(255,255,255,.04);font-size:12px;font-family:'Outfit',sans-serif;color:var(--text-secondary);cursor:grab;transition:opacity .15s"><span style="color:var(--text-muted);font-size:10px;pointer-events:none">⠿</span>${esc(cat)}<button onclick="removeNoteCat('${encodeURIComponent(cat)}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:11px;padding:1px 3px;line-height:1;border-radius:50%" title="Remove">✕</button></span>`).join('')+`<span style="display:inline-flex;align-items:center;gap:4px"><input id="note-cat-new" class="input" placeholder="New category…" style="height:28px;font-size:12px;padding:0 10px;width:140px" onkeydown="if(event.key==='Enter'){event.preventDefault();addNoteCat();}"><button onclick="addNoteCat()" style="height:28px;padding:0 10px;border-radius:99px;border:1px solid var(--border-md);background:rgba(255,255,255,.06);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif">Add</button></span>`;
   } else {
     el.innerHTML=cats.map(cat=>`<button type="button" onclick="selectNoteChip(this,'${cat.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" class="nchip${_noteChip===cat?' on':''}">${esc(cat)}</button>`).join('');
   }
@@ -2470,6 +2470,33 @@ function addNoteCat(){
   if(!cats.includes(cat)){cats.push(cat);saveNoteCats(cats);}
   input.value='';
   renderNoteCatChips();
+}
+let _dragCatIdx=null;
+function noteCatDragStart(e,idx){
+  _dragCatIdx=idx;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{const el=document.getElementById('ncat-'+idx);if(el)el.style.opacity='.35';},0);
+}
+function noteCatDragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('#note-cat-chips span[draggable]').forEach((el,i)=>{
+    el.style.outline=i===idx&&i!==_dragCatIdx?'2px solid var(--t-selfdev)':'none';
+  });
+}
+function noteCatDrop(e,idx){
+  e.preventDefault();
+  if(_dragCatIdx===null||_dragCatIdx===idx){noteCatDragEnd();return;}
+  const cats=getNoteCats();
+  const [moved]=cats.splice(_dragCatIdx,1);
+  cats.splice(idx,0,moved);
+  saveNoteCats(cats);
+  _dragCatIdx=null;
+  renderNoteCatChips();
+}
+function noteCatDragEnd(){
+  _dragCatIdx=null;
+  document.querySelectorAll('#note-cat-chips span[draggable]').forEach(el=>{el.style.opacity='1';el.style.outline='none';});
 }
 
 function selectNoteChip(btn, cat){
