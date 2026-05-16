@@ -2160,6 +2160,14 @@ const STATUS_MAP  = {active:'In Progress',reading:'In Progress',todo:'To Start',
 
 function renderSelfDev(){
   migrateKnowledge();
+  // One-time: stamp any entry missing a date
+  if(!localStorage.getItem('ahq_km_dates')){
+    const items=load(K.knowledge);
+    let changed=false;
+    items.forEach(i=>{if(!i.date){i.date=today();changed=true;}});
+    if(changed) save(K.knowledge,items);
+    localStorage.setItem('ahq_km_dates','1');
+  }
   const items = load(K.knowledge);
   const el = $('knowledgeList');
   if(!items.length){
@@ -2925,7 +2933,10 @@ const MODAL_FORMS = {
         ${selSk('Other')}📦 Other</option>
       </select></div>
     </div>
-    <div class="field"><label>Author / Platform / Creator</label><input class="input" id="m-kn-source" placeholder="e.g. Alex Hormozi, Udemy, Andrew Huberman…" value="${esc(k?.source||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>Author / Platform / Creator</label><input class="input" id="m-kn-source" placeholder="e.g. Alex Hormozi, Udemy, Andrew Huberman…" value="${esc(k?.source||'')}"></div>
+      <div class="field"><label>Date Added</label><input class="input" id="m-kn-date" type="date" value="${k?.date||today()}"></div>
+    </div>
     <div class="field"><label>Source Link</label><input class="input" id="m-kn-link" type="url" placeholder="https://…" value="${esc(k?.link||'')}"></div>
     <div class="field-row">
       <div class="field"><label>Status</label><select class="select" id="m-kn-status">
@@ -2940,12 +2951,12 @@ const MODAL_FORMS = {
     save:()=>{
       const title=$('m-kn-title').value.trim();if(!title)return alert('Name required');
       const items=load(K.knowledge);
-      const entry={title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0,notes:$('m-kn-notes').value.trim()};
+      const entry={title,type:$('m-kn-type').value,skill:$('m-kn-skill').value,source:$('m-kn-source').value.trim(),link:$('m-kn-link').value.trim(),status:$('m-kn-status').value,progress:parseInt($('m-kn-progress').value)||0,notes:$('m-kn-notes').value.trim(),date:$('m-kn-date').value||today()};
       if(_editingKnowledgeId){
         const i=items.findIndex(x=>x.id===_editingKnowledgeId);
         if(i>=0)items[i]={...items[i],...entry};
       } else {
-        items.push({id:uid(),date:today(),...entry});
+        items.push({id:uid(),...entry});
       }
       save(K.knowledge,items);closeModal();renderSelfDev();
       if(_logsTab==='selfdev') renderCurrentLogs('');
