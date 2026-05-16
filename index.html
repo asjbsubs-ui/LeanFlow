@@ -3743,6 +3743,7 @@ function renderLogsSD(q){
         <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t-selfdev)">${pct}%</span>
       </div>`,
       stLbl[i.status]||'—',
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${i.date?fmtDateShort(i.date):'—'}</span>`,
       i.notes?`<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes.slice(0,60))}${i.notes.length>60?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">more</button>`:''}</span>`:'<span style="color:var(--text-muted)">—</span>',
       `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
     ]);
@@ -3763,7 +3764,7 @@ function renderLogsSD(q){
         ${statusChips}
       </div>
     </div>
-    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status','Notes',''],rows)}
+    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status','Date','Notes',''],rows)}
   `);
 }
 
