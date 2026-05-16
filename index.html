@@ -3421,9 +3421,11 @@ window.addEventListener('focus',()=>{
 });
 
 async function createGcalEvent(m){
-  if(localStorage.getItem('ahq_gcal_connected')!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
+  const connected=localStorage.getItem('ahq_gcal_connected');
   const token=localStorage.getItem('ahq_gcal_token');
   const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
+  console.log('[GCal] createGcalEvent called',{connected,hasToken:!!token,tokenExpired:Date.now()>exp,meeting:m.title});
+  if(connected!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
   if(!token||Date.now()>exp){
     showToast('Reconnecting to Google Calendar…','var(--amber)');
     if(await _ensureGcalClient()){_pendingGcalEvent=m;_gcalTokenClient.requestAccessToken({prompt:''});}
