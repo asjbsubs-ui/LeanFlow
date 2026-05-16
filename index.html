@@ -2312,18 +2312,37 @@ function runFitnessImport(){
   };
   reader.readAsText(file);
 }
+function _normDate(s){
+  if(!s)return today();
+  s=s.trim().replace(/^["']+|["']+$/g,'');
+  // YYYY-MM-DD — already correct
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  // MM/DD/YYYY or M/D/YYYY
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // YYYY/MM/DD
+  m=s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if(m)return`${m[1]}-${m[2]}-${m[3]}`;
+  // DD-MM-YYYY or MM-DD-YYYY (ambiguous — treat as MM-DD-YYYY)
+  m=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m)return`${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // Fallback: let Date parse it, then reformat
+  const d=new Date(s);
+  if(!isNaN(d.getTime())){const x=new Date(d.getTime()+43200000);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;}
+  return today();
+}
 function _parseFitnessCSV(text){
   const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2){showToast('No data rows found','var(--amber)');return;}
   const parseRow=row=>{const cells=[];let cur='',inQ=false;for(const ch of row){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cells.push(cur.trim());cur='';}else cur+=ch;}cells.push(cur.trim());return cells;};
-  const headers=parseRow(lines[0]).map(h=>h.toLowerCase().trim());
+  const headers=parseRow(lines[0]).map(h=>h.toLowerCase().replace(/^﻿/,'').trim());
   const isMetric=headers.some(h=>h.includes('weight'));
   const get=(row,key)=>{const i=headers.findIndex(h=>h.includes(key));return i>=0?(row[i]||'').trim():'';};
   const workouts=load(K.workouts),metrics=load(K.metrics);
   let wCount=0,mCount=0;
   lines.slice(1).forEach(line=>{
     const row=parseRow(line);if(!row[0])return;
-    const date=get(row,'date')||today();
+    const date=_normDate(get(row,'date'));
     if(isMetric){
       const lbs=parseFloat(get(row,'weight'));if(isNaN(lbs)||lbs<=0)return;
       metrics.push({id:uid(),date,weight:Math.round(lbs/2.20462*100)/100,notes:get(row,'note')});mCount++;
@@ -2341,7 +2360,7 @@ function _parseFitnessJSON(text){
   let wCount=0,mCount=0;
   data.forEach(item=>{
     if(!item||typeof item!=='object')return;
-    const date=item.date||today();
+    const date=_normDate(item.date);
     if(item.weight_lbs!==undefined||item.weight!==undefined){
       const kg=item.weight_lbs?Math.round(item.weight_lbs/2.20462*100)/100:item.weight;
       metrics.push({id:uid(),date,weight:kg,notes:item.notes||''});mCount++;
