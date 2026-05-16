@@ -1322,7 +1322,8 @@ const MOB_BTN = {
 };
 
 function switchTab(id, btn){
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  if(_logsTab){_logsTab=null;document.getElementById('logs-page').style.display='none';}
+  document.querySelectorAll('.tab-panel').forEach(p=>{p.classList.remove('active');p.style.removeProperty('display');});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   $('tab-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
