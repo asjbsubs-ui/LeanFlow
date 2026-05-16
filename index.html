@@ -4093,13 +4093,27 @@ function renderLogsF(q){
     esc(m.notes||'—'),
     dbDelBtn('deleteMetric',m.id)
   ]));
+  const allWorkouts=load(K.workouts);
+  const clearAllBtn=allWorkouts.length?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="clearAllWorkouts()" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:500;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">🗑️ Delete all workouts (${allWorkouts.length})</button></div>`:'';
   logsHtml(
+    clearAllBtn+
     dbTable([sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
     renderTrashSection('workouts')+
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
     dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)+
     renderTrashSection('metrics')
   );
+}
+
+function clearAllWorkouts(){
+  const workouts=load(K.workouts);
+  if(!workouts.length)return;
+  if(!confirm(`Move all ${workouts.length} workout${workouts.length!==1?'s':''} to trash?`))return;
+  workouts.forEach(w=>trashItem('workouts',w));
+  save(K.workouts,[]);
+  renderFitness();
+  renderCurrentLogs('');
+  showToast(`🗑️ ${workouts.length} workout${workouts.length!==1?'s':''} moved to trash`,'var(--amber)');
 }
 
 // ── Toast ─────────────────────────────────────────────
