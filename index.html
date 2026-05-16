@@ -2995,12 +2995,10 @@ const MODAL_FORMS = {
   },
     save:()=>{
       const w=$('m-met-weight').value;if(!w)return alert('Enter weight');
-      const kgVal=Math.round(parseFloat(w)/2.20462*10)/10;
+      const kgVal=Math.round(parseFloat(w)/2.20462*100)/100;
       const metrics=load(K.metrics);
-      console.log('[metric save]',{editingId:_editingMetricId,kgVal,metricsCount:metrics.length,ids:metrics.map(x=>x.id)});
       if(_editingMetricId){
         const i=metrics.findIndex(x=>x.id===_editingMetricId);
-        console.log('[metric save] findIndex result:',i);
         if(i>=0)metrics[i]={...metrics[i],date:$('m-met-date').value||today(),weight:kgVal,notes:$('m-met-notes').value.trim()};
         _editingMetricId=null;
       } else {
@@ -3440,11 +3438,9 @@ window.addEventListener('focus',()=>{
 });
 
 async function createGcalEvent(m){
-  const connected=localStorage.getItem('ahq_gcal_connected');
+  if(localStorage.getItem('ahq_gcal_connected')!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
   const token=localStorage.getItem('ahq_gcal_token');
   const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
-  console.log('[GCal] createGcalEvent called',{connected,hasToken:!!token,tokenExpired:Date.now()>exp,meeting:m.title});
-  if(connected!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
   if(!token||Date.now()>exp){
     showToast('Reconnecting to Google Calendar…','var(--amber)');
     if(await _ensureGcalClient()){_pendingGcalEvent=m;_gcalTokenClient.requestAccessToken({prompt:token?'':'consent'});}
