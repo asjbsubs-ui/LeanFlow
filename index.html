@@ -1121,7 +1121,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <span class="logs-page-title" id="logs-title">Logs</span>
     <input class="db-search" id="logs-search" placeholder="Search…" oninput="renderCurrentLogs(this.value)">
     <span class="db-count" id="logs-count"></span>
-    <button id="logs-trash-btn" onclick="scrollToTrash()" style="display:none;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:500;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">🗑️ Trash <span id="logs-trash-count" style="background:rgba(255,80,80,.15);color:var(--red);border-radius:99px;padding:0 5px;font-size:10px;font-weight:700"></span></button>
+    <button id="logs-trash-btn" onclick="openTrashView()" style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:500;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">🗑️ Trash <span id="logs-trash-count" style="border-radius:99px;padding:0 5px;font-size:10px;font-weight:700"></span></button>
   </div>
   <div class="logs-content" id="logs-content"></div>
 </div>
@@ -3625,13 +3625,13 @@ function openLogs(tab){
   lp.style.display = 'flex';
   document.getElementById('logs-title').textContent = (LOG_TITLES[tab]||tab) + ' — Logs';
   document.getElementById('logs-search').value = '';
+  _updateTrashBtn();
   renderCurrentLogs('');
 }
 
 function closeLogs(){
   _logsTab = null;
   document.getElementById('logs-page').style.display = 'none';
-  const btn=document.getElementById('logs-trash-btn');if(btn)btn.style.display='none';
   document.querySelectorAll('.tab-panel').forEach(p=>{
     p.style.display = p.classList.contains('active') ? 'block' : 'none';
   });
@@ -3679,13 +3679,17 @@ function _trashSummary(type,item){
   if(type==='directory') return esc(item.name||'Untitled');
   return '—';
 }
-function renderTrashSection(type){
-  const trash=loadTrash(type);
-  // Update the trash button in the logs bar
-  const btn=document.getElementById('logs-trash-btn');
+function _updateTrashBtn(){
+  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const cnt=document.getElementById('logs-trash-count');
-  if(btn){btn.style.display=trash.length?'flex':'none';}
-  if(cnt) cnt.textContent=trash.length||'';
+  if(cnt){
+    if(all.length){cnt.textContent=all.length;cnt.style.background='rgba(255,80,80,.15)';cnt.style.color='var(--red)';}
+    else{cnt.textContent='';cnt.style.background='transparent';}
+  }
+}
+function renderTrashSection(type){
+  _updateTrashBtn();
+  const trash=loadTrash(type);
   if(!trash.length) return '';
   const rows=trash.map(t=>dbRow([
     `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
@@ -3693,12 +3697,28 @@ function renderTrashSection(type){
     `<button onclick="restoreFromTrash('${t.id}','${type}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif">↩ Restore</button>`,
     `<button onclick="deleteForever('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete permanently">✕</button>`
   ]));
-  return `<div id="logs-trash-section" style="margin-top:28px;padding-top:16px;border-top:1px solid var(--border)"><span class="db-section-label">🗑️ Trash</span><span style="font-size:10px;color:var(--text-muted);margin-left:8px">${trash.length} item${trash.length!==1?'s':''} · permanently delete or restore</span></div>`
+  return `<div id="logs-trash-section" style="margin-top:28px;padding-top:16px;border-top:1px solid var(--border)"><span class="db-section-label">🗑️ Trash</span><span style="font-size:10px;color:var(--text-muted);margin-left:8px">${trash.length} item${trash.length!==1?'s':''}</span></div>`
     +dbTable(['Item','Deleted','',''],rows);
 }
-function scrollToTrash(){
-  const el=document.getElementById('logs-trash-section');
-  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+function openTrashView(){
+  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory'};
+  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const el=document.getElementById('logs-content');
+  if(!el) return;
+  document.getElementById('logs-title').textContent='🗑️ Trash';
+  document.getElementById('logs-count').textContent=all.length+' deleted item'+(all.length!==1?'s':'');
+  if(!all.length){el.innerHTML='<div class="db-empty" style="padding:48px 0;text-align:center;color:var(--text-muted)">Trash is empty</div>';return;}
+  const byType={};
+  all.forEach(t=>{if(!byType[t.type])byType[t.type]=[];byType[t.type].push(t);});
+  el.innerHTML=Object.entries(byType).map(([type,items])=>{
+    const rows=items.map(t=>dbRow([
+      `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.deletedAt)}</span>`,
+      `<button onclick="restoreFromTrash('${t.id}','${type}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif">↩ Restore</button>`,
+      `<button onclick="deleteForever('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete permanently">✕</button>`
+    ]));
+    return `<div style="margin-bottom:6px"><span class="db-section-label">${TYPE_LABELS[type]||type}</span></div>`+dbTable(['Item','Deleted','',''],rows);
+  }).join('<div style="margin-top:20px"></div>');
 }
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
@@ -3707,7 +3727,10 @@ function restoreFromTrash(trashId,type){
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
-  renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+  _updateTrashBtn();
+  const title=document.getElementById('logs-title');
+  if(title&&title.textContent.startsWith('🗑️')) openTrashView();
+  else renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
   const rMap={tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,selfdev:renderSelfDev,workouts:renderFitness,metrics:renderFitness,notes:renderNotes,directory:renderDirectory,journal:renderJournal};
   if(rMap[type])rMap[type]();
   showToast('↩ Restored','var(--green)');
@@ -3715,7 +3738,10 @@ function restoreFromTrash(trashId,type){
 function deleteForever(trashId){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
-  renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+  _updateTrashBtn();
+  const title=document.getElementById('logs-title');
+  if(title&&title.textContent.startsWith('🗑️')) openTrashView();
+  else renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
 }
 
 // ── Logs helpers ──────────────────────────────────────
