@@ -3820,9 +3820,10 @@ function openTrashView(){
   document.getElementById('logs-title').textContent='🗑️ Trash';
   document.getElementById('logs-count').textContent=all.length+' deleted item'+(all.length!==1?'s':'');
   if(!all.length){el.innerHTML='<div class="db-empty" style="padding:48px 0;text-align:center;color:var(--text-muted)">Trash is empty</div>';return;}
+  const emptyBtn=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="emptyTrash()" style="padding:4px 14px;border-radius:99px;border:1px solid var(--red);background:rgba(255,80,80,.08);color:var(--red);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:600;transition:all .15s">🗑️ Empty Trash (${all.length})</button></div>`;
   const byType={};
   all.forEach(t=>{if(!byType[t.type])byType[t.type]=[];byType[t.type].push(t);});
-  el.innerHTML=Object.entries(byType).map(([type,items])=>{
+  el.innerHTML=emptyBtn+Object.entries(byType).map(([type,items])=>{
     const rows=items.map(t=>dbRow([
       `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
       `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.deletedAt)}</span>`,
@@ -3831,6 +3832,15 @@ function openTrashView(){
     ]));
     return `<div style="margin-bottom:6px"><span class="db-section-label">${TYPE_LABELS[type]||type}</span></div>`+dbTable(['Item','Deleted','',''],rows);
   }).join('<div style="margin-top:20px"></div>');
+}
+function emptyTrash(){
+  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  if(!all.length)return;
+  if(!confirm(`Permanently delete all ${all.length} item${all.length!==1?'s':''} in trash? This cannot be undone.`))return;
+  localStorage.removeItem(_TRASH_KEY);
+  _updateTrashBtn();
+  openTrashView();
+  showToast('Trash emptied','var(--amber)');
 }
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
