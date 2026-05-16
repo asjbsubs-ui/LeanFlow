@@ -3326,7 +3326,10 @@ async function _ensureGcalClient(){
       client_id:clientId,
       scope:'https://www.googleapis.com/auth/calendar',
       callback:async resp=>{
-        if(resp.error){showToast('GCal auth error: '+resp.error,'var(--red)');return;}
+        if(resp.error){
+          if(resp.error==='interaction_required'&&_gcalTokenClient){_gcalTokenClient.requestAccessToken({prompt:'consent'});return;}
+          showToast('GCal auth error: '+resp.error,'var(--red)');return;
+        }
         localStorage.setItem('ahq_gcal_token',resp.access_token);
         localStorage.setItem('ahq_gcal_token_exp',String(Date.now()+(resp.expires_in||3600)*1000));
         if(_pendingGcalEvent){const ev=_pendingGcalEvent;_pendingGcalEvent=null;await _pushGcalEvent(ev,resp.access_token);}
@@ -3428,7 +3431,7 @@ async function createGcalEvent(m){
   if(connected!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
   if(!token||Date.now()>exp){
     showToast('Reconnecting to Google Calendar…','var(--amber)');
-    if(await _ensureGcalClient()){_pendingGcalEvent=m;_gcalTokenClient.requestAccessToken({prompt:''});}
+    if(await _ensureGcalClient()){_pendingGcalEvent=m;_gcalTokenClient.requestAccessToken({prompt:token?'':'consent'});}
     else showToast('GCal reconnect failed — click Re-sync in Sync settings','var(--red)');
     return;
   }
@@ -3503,7 +3506,7 @@ async function updateGcalEvent(m){
   const token=localStorage.getItem('ahq_gcal_token');
   const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
   if(!token||Date.now()>exp){
-    if(await _ensureGcalClient()){_pendingGcalUpdate=m;_gcalTokenClient.requestAccessToken({prompt:''});}
+    if(await _ensureGcalClient()){_pendingGcalUpdate=m;_gcalTokenClient.requestAccessToken({prompt:token?'':'consent'});}
     return;
   }
   await _doUpdateGcal(m,token);
