@@ -3365,18 +3365,11 @@ const MODAL_FORMS = {
   quote:{title:()=>_editingQuoteId?'Edit Quote':'Add Quote',html:()=>{
     const q=_editingQuoteId?load(K.quotes).find(x=>x.id===_editingQuoteId):null;
     return `
-    <div class="field"><label>Quote *</label><textarea class="textarea" id="m-q-text" placeholder="The quote…" style="min-height:80px">${esc(q?.text||'')}</textarea></div>
-    <div class="field-row">
-      <div class="field"><label>Author</label><input class="input" id="m-q-author" placeholder="Who said it?" value="${esc(q?.author||'')}"></div>
-      <div class="field"><label>Category</label><select class="select" id="m-q-cat">${QUOTE_CATS.map(c=>`<option${q?.category===c?' selected':''}>${c}</option>`).join('')}</select></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Source</label><input class="input" id="m-q-source" placeholder="Book, speech, interview…" value="${esc(q?.source||'')}"></div>
-      <div class="field"><label>Date</label><input class="input" id="m-q-date" type="date" value="${q?.date||today()}"></div>
-    </div>`;
+    <div class="field"><label>Quote *</label><textarea class="textarea" id="m-q-text" placeholder="The quote…" style="min-height:100px">${esc(q?.text||'')}</textarea></div>
+    <div class="field"><label>Author</label><input class="input" id="m-q-author" placeholder="Who said it?" value="${esc(q?.author||'')}"></div>`;
   },save:()=>{
     const text=$('m-q-text').value.trim();if(!text)return alert('Quote text required');
-    const entry={text,author:$('m-q-author').value.trim(),source:$('m-q-source').value.trim(),category:$('m-q-cat').value,date:$('m-q-date').value||today()};
+    const entry={text,author:$('m-q-author').value.trim(),date:today()};
     const quotes=load(K.quotes);
     if(_editingQuoteId){const i=quotes.findIndex(x=>x.id===_editingQuoteId);if(i>=0)quotes[i]={...quotes[i],...entry};_editingQuoteId=null;}
     else quotes.push({id:uid(),...entry});
@@ -3386,16 +3379,11 @@ const MODAL_FORMS = {
     const v=_editingVocabId?load(K.vocab).find(x=>x.id===_editingVocabId):null;
     return `
     <div class="field"><label>Word *</label><input class="input" id="m-v-word" placeholder="Word or phrase" value="${esc(v?.word||'')}"></div>
-    <div class="field"><label>Definition *</label><textarea class="textarea" id="m-v-def" placeholder="What does it mean?" style="min-height:70px">${esc(v?.definition||'')}</textarea></div>
-    <div class="field"><label>Example sentence</label><input class="input" id="m-v-example" placeholder="Use it in a sentence…" value="${esc(v?.example||'')}"></div>
-    <div class="field-row">
-      <div class="field"><label>Category / Language</label><select class="select" id="m-v-cat">${VOCAB_CATS.map(c=>`<option${v?.category===c?' selected':''}>${c}</option>`).join('')}</select></div>
-      <div class="field"><label>Date</label><input class="input" id="m-v-date" type="date" value="${v?.date||today()}"></div>
-    </div>`;
+    <div class="field"><label>Definition *</label><textarea class="textarea" id="m-v-def" placeholder="What does it mean?" style="min-height:100px">${esc(v?.definition||'')}</textarea></div>`;
   },save:()=>{
     const word=$('m-v-word').value.trim();if(!word)return alert('Word required');
     const def=$('m-v-def').value.trim();if(!def)return alert('Definition required');
-    const entry={word,definition:def,example:$('m-v-example').value.trim(),category:$('m-v-cat').value,date:$('m-v-date').value||today()};
+    const entry={word,definition:def,date:today()};
     const items=load(K.vocab);
     if(_editingVocabId){const i=items.findIndex(x=>x.id===_editingVocabId);if(i>=0)items[i]={...items[i],...entry};_editingVocabId=null;}
     else items.push({id:uid(),...entry});
