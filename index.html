@@ -2189,7 +2189,7 @@ function renderSelfDev(){
         <div class="book-cover" style="background:rgba(34,211,238,.08);font-size:18px">${typeIcon}</div>
         <div class="book-info" style="flex:1;min-width:0">
           <div class="book-title">${esc(i.title)}</div>
-          <div class="book-author">${i.type}${i.source?' · '+esc(i.source):''}</div>
+          <div class="book-author">${i.type}${i.source?' · '+esc(i.source):''}${i.date?' · '+fmtDateShort(i.date):''}</div>
           ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes.slice(0,100))}${i.notes.length>100?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">Read more</button>`:''}</div>`:''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <div class="progress-track" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--t-selfdev)"></div></div>
@@ -2945,7 +2945,7 @@ const MODAL_FORMS = {
         const i=items.findIndex(x=>x.id===_editingKnowledgeId);
         if(i>=0)items[i]={...items[i],...entry};
       } else {
-        items.push({id:uid(),...entry});
+        items.push({id:uid(),date:today(),...entry});
       }
       save(K.knowledge,items);closeModal();renderSelfDev();
       if(_logsTab==='selfdev') renderCurrentLogs('');
