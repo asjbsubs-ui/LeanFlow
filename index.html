@@ -2263,18 +2263,26 @@ function renderFitness(){
 
   const workouts=load(K.workouts);
   const metrics=load(K.metrics);
-  const thisWeek=workouts.filter(w=>{const d=new Date(w.date);const now=new Date();return (now-d)<=7*86400000;});
-  const latest=metrics.length?metrics[metrics.length-1]:null;
+  // This calendar week (Sunday → today)
+  const _now=new Date();
+  const _wkStart=new Date(_now);_wkStart.setDate(_now.getDate()-_now.getDay());
+  const weekStart=_wkStart.toISOString().slice(0,10);
+  const thisWeek=workouts.filter(w=>w.date>=weekStart&&w.date<=today());
+  // Most-recent workout by date, not array order
+  const lastSession=[...workouts].sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const latestMetric=[...metrics].sort((a,b)=>b.date.localeCompare(a.date))[0]||null;
   $('fitnessStats').innerHTML=[
     {val:workouts.length,label:'Total Workouts',c:'--t-fitness'},
     {val:thisWeek.length,label:'This Week',c:'--t-fitness'},
-    {val:latest?toLbs(latest.weight)+'lbs':'—',label:'Current Weight',c:'--t-selfdev'},
-    {val:workouts.length?workouts[workouts.length-1].name||'—':'—',label:'Last Session',c:'--t-habits'},
+    {val:latestMetric?toLbs(latestMetric.weight)+'lbs':'—',label:'Current Weight',c:'--t-selfdev'},
+    {val:lastSession?lastSession.name||fmtDateShort(lastSession.date):'—',label:'Last Session',c:'--t-habits'},
   ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   const ICONS={Weights:'🏋️',Running:'🏃',Sports:'⚽',Other:'💪'};
   const wel=$('workoutLog');
+  const weekWorkouts=[...thisWeek].sort((a,b)=>b.date.localeCompare(a.date));
   if(!workouts.length){wel.innerHTML='<div class="empty"><span class="empty-icon">💪</span><span class="empty-text">No workouts logged yet.</span></div>';}
-  else wel.innerHTML=[...workouts].reverse().map(w=>`<div class="workout-row"><div class="workout-type">${ICONS[w.type]||'💪'}</div><div class="workout-info"><div class="workout-name">${esc(w.type)} ${w.name?'— '+esc(w.name):''}</div><div class="workout-meta">${fmtDate(w.date)} ${w.notes?'· '+esc(w.notes):''}</div></div><button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editWorkout('${w.id}')">✏️</button><button class="delete-btn" onclick="deleteWorkout('${w.id}')">✕</button></div>`).join('');
+  else if(!weekWorkouts.length){wel.innerHTML='<div class="empty"><span class="empty-icon">💪</span><span class="empty-text">No workouts this week. Hit the gym! 💥</span></div>';}
+  else wel.innerHTML=weekWorkouts.map(w=>`<div class="workout-row"><div class="workout-type">${ICONS[w.type]||'💪'}</div><div class="workout-info"><div class="workout-name">${esc(w.type)} ${w.name?'— '+esc(w.name):''}</div><div class="workout-meta">${fmtDate(w.date)} ${w.notes?'· '+esc(w.notes):''}</div></div><button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editWorkout('${w.id}')">✏️</button><button class="delete-btn" onclick="deleteWorkout('${w.id}')">✕</button></div>`).join('');
   const mel=$('metricLog');
   if(!metrics.length){mel.innerHTML='<div class="empty"><span class="empty-icon">⚖️</span><span class="empty-text">No metrics logged yet.</span></div>';}
   else mel.innerHTML=[...metrics].reverse().map(m=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${fmtDate(m.date)}</div><div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t-fitness);line-height:1">${toLbs(m.weight)}<span style="font-size:13px">lbs</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${m.weight}kg</div></div>${m.notes?`<div style="font-size:11px;color:var(--text-muted)">${esc(m.notes)}</div>`:''}<button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editMetric('${m.id}')">✏️</button><button class="delete-btn" onclick="deleteMetric('${m.id}')">✕</button></div>`).join('');
@@ -2347,7 +2355,8 @@ function _parseFitnessCSV(text){
       const lbs=parseFloat(get(row,'weight'));if(isNaN(lbs)||lbs<=0)return;
       metrics.push({id:uid(),date,weight:Math.round(lbs/2.20462*100)/100,notes:get(row,'note')});mCount++;
     } else {
-      workouts.push({id:uid(),date,type:get(row,'type')||'Weights',name:get(row,'name'),notes:get(row,'note')});wCount++;
+      const _rt=get(row,'type');const _TYPES=['Weights','Running','Sports'];const _type=_TYPES.find(t=>t.toLowerCase()===_rt.toLowerCase())||'Weights';
+      workouts.push({id:uid(),date,type:_type,name:get(row,'name'),notes:get(row,'note')});wCount++;
     }
   });
   if(wCount)save(K.workouts,workouts);if(mCount)save(K.metrics,metrics);
@@ -2365,7 +2374,8 @@ function _parseFitnessJSON(text){
       const kg=item.weight_lbs?Math.round(item.weight_lbs/2.20462*100)/100:item.weight;
       metrics.push({id:uid(),date,weight:kg,notes:item.notes||''});mCount++;
     } else if(item.type!==undefined||item.name!==undefined){
-      workouts.push({id:uid(),date,type:item.type||'Weights',name:item.name||'',notes:item.notes||''});wCount++;
+      const _TYPES2=['Weights','Running','Sports'];const _t2=_TYPES2.find(t=>t.toLowerCase()===(item.type||'').toLowerCase())||'Weights';
+      workouts.push({id:uid(),date,type:_t2,name:item.name||'',notes:item.notes||''});wCount++;
     }
   });
   if(wCount)save(K.workouts,workouts);if(mCount)save(K.metrics,metrics);
