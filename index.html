@@ -3408,8 +3408,7 @@ async function _fetchGcalEvents(){
     }
     if(changed){save(K.meetings,meetings);}
     renderMeetSyncPanel();
-    if(_meetView==='cal') renderMeetCal();
-    else renderMeetings();
+    setTimeout(()=>{ if(_meetView==='cal') renderMeetCal(); else renderMeetings(); },0);
   }catch(e){console.warn('GCal fetch error',e);}
 }
 
@@ -3434,7 +3433,7 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && activeTab==='meetings') gcalAutoSync();
 });
 window.addEventListener('focus',()=>{
-  if(activeTab==='meetings') gcalAutoSync();
+  if(!document.hidden && activeTab==='meetings') gcalAutoSync();
 });
 
 async function createGcalEvent(m){
@@ -4694,6 +4693,7 @@ async function testObsSync(){
 }
 
 function obsFullSync(){
+  if(!localStorage.getItem('obs_api_key')) return;
   Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i).forEach(file=>{
     pushToObsidian(file,obsMarkdown(file));
   });
