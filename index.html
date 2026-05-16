@@ -3316,25 +3316,35 @@ function renderMeetSyncPanel(){
   </div>`;
 }
 
-async function connectGcal(){
-  const clientIdEl=$('gcal-client-id');
-  const clientId=(clientIdEl?clientIdEl.value.trim():'')||localStorage.getItem('ahq_gcal_client_id')||'';
-  if(!clientId){alert('Enter your Google OAuth Client ID first.');return;}
-  localStorage.setItem('ahq_gcal_client_id',clientId);
+async function _ensureGcalClient(){
+  if(_gcalTokenClient) return true;
+  const clientId=localStorage.getItem('ahq_gcal_client_id');
+  if(!clientId) return false;
   try{
     await _loadScript('https://accounts.google.com/gsi/client');
     _gcalTokenClient=google.accounts.oauth2.initTokenClient({
       client_id:clientId,
       scope:'https://www.googleapis.com/auth/calendar',
       callback:async resp=>{
-        if(resp.error){alert('Auth error: '+resp.error);return;}
-        // Store token + expiry so we can use it without re-prompting
+        if(resp.error){showToast('GCal auth error: '+resp.error,'var(--red)');return;}
         localStorage.setItem('ahq_gcal_token',resp.access_token);
         localStorage.setItem('ahq_gcal_token_exp',String(Date.now()+(resp.expires_in||3600)*1000));
         if(_pendingGcalEvent){const ev=_pendingGcalEvent;_pendingGcalEvent=null;await _pushGcalEvent(ev,resp.access_token);}
+        if(_pendingGcalUpdate){const m=_pendingGcalUpdate;_pendingGcalUpdate=null;await _doUpdateGcal(m,resp.access_token);}
         await _fetchGcalEvents();
       }
     });
+    return true;
+  }catch(e){return false;}
+}
+async function connectGcal(){
+  const clientIdEl=$('gcal-client-id');
+  const clientId=(clientIdEl?clientIdEl.value.trim():'')||localStorage.getItem('ahq_gcal_client_id')||'';
+  if(!clientId){alert('Enter your Google OAuth Client ID first.');return;}
+  localStorage.setItem('ahq_gcal_client_id',clientId);
+  _gcalTokenClient=null; // force reinit with current clientId
+  try{
+    if(!await _ensureGcalClient()) throw new Error('init failed');
     _gcalTokenClient.requestAccessToken({prompt:'consent'});
   }catch(e){alert('Could not load Google sign-in.\n\n'+e);}
 }
@@ -3372,6 +3382,13 @@ async function _fetchGcalEvents(){
         changed=true;
       }
     });
+    // Remove meetings deleted or moved outside the fetch window in GCal
+    const fetchedIds=new Set(events.map(e=>e.id));
+    const wMin=timeMin.slice(0,10),wMax=timeMax.slice(0,10);
+    for(let i=meetings.length-1;i>=0;i--){
+      const m=meetings[i];
+      if(m.gcalEventId&&m.date>=wMin&&m.date<wMax&&!fetchedIds.has(m.gcalEventId)){meetings.splice(i,1);changed=true;}
+    }
     if(changed){save(K.meetings,meetings);}
     renderMeetSyncPanel();
     if(_meetView==='cal') renderMeetCal();
@@ -3404,23 +3421,20 @@ window.addEventListener('focus',()=>{
 });
 
 async function createGcalEvent(m){
-  if(localStorage.getItem('ahq_gcal_connected')!=='true') return;
+  if(localStorage.getItem('ahq_gcal_connected')!=='true'){showToast('GCal not connected — go to Sync to reconnect','var(--amber)');return;}
   const token=localStorage.getItem('ahq_gcal_token');
   const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
   if(!token||Date.now()>exp){
-    // Token expired — silently re-request using stored client ID
-    const clientId=localStorage.getItem('ahq_gcal_client_id');
-    if(clientId&&_gcalTokenClient){
-      // Queue the event creation after new token arrives
-      _pendingGcalEvent=m;
-      _gcalTokenClient.requestAccessToken({prompt:''});
-    }
+    showToast('Reconnecting to Google Calendar…','var(--amber)');
+    if(await _ensureGcalClient()){_pendingGcalEvent=m;_gcalTokenClient.requestAccessToken({prompt:''});}
+    else showToast('GCal reconnect failed — click Re-sync in Sync settings','var(--red)');
     return;
   }
   await _pushGcalEvent(m,token);
 }
 
 let _pendingGcalEvent=null;
+let _pendingGcalUpdate=null;
 
 function _gcalEndStr(m){
   const pad=n=>String(n).padStart(2,'0');
@@ -3467,31 +3481,30 @@ async function _pushGcalEvent(m,token){
   }catch(e){console.warn('GCal push error',e);showToast('GCal push failed','var(--red)');}
 }
 
+async function _doUpdateGcal(m,token){
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startStr=`${m.date}T${m.time||'09:00'}:00`;
+  const endStr=_gcalEndStr(m);
+  const attendees=(m.attendees||'').split(/[,;]+/).map(e=>e.trim()).filter(e=>e.includes('@')).map(email=>({email}));
+  try{
+    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${m.gcalEventId}?sendUpdates=all`,{
+      method:'PATCH',
+      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({summary:m.title,description:m.notes||'',start:{dateTime:startStr,timeZone:tz},end:{dateTime:endStr,timeZone:tz},attendees})
+    });
+    if(r.ok){showToast('📅 GCal updated','var(--green)');await _fetchGcalEvents();}
+    else{const err=await r.json().catch(()=>({}));console.warn('GCal update failed',r.status,err);showToast('GCal update failed: '+(err.error?.message||r.status),'var(--red)');}
+  }catch(e){console.warn('GCal update error',e);showToast('GCal update failed','var(--red)');}
+}
 async function updateGcalEvent(m){
   if(!m.gcalEventId) return createGcalEvent(m);
   const token=localStorage.getItem('ahq_gcal_token');
   const exp=parseInt(localStorage.getItem('ahq_gcal_token_exp')||'0');
-  if(!token||Date.now()>exp) return;
-  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const pad=n=>String(n).padStart(2,'0');
-  const startStr=`${m.date}T${m.time||'09:00'}:00`;
-  const endStr=_gcalEndStr(m);
-  try{
-    const attendees=(m.attendees||'').split(',').map(e=>e.trim()).filter(e=>e.includes('@')).map(email=>({email}));
-    const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${m.gcalEventId}?sendUpdates=all`,{
-      method:'PATCH',
-      headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        summary:m.title,
-        description:m.notes||'',
-        start:{dateTime:startStr,timeZone:tz},
-        end:  {dateTime:endStr,  timeZone:tz},
-        attendees
-      })
-    });
-    if(r.ok) await _fetchGcalEvents();
-    else console.warn('GCal update failed',r.status);
-  }catch(e){console.warn('GCal update error',e);}
+  if(!token||Date.now()>exp){
+    if(await _ensureGcalClient()){_pendingGcalUpdate=m;_gcalTokenClient.requestAccessToken({prompt:''});}
+    return;
+  }
+  await _doUpdateGcal(m,token);
 }
 function _loadScript(src){
   return new Promise((res,rej)=>{
