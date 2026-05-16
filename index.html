@@ -1599,7 +1599,8 @@ async function addTaskToGcal(id){
 }
 
 function deleteTask(id){
-  save(K.tasks,load(K.tasks).filter(t=>t.id!==id));
+  const _tasks=load(K.tasks);const _ti=_tasks.find(t=>t.id===id);if(_ti)trashItem('tasks',_ti);
+  save(K.tasks,_tasks.filter(t=>t.id!==id));
   renderTasks();if(activeTab==='home')renderHome();
   if(_logsTab==='tasks')renderCurrentLogs('');
   if(_taskView==='matrix')renderMatrix();
@@ -1755,7 +1756,7 @@ function toggleHabitHome(id){
   if(activeTab==='habits'){if(_habitView==='month')renderHabitMonth();else renderHabits();}
   if(activeTab==='home')renderHomeHabits();
 }
-function deleteHabit(id){save(K.habits,load(K.habits).filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
+function deleteHabit(id){const _hh=load(K.habits);const _hi=_hh.find(h=>h.id===id);if(_hi)trashItem('habits',_hi);save(K.habits,_hh.filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
 
 let _habitDragId=null;
 function habitDragStart(e,id){
@@ -1844,7 +1845,7 @@ function editGoal(id){
     if($('modalTitle'))      $('modalTitle').textContent='Edit Goal';
   },60);
 }
-function deleteGoal(id){save(K.goals,load(K.goals).filter(g=>g.id!==id));renderGoals();if(_logsTab==='goals')renderCurrentLogs('');}
+function deleteGoal(id){const _gg=load(K.goals);const _gi=_gg.find(g=>g.id===id);if(_gi)trashItem('goals',_gi);save(K.goals,_gg.filter(g=>g.id!==id));renderGoals();if(_logsTab==='goals')renderCurrentLogs('');}
 
 let _goalDragId=null;
 function goalDragStart(e,id){
@@ -2082,7 +2083,8 @@ function deleteMeeting(id){
         {method:'DELETE',headers:{Authorization:`Bearer ${token}`}}).catch(()=>{});
     }
   }
-  save(K.meetings,load(K.meetings).filter(m=>m.id!==id));renderMeetings();if(_logsTab==='meetings')renderCurrentLogs('');
+  const _mm=load(K.meetings);const _mi=_mm.find(m=>m.id===id);if(_mi)trashItem('meetings',_mi);
+  save(K.meetings,_mm.filter(m=>m.id!==id));renderMeetings();if(_logsTab==='meetings')renderCurrentLogs('');
 }
 
 let _mtgSelectedContacts=[];
@@ -2213,7 +2215,8 @@ function renderSelfDev(){
 }
 
 function deleteKnowledge(id){
-  save(K.knowledge,load(K.knowledge).filter(k=>k.id!==id));
+  const _kk=load(K.knowledge);const _ki=_kk.find(k=>k.id===id);if(_ki)trashItem('selfdev',_ki);
+  save(K.knowledge,_kk.filter(k=>k.id!==id));
   renderSelfDev();
   if(_logsTab==='selfdev') renderCurrentLogs('');
 }
@@ -2251,10 +2254,10 @@ function renderFitness(){
   if(!metrics.length){mel.innerHTML='<div class="empty"><span class="empty-icon">⚖️</span><span class="empty-text">No metrics logged yet.</span></div>';}
   else mel.innerHTML=[...metrics].reverse().map(m=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${fmtDate(m.date)}</div><div style="flex:1"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t-fitness);line-height:1">${toLbs(m.weight)}<span style="font-size:13px">lbs</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${m.weight}kg</div></div>${m.notes?`<div style="font-size:11px;color:var(--text-muted)">${esc(m.notes)}</div>`:''}<button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editMetric('${m.id}')">✏️</button><button class="delete-btn" onclick="deleteMetric('${m.id}')">✕</button></div>`).join('');
 }
-function deleteWorkout(id){save(K.workouts,load(K.workouts).filter(w=>w.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
+function deleteWorkout(id){const _ww=load(K.workouts);const _wi=_ww.find(w=>w.id===id);if(_wi)trashItem('workouts',_wi);save(K.workouts,_ww.filter(w=>w.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
 let _editingWorkoutId=null;
 function editWorkout(id){_editingWorkoutId=id;openModal('workout');}
-function deleteMetric(id){save(K.metrics,load(K.metrics).filter(m=>m.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
+function deleteMetric(id){const _met=load(K.metrics);const _meti=_met.find(m=>m.id===id);if(_meti)trashItem('metrics',_meti);save(K.metrics,_met.filter(m=>m.id!==id));renderFitness();if(_logsTab==='fitness')renderCurrentLogs('');}
 let _editingMetricId=null;
 function editMetric(id){_editingMetricId=id;openModal('metric');}
 
@@ -2568,7 +2571,8 @@ function noteToTask(id){
 }
 
 function deleteNote(id){
-  save(K.notes,load(K.notes).filter(n=>n.id!==id));
+  const _nn=load(K.notes);const _ni=_nn.find(n=>n.id===id);if(_ni)trashItem('notes',_ni);
+  save(K.notes,_nn.filter(n=>n.id!==id));
   renderNotes();
   if(_logsTab==='notes') renderCurrentLogs('');
 }
@@ -3644,6 +3648,56 @@ function renderCurrentLogs(q){
   if(renders[_logsTab]) renders[_logsTab](q||'');
 }
 
+// ── Trash ─────────────────────────────────────────────
+const _TRASH_KEY='ahq_trash';
+function trashItem(type,item){
+  const t=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  t.push({id:uid(),type,item,deletedAt:today()});
+  localStorage.setItem(_TRASH_KEY,JSON.stringify(t));
+}
+function loadTrash(type){return JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]').filter(t=>t.type===type);}
+function _trashSummary(type,item){
+  if(type==='tasks') return esc(item.title||'Untitled');
+  if(type==='meetings') return `${esc(item.title||'Untitled')}${item.date?' · '+item.date:''}`;
+  if(type==='habits') return `${item.icon||''} ${esc(item.name||'Untitled')}`;
+  if(type==='goals') return esc(item.title||'Untitled');
+  if(type==='selfdev') return esc(item.title||'Untitled');
+  if(type==='workouts') return `${esc(item.type||'')}${item.name?' — '+esc(item.name):''} · ${item.date||''}`;
+  if(type==='metrics') return `${item.date||''} · ${toLbs(item.weight||0)} lbs`;
+  if(type==='notes') return esc((item.text||'').slice(0,80));
+  if(type==='directory') return esc(item.name||'Untitled');
+  return '—';
+}
+function renderTrashSection(type){
+  const trash=loadTrash(type);
+  if(!trash.length) return '';
+  const rows=trash.map(t=>dbRow([
+    `<span style="color:var(--text-secondary)">${_trashSummary(type,t.item)}</span>`,
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.deletedAt)}</span>`,
+    `<button onclick="restoreFromTrash('${t.id}','${type}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif">↩ Restore</button>`,
+    `<button onclick="deleteForever('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete permanently">✕</button>`
+  ]));
+  return `<div style="margin-top:28px;padding-top:16px;border-top:1px solid var(--border)"><span class="db-section-label">🗑️ Trash</span><span style="font-size:10px;color:var(--text-muted);margin-left:8px">${trash.length} item${trash.length!==1?'s':''} · permanently delete or restore</span></div>`
+    +dbTable(['Item','Deleted','',''],rows);
+}
+function restoreFromTrash(trashId,type){
+  const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const entry=trash.find(t=>t.id===trashId);if(!entry)return;
+  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory};
+  const key=colMap[type];
+  if(key){const items=load(key);items.push(entry.item);save(key,items);}
+  localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
+  renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+  const rMap={tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,selfdev:renderSelfDev,workouts:renderFitness,metrics:renderFitness,notes:renderNotes,directory:renderDirectory};
+  if(rMap[type])rMap[type]();
+  showToast('↩ Restored','var(--green)');
+}
+function deleteForever(trashId){
+  const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
+  renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+}
+
 // ── Logs helpers ──────────────────────────────────────
 function logsHtml(html){ const el=document.getElementById('logs-content');if(el)el.innerHTML=html; }
 function logsCount(txt){ const el=document.getElementById('logs-count');if(el)el.textContent=txt; }
@@ -3675,7 +3729,7 @@ function renderLogsT(q){
       :'<span class="lbl lbl-a">Open</span>',
     `<button onclick="editTask('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-tasks)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteTask',t.id)
   ]));
-  logsHtml(dbTable(['Title','Type','Priority','Business','Area',sortHdr('tasks','Due'),'Status',''],rows));
+  logsHtml(dbTable(['Title','Type','Priority','Business','Area',sortHdr('tasks','Due'),'Status',''],rows)+renderTrashSection('tasks'));
 }
 
 // ── Meetings Logs ─────────────────────────────────────
@@ -3702,7 +3756,7 @@ function renderLogsM(q){
       `<button onclick="editMeeting('${m.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-meetings)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteMeeting',m.id)
     ]);
   });
-  logsHtml(dbTable([sortHdr('meetings','Date'),'Time','Title','Business','Attendees','Contacts','Outcome','Post-Meeting Notes',''],rows));
+  logsHtml(dbTable([sortHdr('meetings','Date'),'Time','Title','Business','Attendees','Contacts','Outcome','Post-Meeting Notes',''],rows)+renderTrashSection('meetings'));
 }
 
 // ── Habits Logs (30-day heatmap) ──────────────────────
@@ -3728,7 +3782,7 @@ function renderLogsH(q){
       </div>
       <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yellow);margin-left:4px;white-space:nowrap">${h.streak||0}🔥</span>
     </div>`).join('');
-  logsHtml(`<div>${header}${grid}</div>`);
+  logsHtml(`<div>${header}${grid}</div>`+renderTrashSection('habits'));
 }
 
 // ── Goals Logs ────────────────────────────────────────
@@ -3749,7 +3803,7 @@ function renderLogsG(q){
     g.milestones&&g.milestones.length?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${g.milestones.filter(m=>m.done).length}/${g.milestones.length}</span>`:'—',
     dbDelBtn('deleteGoal',g.id)
   ]));
-  logsHtml(dbTable(['Title','Category','Progress',sortHdr('goals','Deadline'),'Milestones',''],rows));
+  logsHtml(dbTable(['Title','Category','Progress',sortHdr('goals','Deadline'),'Milestones',''],rows)+renderTrashSection('goals'));
 }
 
 // ── Journal Logs ──────────────────────────────────────
@@ -3765,7 +3819,7 @@ function renderLogsJ(q){
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.grat||'').slice(0,70))}${(e.grat||'').length>70?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.intent||'').slice(0,70))}${(e.intent||'').length>70?'…':''}</span>`
   ]));
-  logsHtml(dbTable([sortHdr('journal','Date'),'Mood','Brain Dump','Gratitude','Intention'],rows));
+  logsHtml(dbTable([sortHdr('journal','Date'),'Mood','Brain Dump','Gratitude','Intention'],rows)+renderTrashSection('journal'));
 }
 
 // ── Self-Dev Logs ─────────────────────────────────────
@@ -3830,7 +3884,7 @@ function renderLogsSD(q){
         ${statusChips}
       </div>
     </div>
-    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status',sortHdr('selfdev','Date'),'Notes',''],rows)}
+    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status',sortHdr('selfdev','Date'),'Notes',''],rows)}${renderTrashSection('selfdev')}
   `);
 }
 
@@ -3883,8 +3937,10 @@ function renderLogsF(q){
   ]));
   logsHtml(
     dbTable([sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
+    renderTrashSection('workouts')+
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
-    dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)
+    dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)+
+    renderTrashSection('metrics')
   );
 }
 
@@ -4100,7 +4156,8 @@ function editContact(id){
 }
 
 function deleteContact(id){
-  save(K.directory,load(K.directory).filter(c=>c.id!==id));
+  const _cc=load(K.directory);const _ci=_cc.find(c=>c.id===id);if(_ci)trashItem('directory',_ci);
+  save(K.directory,_cc.filter(c=>c.id!==id));
   renderDirectory();
   if(_logsTab==='directory') renderCurrentLogs('');
 }
@@ -4223,7 +4280,7 @@ function renderLogsDir(q){
     `<span style="max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--text-muted)">${esc(c.notes||'—')}</span>`,
     dbDelBtn('deleteContact',c.id)
   ]));
-  logsHtml(dbTable(['Name','Category','Company','Email','Phone','Tags','Notes',''],rows));
+  logsHtml(dbTable(['Name','Category','Company','Email','Phone','Tags','Notes',''],rows)+renderTrashSection('directory'));
 }
 
 // ── POMODORO ──────────────────────────────────────────
@@ -4908,7 +4965,7 @@ async function renderLogsN(q){
     n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗</a>`:'—',
     dbDelBtn('deleteNote',n.id)
   ]));
-  logsHtml(dbTable(['','Content / Title','Type',sortHdr('notes','Date'),'Sync',''],[ ...memoRows,...noteRows]));
+  logsHtml(dbTable(['','Content / Title','Type',sortHdr('notes','Date'),'Sync',''],[ ...memoRows,...noteRows])+renderTrashSection('notes'));
 }
 
 // ── Workout focus chip selector ───────────────────────
