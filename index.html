@@ -1921,7 +1921,15 @@ function renderJournal(){
   if(!entries.length){el.innerHTML='<div class="empty"><span class="empty-icon">📖</span><span class="empty-text">No entries yet.</span></div>';return;}
   const moods=['','😩','😞','😐','😊','🔥'];
   const t=today();
-  el.innerHTML=entries.map(e=>`<div class="journal-entry" onclick="loadJournalEntry('${e.id}')"><div class="je-date">${e.date===t?'Today':fmtDate(e.date)}</div><div class="je-preview"><span class="je-mood">${moods[e.mood]||''}</span>${esc((e.dump||e.grat||e.intent||'').slice(0,80))}…</div></div>`).join('');
+  el.innerHTML=entries.map(e=>`<div class="journal-entry" onclick="loadJournalEntry('${e.id}')"><div class="je-date">${e.date===t?'Today':fmtDate(e.date)}<button onclick="event.stopPropagation();deleteJournalEntry('${e.id}')" style="float:right;background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;padding:0 4px;line-height:1" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'" title="Delete entry">✕</button></div><div class="je-preview"><span class="je-mood">${moods[e.mood]||''}</span>${esc((e.dump||e.grat||e.intent||'').slice(0,80))}…</div></div>`).join('');
+}
+function deleteJournalEntry(id){
+  const entries=load(K.journal);
+  const item=entries.find(e=>e.id===id);
+  if(item) trashItem('journal',item);
+  save(K.journal,entries.filter(e=>e.id!==id));
+  renderJournal();
+  if(_logsTab==='journal') renderCurrentLogs('');
 }
 function loadJournalEntry(id){
   const e=load(K.journal).find(x=>x.id===id);
@@ -3664,6 +3672,7 @@ function _trashSummary(type,item){
   if(type==='selfdev') return esc(item.title||'Untitled');
   if(type==='workouts') return `${esc(item.type||'')}${item.name?' — '+esc(item.name):''} · ${item.date||''}`;
   if(type==='metrics') return `${item.date||''} · ${toLbs(item.weight||0)} lbs`;
+  if(type==='journal') return `${item.date||''} · ${esc((item.dump||item.grat||item.intent||'').slice(0,60))}`;
   if(type==='notes') return esc((item.text||'').slice(0,80));
   if(type==='directory') return esc(item.name||'Untitled');
   return '—';
@@ -3683,12 +3692,12 @@ function renderTrashSection(type){
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const entry=trash.find(t=>t.id===trashId);if(!entry)return;
-  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory};
+  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal};
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
   renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
-  const rMap={tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,selfdev:renderSelfDev,workouts:renderFitness,metrics:renderFitness,notes:renderNotes,directory:renderDirectory};
+  const rMap={tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,selfdev:renderSelfDev,workouts:renderFitness,metrics:renderFitness,notes:renderNotes,directory:renderDirectory,journal:renderJournal};
   if(rMap[type])rMap[type]();
   showToast('↩ Restored','var(--green)');
 }
