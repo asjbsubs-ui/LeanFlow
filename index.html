@@ -3572,6 +3572,21 @@ function closeLogs(){
   });
 }
 
+// ── Logs date sort ────────────────────────────────────
+const _logsDateSort={};
+function toggleLogsDateSort(tab){
+  _logsDateSort[tab]=_logsDateSort[tab]==='asc'?'desc':'asc';
+  renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+}
+function sortHdr(tab,label){
+  const d=_logsDateSort[tab]||'desc';
+  return `<span style="cursor:pointer;user-select:none;white-space:nowrap" onclick="toggleLogsDateSort('${tab}')" title="Sort">${label} ${d==='asc'?'↑':'↓'}</span>`;
+}
+function dateSortFn(tab,field){
+  const d=_logsDateSort[tab]||'desc';
+  return (a,b)=>d==='asc'?(a[field]||'').localeCompare(b[field]||''):(b[field]||'').localeCompare(a[field]||'');
+}
+
 function renderCurrentLogs(q){
   if(!_logsTab) return;
   const renders = {tasks:renderLogsT,meetings:renderLogsM,habits:renderLogsH,goals:renderLogsG,journal:renderLogsJ,selfdev:renderLogsSD,fitness:renderLogsF,review:renderLogsR,notes:renderLogsN,directory:renderLogsDir};
@@ -3597,7 +3612,7 @@ function renderLogsT(q){
   const all=load(K.tasks).filter(t=>!q_||t.title.toLowerCase().includes(q_)||(t.cat||'').toLowerCase().includes(q_));
   logsCount(all.length+' tasks');
   const imp={High:'<span class="lbl lbl-r">High</span>',Medium:'<span class="lbl lbl-a">Med</span>',Low:'<span class="lbl lbl-g">Low</span>'};
-  const rows=[...all].sort((a,b)=>a.done-b.done||(a.due||'').localeCompare(b.due||'')).map(t=>dbRow([
+  const rows=[...all].sort((a,b)=>a.done-b.done||((_logsDateSort['tasks']||'asc')==='asc'?(a.due||'').localeCompare(b.due||''):(b.due||'').localeCompare(a.due||''))).map(t=>dbRow([
     `<span style="${t.done?'text-decoration:line-through;color:var(--text-muted)':'color:var(--text-primary);font-weight:500'}">${esc(t.title)}</span>`,
     `<span class="lbl ${t.type==='personal'?'lbl-p':'lbl-b'}">${t.type==='personal'?'Personal':'Work'}</span>`,
     imp[t.priority]||'<span class="lbl" style="background:rgba(255,255,255,.05);color:var(--text-muted)">—</span>',
@@ -3609,7 +3624,7 @@ function renderLogsT(q){
       :'<span class="lbl lbl-a">Open</span>',
     `<button onclick="editTask('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-tasks)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteTask',t.id)
   ]));
-  logsHtml(dbTable(['Title','Type','Priority','Business','Area','Due','Status',''],rows));
+  logsHtml(dbTable(['Title','Type','Priority','Business','Area',sortHdr('tasks','Due'),'Status',''],rows));
 }
 
 // ── Meetings Logs ─────────────────────────────────────
@@ -3617,7 +3632,7 @@ function renderLogsM(q){
   const q_=(q||'').toLowerCase();
   const all=load(K.meetings).filter(m=>!q_||m.title.toLowerCase().includes(q_)||(m.attendees||'').toLowerCase().includes(q_)||(m.notes||'').toLowerCase().includes(q_)||(m.outcome||'').toLowerCase().includes(q_)||(m.outcomeNotes||'').toLowerCase().includes(q_));
   logsCount(all.length+' meetings');
-  const rows=[...all].sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')).map(m=>{
+  const rows=[...all].sort((a,b)=>{const d=_logsDateSort['meetings']||'desc';return d==='desc'?b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||''):a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'');}).map(m=>{
     const oc=_OUTCOME_COLORS[m.outcome]||'';
     const outcomeBadge=m.outcome
       ?`<span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,${oc} 14%,transparent);color:${oc};border:1px solid color-mix(in srgb,${oc} 28%,transparent)">${esc(m.outcome)}</span>`
@@ -3636,7 +3651,7 @@ function renderLogsM(q){
       `<button onclick="editMeeting('${m.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-meetings)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteMeeting',m.id)
     ]);
   });
-  logsHtml(dbTable(['Date','Time','Title','Business','Attendees','Contacts','Outcome','Post-Meeting Notes',''],rows));
+  logsHtml(dbTable([sortHdr('meetings','Date'),'Time','Title','Business','Attendees','Contacts','Outcome','Post-Meeting Notes',''],rows));
 }
 
 // ── Habits Logs (30-day heatmap) ──────────────────────
@@ -3670,7 +3685,7 @@ function renderLogsG(q){
   const q_=(q||'').toLowerCase();
   const all=load(K.goals).filter(g=>!q_||g.title.toLowerCase().includes(q_)||(g.cat||'').toLowerCase().includes(q_));
   logsCount(all.length+' goals');
-  const rows=all.map(g=>dbRow([
+  const rows=[...all].sort(dateSortFn('goals','deadline')).map(g=>dbRow([
     `<strong style="color:${g.color||'var(--t-goals)'}">${esc(g.title)}</strong>`,
     esc(g.cat||'—'),
     `<div style="display:flex;align-items:center;gap:8px">
@@ -3683,7 +3698,7 @@ function renderLogsG(q){
     g.milestones&&g.milestones.length?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${g.milestones.filter(m=>m.done).length}/${g.milestones.length}</span>`:'—',
     dbDelBtn('deleteGoal',g.id)
   ]));
-  logsHtml(dbTable(['Title','Category','Progress','Deadline','Milestones',''],rows));
+  logsHtml(dbTable(['Title','Category','Progress',sortHdr('goals','Deadline'),'Milestones',''],rows));
 }
 
 // ── Journal Logs ──────────────────────────────────────
@@ -3692,14 +3707,14 @@ function renderLogsJ(q){
   const moods=['','😩','😞','😐','😊','🔥'];
   const all=load(K.journal).filter(e=>!q_||(e.dump||'').toLowerCase().includes(q_)||(e.grat||'').toLowerCase().includes(q_)||(e.intent||'').toLowerCase().includes(q_));
   logsCount(all.length+' entries');
-  const rows=[...all].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>dbRow([
+  const rows=[...all].sort(dateSortFn('journal','date')).map(e=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(e.date)}</span>`,
     `<span style="font-size:18px">${moods[e.mood]||'—'}</span>`,
     `<span style="max-width:220px;display:block;color:var(--text-secondary)">${esc((e.dump||'').slice(0,100))}${(e.dump||'').length>100?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.grat||'').slice(0,70))}${(e.grat||'').length>70?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.intent||'').slice(0,70))}${(e.intent||'').length>70?'…':''}</span>`
   ]));
-  logsHtml(dbTable(['Date','Mood','Brain Dump','Gratitude','Intention'],rows));
+  logsHtml(dbTable([sortHdr('journal','Date'),'Mood','Brain Dump','Gratitude','Intention'],rows));
 }
 
 // ── Self-Dev Logs ─────────────────────────────────────
@@ -3728,7 +3743,7 @@ function renderLogsSD(q){
   const statusChips=[{v:'',l:'All'},{v:'active',l:'In Progress'},{v:'todo',l:'To Start'},{v:'done',l:'Done'}].map(({v,l})=>`<button style="${chipStyle(_sdFilterStatus===v)}" onclick="setSdFilter('status','${v}')">${l}</button>`).join('');
 
   const stLbl={done:'<span class="lbl lbl-g">Done</span>',active:'<span class="lbl lbl-b">In Progress</span>',reading:'<span class="lbl lbl-b">In Progress</span>',todo:'<span class="lbl" style="background:rgba(255,255,255,.05);color:var(--text-muted)">To Start</span>'};
-  const rows=[...filtered].sort((a,b)=>(a.skill||'').localeCompare(b.skill||'')).map(i=>{
+  const rows=[...filtered].sort(dateSortFn('selfdev','date')).map(i=>{
     const pct=i.status==='done'?100:i.progress||0;
     return dbRow([
       `<span style="font-size:11px">${TYPE_ICONS[i.type]||'📌'} ${esc(i.type||'')}</span>`,
@@ -3764,7 +3779,7 @@ function renderLogsSD(q){
         ${statusChips}
       </div>
     </div>
-    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status','Date','Notes',''],rows)}
+    ${dbTable(['Type','Name','Skill','Source','Link','Progress','Status',sortHdr('selfdev','Date'),'Notes',''],rows)}
   `);
 }
 
@@ -3783,7 +3798,7 @@ function renderLogsR(q){
   if(!all.length){logsHtml('<div class="db-empty">No weekly reviews yet. Complete your first review to see it here.</div>');return;}
 
   const scoreCol=(n)=>n>=8?'var(--green)':n>=5?'var(--yellow)':'var(--red)';
-  const rows=[...all].sort((a,b)=>b.week.localeCompare(a.week)).map(r=>dbRow([
+  const rows=[...all].sort(dateSortFn('review','week')).map(r=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">Week of ${fmtDateShort(r.week)}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${scoreCol(r.overall)}">${r.overall}<span style="font-size:10px;color:var(--text-muted)">/10</span></span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.energy)}">${r.energy}</span>`,
@@ -3792,7 +3807,7 @@ function renderLogsR(q){
     `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.priority||'—').slice(0,80))}</span>`
   ]));
 
-  logsHtml(dbTable(['Week','Overall','Energy','Focus','3 Biggest Wins','Next Week Priority'],rows));
+  logsHtml(dbTable([sortHdr('review','Week'),'Overall','Energy','Focus','3 Biggest Wins','Next Week Priority'],rows));
 }
 
 // ── Fitness Logs ──────────────────────────────────────
@@ -3802,23 +3817,23 @@ function renderLogsF(q){
   const metrics=load(K.metrics);
   logsCount(workouts.length+' workouts · '+metrics.length+' weigh-ins');
   const ICONS={Weights:'🏋️',Running:'🏃',Sports:'⚽',Other:'💪'};
-  const wRows=[...workouts].sort((a,b)=>b.date.localeCompare(a.date)).map(w=>dbRow([
+  const wRows=[...workouts].sort(dateSortFn('fitness','date')).map(w=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(w.date)}</span>`,
     `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     esc(w.name||'—'),
     `<span style="max-width:220px;display:block">${esc(w.notes||'—')}</span>`,
     `<button onclick="editWorkout('${w.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-fitness)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteWorkout',w.id)
   ]));
-  const mRows=[...metrics].sort((a,b)=>b.date.localeCompare(a.date)).map(m=>dbRow([
+  const mRows=[...metrics].sort(dateSortFn('fitness','date')).map(m=>dbRow([
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(m.date)}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--t-fitness)">${toLbs(m.weight)}lbs</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:4px">${m.weight}kg</span>`,
     esc(m.notes||'—'),
     dbDelBtn('deleteMetric',m.id)
   ]));
   logsHtml(
-    dbTable(['Date','Type','Focus','Notes',''],wRows)+
+    dbTable([sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
-    dbTable(['Date','Weight','Notes',''],mRows)
+    dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)
   );
 }
 
@@ -4825,7 +4840,8 @@ async function renderLogsN(q){
   const idbIds=new Set(idbMemos.map(m=>m.id));
   const allMemos=[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
   logsCount(`${textNotes.length} notes · ${allMemos.length} media`);
-  const memoRows=allMemos.sort((a,b)=>(b.ts||0)-(a.ts||0)).map(m=>dbRow([
+  const noteDir=_logsDateSort['notes']||'desc';
+  const memoRows=allMemos.sort((a,b)=>noteDir==='asc'?(a.ts||0)-(b.ts||0):(b.ts||0)-(a.ts||0)).map(m=>dbRow([
     `<span style="font-size:15px">${m.kind==='audio'?'🎙️':'📹'}</span>`,
     `<strong style="color:var(--text-primary)">${esc(m.title||'Memo')}</strong>`,
     `<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;font-weight:600">${m.kind==='audio'?'Voice':'Video'}</span>`,
@@ -4841,7 +4857,7 @@ async function renderLogsN(q){
     n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗</a>`:'—',
     dbDelBtn('deleteNote',n.id)
   ]));
-  logsHtml(dbTable(['','Content / Title','Type','Date','Sync',''],[ ...memoRows,...noteRows]));
+  logsHtml(dbTable(['','Content / Title','Type',sortHdr('notes','Date'),'Sync',''],[ ...memoRows,...noteRows]));
 }
 
 // ── Workout focus chip selector ───────────────────────
