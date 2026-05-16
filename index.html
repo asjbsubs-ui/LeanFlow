@@ -2319,8 +2319,9 @@ let _editingVocabId=null;
 function renderVocab(){
   const items=load(K.vocab);
   const el=$('vocabList');if(!el)return;
+  const clearBar='<div style="background:var(--red);padding:10px 14px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center"><span style="color:#fff;font-weight:700;font-size:13px">'+items.length+' word'+(items.length!==1?'s':'')+'</span><button onclick="clearAllVocab()" style="background:#fff;color:var(--red);border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">🗑 Delete All</button></div>';
   if(!items.length){el.innerHTML='<div class="empty"><span class="empty-icon">📖</span><span class="empty-text">No vocabulary yet. Add your first word.</span></div>';return;}
-  el.innerHTML=[...items].sort((a,b)=>(a.word||'').localeCompare(b.word||'')).map(v=>`
+  el.innerHTML=clearBar+[...items].sort((a,b)=>(a.word||'').localeCompare(b.word||'')).map(v=>`
     <div class="card" style="margin-bottom:10px">
       <div class="card-body">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
@@ -2345,6 +2346,12 @@ function editVocab(id){_editingVocabId=id;openModal('vocab');}
 function deleteVocab(id){
   const vv=load(K.vocab);const vi=vv.find(v=>v.id===id);if(vi)trashItem('vocab',vi);
   save(K.vocab,vv.filter(v=>v.id!==id));renderVocab();
+}
+function clearAllVocab(){
+  const vv=load(K.vocab);if(!vv.length)return;
+  if(!confirm(`Delete all ${vv.length} word${vv.length!==1?'s':''}? This cannot be undone.`))return;
+  vv.forEach(v=>trashItem('vocab',v));
+  save(K.vocab,[]);renderVocab();showToast('Vocabulary cleared','var(--red)');
 }
 
 // ── Growth Import / Export ─────────────────────────────
@@ -2392,7 +2399,7 @@ function _sdParseCSV(text){
     save(K.quotes,items);if(_sdTab==='quotes')renderQuotes();
   } else if(isVocab){
     const items=load(K.vocab);
-    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),word:get(row,'word'),definition:get(row,'definition')||get(row,'def'),example:get(row,'example'),category:get(row,'category')||get(row,'cat')||'General',date:_normDate(get(row,'date'))});count++;});
+    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),word:get(row,'word')||get(row,'term')||get(row,'vocabulary')||get(row,'entry'),definition:get(row,'definition')||get(row,'def')||get(row,'meaning')||get(row,'translation'),example:get(row,'example'),category:get(row,'category')||get(row,'cat')||'General',date:_normDate(get(row,'date'))});count++;});
     save(K.vocab,items);if(_sdTab==='vocab')renderVocab();
   } else {
     const items=load(K.knowledge);
