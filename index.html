@@ -4080,7 +4080,12 @@ function renderLogsF(q){
   const metrics=load(K.metrics);
   logsCount(workouts.length+' workouts · '+metrics.length+' weigh-ins');
   const ICONS={Weights:'🏋️',Running:'🏃',Sports:'⚽',Other:'💪'};
+  const allW=load(K.workouts);
+  const allSel=allW.length>0&&allW.every(w=>_fitSel.has(w.id));
+  const selBar=`<div id="fit-sel-bar" style="display:${_fitSel.size?'flex':'none'};align-items:center;gap:10px;padding:8px 12px;margin-bottom:8px;border-radius:var(--r-sm);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2)"><span class="fit-sel-count" style="font-size:12px;font-weight:600;color:var(--t-fitness)">${_fitSel.size} selected</span><button onclick="deleteSelectedWorkouts()" style="padding:3px 12px;border-radius:99px;border:1px solid var(--red);background:rgba(255,80,80,.1);color:var(--red);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:600">🗑️ Delete selected</button><button onclick="clearFitSel()" style="padding:3px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif">Clear</button></div>`;
+  const chkHdr=`<input type="checkbox" ${allSel?'checked':''} onchange="toggleFitSelectAll(this.checked)" style="cursor:pointer;accent-color:var(--t-fitness)">`;
   const wRows=[...workouts].sort(dateSortFn('fitness','date')).map(w=>dbRow([
+    `<input type="checkbox" ${_fitSel.has(w.id)?'checked':''} onchange="toggleFitSelect('${w.id}',this.checked)" style="cursor:pointer;accent-color:var(--t-fitness)">`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDateShort(w.date)}</span>`,
     `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     esc(w.name||'—'),
@@ -4093,11 +4098,9 @@ function renderLogsF(q){
     esc(m.notes||'—'),
     dbDelBtn('deleteMetric',m.id)
   ]));
-  const allWorkouts=load(K.workouts);
-  const clearAllBtn=allWorkouts.length?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="clearAllWorkouts()" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;font-weight:500;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">🗑️ Delete all workouts (${allWorkouts.length})</button></div>`:'';
   logsHtml(
-    clearAllBtn+
-    dbTable([sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
+    selBar+
+    dbTable([chkHdr,sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
     renderTrashSection('workouts')+
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
     dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)+
@@ -4105,15 +4108,24 @@ function renderLogsF(q){
   );
 }
 
-function clearAllWorkouts(){
-  const workouts=load(K.workouts);
-  if(!workouts.length)return;
-  if(!confirm(`Move all ${workouts.length} workout${workouts.length!==1?'s':''} to trash?`))return;
-  workouts.forEach(w=>trashItem('workouts',w));
-  save(K.workouts,[]);
-  renderFitness();
-  renderCurrentLogs('');
-  showToast(`🗑️ ${workouts.length} workout${workouts.length!==1?'s':''} moved to trash`,'var(--amber)');
+// ── Workout multi-select ──────────────────────────────
+const _fitSel=new Set();
+function toggleFitSelect(id,checked){if(checked)_fitSel.add(id);else _fitSel.delete(id);_renderFitSelBar();}
+function toggleFitSelectAll(checked){const ws=load(K.workouts);if(checked)ws.forEach(w=>_fitSel.add(w.id));else _fitSel.clear();renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);}
+function _renderFitSelBar(){
+  const bar=document.getElementById('fit-sel-bar');if(!bar)return;
+  if(_fitSel.size){bar.style.display='flex';bar.querySelector('.fit-sel-count').textContent=_fitSel.size+' selected';}
+  else bar.style.display='none';
+}
+function clearFitSel(){_fitSel.clear();renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);}
+function deleteSelectedWorkouts(){
+  if(!_fitSel.size)return;
+  const all=load(K.workouts);
+  all.filter(w=>_fitSel.has(w.id)).forEach(w=>trashItem('workouts',w));
+  save(K.workouts,all.filter(w=>!_fitSel.has(w.id)));
+  const n=_fitSel.size;_fitSel.clear();
+  renderFitness();renderCurrentLogs('');
+  showToast(`🗑️ ${n} workout${n!==1?'s':''} moved to trash`,'var(--amber)');
 }
 
 // ── Toast ─────────────────────────────────────────────
