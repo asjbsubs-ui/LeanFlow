@@ -2042,7 +2042,7 @@ function renderJournalAI(){
   if(lowMoodDays > 0) patterns.push(`${lowMoodDays} low-energy day${lowMoodDays>1?'s':''} logged — review those entries for recurring triggers.`);
   if(habits.length){
     const gymHabit = habits.find(h=>h.name.toLowerCase().includes('workout')||h.name.toLowerCase().includes('gym')||h.name.toLowerCase().includes('exercise'));
-    if(gymHabit) patterns.push(`Habit "${gymHabit.name}" has a ${gymHabit.streak||0}-day streak — correlates with higher mood scores on active days.`);
+    if(gymHabit) patterns.push(`Habit "${gymHabit.name}" has a ${calcStreak(gymHabit.id,log)}-day streak — correlates with higher mood scores on active days.`);
   }
 
   const patternRows = patterns.map(p=>`
@@ -2051,17 +2051,64 @@ function renderJournalAI(){
       <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">${p}</div>
     </div>`).join('');
 
-  // ── Missed opportunities ────────────────────────────
+  // ── Gaps & Opportunities ────────────────────────────
   const missed = [];
-  const goalsCount = load(K.goals).length;
-  const tasksCount = load(K.tasks).length;
+  const goals    = load(K.goals);
+  const allTasks = load(K.tasks);
+  const reviews  = load(K.reviews);
   const habitsCount = habits.length;
-  if(!goalsCount) missed.push('No goals set — journal intentions are more powerful when tied to a goal in the Goals tab.');
-  if(!habitsCount) missed.push('No habits tracked — add your daily habits in the Habits tab to start building streaks.');
-  if(entries.some(e=>e.dump&&e.dump.length>50)&&!tasksCount) missed.push('You\'ve been writing ideas — capture action items in the Tasks tab so they don\'t stay stuck in your head.');
-  const recentCount = entries.filter(e=>{const d=new Date(e.date+'T12:00:00');const diff=(Date.now()-d)/86400000;return diff<=7;}).length;
-  if(recentCount===0) missed.push('No entries in the last 7 days — consistency matters more than depth. Even 2 sentences counts.');
-  if(missed.length===0) missed.push('No gaps detected — you\'re building a solid journaling system. Keep going.');
+
+  // 1. Journaling consistency
+  const recentCount = entries.filter(e=>{const diff=(Date.now()-new Date(e.date+'T12:00:00'))/86400000;return diff<=7;}).length;
+  if(recentCount===0) missed.push('No journal entries in the last 7 days — consistency matters more than depth. Even 2 sentences counts.');
+  else if(recentCount<=2) missed.push(`Only ${recentCount} journal entr${recentCount===1?'y':'ies'} this week — aim for 4–5 to build real self-awareness momentum.`);
+
+  // 2. Habit completion rate this week
+  if(habitsCount){
+    const _wd=new Date();_wd.setDate(_wd.getDate()-_wd.getDay());
+    const weekDays=[];for(let i=0;i<7;i++){const _d=new Date(_wd);_d.setDate(_wd.getDate()+i);weekDays.push(_d.toLocaleDateString('sv'));}
+    const pastDays=weekDays.filter(d=>d<=today());
+    const totalPossible=habitsCount*pastDays.length;
+    const totalDone=pastDays.reduce((s,d)=>s+(log[d]||[]).length,0);
+    const rate=totalPossible?Math.round((totalDone/totalPossible)*100):0;
+    if(rate<50&&pastDays.length>0) missed.push(`Habit completion is ${rate}% this week — below 50%. Focus on your top 3 habits first to rebuild momentum.`);
+    else if(rate<75&&pastDays.length>0) missed.push(`Habit completion at ${rate}% this week — push toward 80%+ for consistent results.`);
+  } else {
+    missed.push('No habits tracked — add your daily habits in the Habits tab to start building streaks.');
+  }
+
+  // 3. Low mood days without brain dump
+  const lowMoodNoDump=entries.filter(e=>e.mood>0&&e.mood<=2&&(!e.dump||e.dump.trim().length<20)).length;
+  if(lowMoodNoDump>0) missed.push(`${lowMoodNoDump} low-mood day${lowMoodNoDump>1?'s':''} logged without a brain dump — writing through hard days is where the deepest insight comes from.`);
+
+  // 4. Mood declining trend
+  if(recent14.length>=6){
+    const half=Math.floor(recent14.length/2);
+    const avgOld=recent14.slice(0,half).filter(e=>e.mood).reduce((s,e,_,a)=>s+e.mood/a.length,0);
+    const avgNew=recent14.slice(half).filter(e=>e.mood).reduce((s,e,_,a)=>s+e.mood/a.length,0);
+    if(avgOld>0&&avgNew>0&&avgNew-avgOld<-0.7) missed.push('Mood trend is declining — review your last few entries for recurring drains or unfinished decisions.');
+  }
+
+  // 5. Goals without any tasks
+  if(!goals.length) missed.push('No goals set — journal intentions land harder when tied to a concrete goal in the Goals tab.');
+  else if(!allTasks.length) missed.push('You have goals but no tasks — break each goal into at least one concrete next action in the Tasks tab.');
+
+  // 6. Overdue tasks
+  const overdue=allTasks.filter(t=>!t.done&&t.due&&t.due<today()).length;
+  if(overdue>0) missed.push(`${overdue} overdue task${overdue>1?'s':''} — review and reschedule or delete them so your task list stays trusted.`);
+
+  // 7. Weekly review gap
+  if(!reviews.length) missed.push('No Weekly Reviews logged yet — use the Weekly Review tab to recalibrate and plan forward.');
+  else{
+    const lastRev=[...reviews].sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const daysSince=Math.floor((Date.now()-new Date(lastRev.date+'T12:00:00'))/86400000);
+    if(daysSince>9) missed.push(`Last Weekly Review was ${daysSince} days ago — a weekly recalibration keeps your goals and energy aligned.`);
+  }
+
+  // 8. Ideas written but not captured as tasks
+  if(entries.some(e=>e.dump&&e.dump.length>100)&&!allTasks.length) missed.push('You\'ve been brain-dumping ideas — capture action items in the Tasks tab so they don\'t stay stuck in your head.');
+
+  if(missed.length===0) missed.push('No gaps detected — you\'re running a solid system. Keep going.');
 
   const missedRows = missed.map(m=>`
     <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
