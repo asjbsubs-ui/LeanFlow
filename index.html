@@ -1278,6 +1278,17 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 // ── Helpers ──────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const today = () => new Date().toLocaleDateString('sv'); // local date YYYY-MM-DD, not UTC
+function calcStreak(id, log) {
+  const d = new Date();
+  // If not done today yet, start from yesterday so streak doesn't break mid-day
+  if (!(log[d.toLocaleDateString('sv')]||[]).includes(id)) d.setDate(d.getDate()-1);
+  let streak = 0;
+  while ((log[d.toLocaleDateString('sv')]||[]).includes(id)) {
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -1727,12 +1738,11 @@ function renderHabits(){
   const el=$('habitList');
   // Stats
   const done=habits.filter(h=>todayLog.includes(h.id)).length;
-  const streakTotal=habits.reduce((s,h)=>s+(h.streak||0),0);
   $('habitStats').innerHTML=[
     {val:habits.length,label:'Total Habits',c:'--t-habits'},
     {val:done,label:'Done Today',c:'--t-habits'},
     {val:habits.length-done,label:'Remaining',c:'--t-review'},
-    {val:Math.max(...habits.map(h=>h.streak||0),0),label:'Best Streak 🔥',c:'--t-fitness'},
+    {val:Math.max(...habits.map(h=>calcStreak(h.id,log)),0),label:'Best Streak 🔥',c:'--t-fitness'},
   ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   if(!habits.length){el.innerHTML='<div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet.</span></div>';return;}
   // 7-day header
@@ -1757,7 +1767,7 @@ function renderHabits(){
         const isToday=d===today();
         return `<div class="h-dot ${done?'done':''} ${isToday&&!done?'today':''}" onclick="${isToday?`toggleHabitHome('${h.id}')`:'void(0)'}" title="${d}">${done?'✓':''}</div>`;
       }).join('')}</div>
-      <div class="habit-streak-col"><span class="habit-streak">${h.streak||0}🔥</span></div>
+      <div class="habit-streak-col"><span class="habit-streak">${calcStreak(h.id,log)}🔥</span></div>
       <button class="delete-btn" onclick="deleteHabit('${h.id}')">✕</button>
     </div>`).join('');
   updateScore();
@@ -1767,11 +1777,9 @@ function toggleHabitHome(id){
   const t=today();
   if(!log[t])log[t]=[];
   const i=log[t].indexOf(id);
-  const habits=load(K.habits);
-  const h=habits.find(x=>x.id===id);
-  if(i>=0){log[t].splice(i,1);if(h&&h.streak>0)h.streak--;}
-  else{log[t].push(id);if(h){h.streak=(h.streak||0)+1;}}
-  save(K.habitLog,log);save(K.habits,habits);
+  if(i>=0){log[t].splice(i,1);}
+  else{log[t].push(id);}
+  save(K.habitLog,log);
   updateScore();
   if(activeTab==='habits'){if(_habitView==='month')renderHabitMonth();else renderHabits();}
   if(activeTab==='home')renderHomeHabits();
@@ -4201,7 +4209,7 @@ function renderLogsH(q){
           return `<div style="width:16px;height:16px;border-radius:3px;background:${done?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1px solid ${isT?'var(--purple)':'transparent'};cursor:${isT?'pointer':'default'};flex-shrink:0" ${isT?`onclick="toggleHabitHome('${h.id}');renderCurrentLogs(document.getElementById('logs-search').value)"`:''}></div>`;
         }).join('')}
       </div>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yellow);margin-left:4px;white-space:nowrap">${h.streak||0}🔥</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yellow);margin-left:4px;white-space:nowrap">${calcStreak(h.id,log)}🔥</span>
     </div>`).join('');
   logsHtml(`<div>${header}${grid}</div>`+renderTrashSection('habits'));
 }
@@ -5193,7 +5201,7 @@ function obsMarkdown(file){
     const log=JSON.parse(localStorage.getItem(K.habitLog)||'{}');
     const todayStr=new Date().toLocaleDateString('sv');
     const todayLog=log[todayStr]||[];
-    const rows=habits.map(h=>`| ${h.icon||'⭐'} ${h.name} | ${h.streak||0}🔥 | ${todayLog.includes(h.id)?'✅':'❌'} |`).join('\n');
+    const rows=habits.map(h=>`| ${h.icon||'⭐'} ${h.name} | ${calcStreak(h.id,log)}🔥 | ${todayLog.includes(h.id)?'✅':'❌'} |`).join('\n');
     const done=habits.filter(h=>todayLog.includes(h.id)).length;
     return `---\nupdated: ${now}\nsource: LeanLab\n---\n# ⭐ Habits\n\n**Today's Score:** ${habits.length?Math.round(done/habits.length*100):0}% (${done}/${habits.length})\n\n| Habit | Streak | Today |\n|---|---|---|\n${rows||'_No habits_'}\n`;
   }
