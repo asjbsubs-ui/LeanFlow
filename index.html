@@ -1745,8 +1745,8 @@ function renderHabits(){
     {val:Math.max(...habits.map(h=>calcStreak(h.id,log)),0),label:'Best Streak 🔥',c:'--t-fitness'},
   ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   if(!habits.length){el.innerHTML='<div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet.</span></div>';return;}
-  // 7-day header
-  const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  // Current week: Sunday – Saturday
+  const days=[];const _wd=new Date();_wd.setDate(_wd.getDate()-_wd.getDay());for(let i=0;i<7;i++){const _d=new Date(_wd);_d.setDate(_wd.getDate()+i);days.push(_d.toLocaleDateString('sv'));}
   const dayLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'}));
   el.innerHTML=`
     <div id="habits-day-header" style="display:flex;align-items:center;gap:12px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
