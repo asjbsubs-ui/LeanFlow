@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LeanHQ">
-<title>LeanHQ by StreamLean</title>
+<meta name="apple-mobile-web-app-title" content="LeanLab">
+<title>LeanLab by StreamLean</title>
 <!-- v20260513 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -591,7 +591,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <!-- AUTH SCREEN -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">Lean<span>HQ</span></div>
+    <div class="auth-logo">Lean<span>Lab</span></div>
     <div class="auth-sub">by StreamLean</div>
     <div class="auth-tabs">
       <div class="auth-tab on" id="auth-tab-in" onclick="switchAuthTab('in')">Sign In</div>
@@ -621,14 +621,14 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <!-- ── Mobile Header ── -->
 <header class="mob-header">
   <button class="mob-hamburger" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
-  <div class="mob-title" id="mobTitle">Lean<span>HQ</span></div>
+  <div class="mob-title" id="mobTitle">Lean<span>Lab</span></div>
   <button class="btn btn-primary btn-sm" id="mobActionBtn" style="background:var(--green);color:#000;padding:6px 14px;flex-shrink:0" onclick="openModal('task','work')">+ Task</button>
 </header>
 
 <!-- ── Sidebar ── -->
 <nav class="sidebar">
   <div class="sb-head">
-    <div class="sb-logo">Lean<span>HQ</span></div>
+    <div class="sb-logo">Lean<span>Lab</span></div>
     <div class="sb-sub">by StreamLean</div>
     <div class="sb-date" id="sbDate"></div>
   </div>
@@ -1326,7 +1326,7 @@ function seedIfEmpty(){
 let activeTab = 'home';
 const TAB_COLORS = {home:'--t-home',tasks:'--t-tasks',meetings:'--t-meetings',habits:'--t-habits',goals:'--t-goals',journal:'--t-journal',selfdev:'--t-selfdev',fitness:'--t-fitness',review:'--t-review',directory:'--t-directory'};
 
-const TAB_NAMES = {home:'LeanHQ',notes:'Capture',goals:'Goals',tasks:'Tasks',meetings:'Meetings',habits:'Habits',fitness:'Fitness',selfdev:'Growth',journal:'Journal',review:'Weekly Review',directory:'Directory'};
+const TAB_NAMES = {home:'LeanLab',notes:'Capture',goals:'Goals',tasks:'Tasks',meetings:'Meetings',habits:'Habits',fitness:'Fitness',selfdev:'Growth',journal:'Journal',review:'Weekly Review',directory:'Directory'};
 
 const MOB_BTN = {
   home:     {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
@@ -1349,7 +1349,7 @@ function switchTab(id, btn){
   activeTab = id;
   // Update mobile header title
   const mt=$('mobTitle');
-  if(mt) mt.textContent=TAB_NAMES[id]||'LeanHQ';
+  if(mt) mt.textContent=TAB_NAMES[id]||'LeanLab';
   // Update mobile action button
   const mb=$('mobActionBtn');
   if(mb){
@@ -3166,7 +3166,7 @@ const MODAL_FORMS = {
       <div class="field">
         <label>Business</label>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px" id="m-task-biz-chips">
-          ${['StreamLean','LeanHQ','Personal Brand','Other'].map(b=>`<button type="button" onclick="selectTaskChip('biz',this,'${b}')" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${b}</button>`).join('')}
+          ${['StreamLean','LeanLab','Personal Brand','Other'].map(b=>`<button type="button" onclick="selectTaskChip('biz',this,'${b}')" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${b}</button>`).join('')}
         </div>
         <input class="input" id="m-task-biz" placeholder="Or type business name…" oninput="clearTaskChips('biz')" style="font-size:12px">
       </div>
@@ -3548,7 +3548,7 @@ function exportICS(){
   const meetings=load(K.meetings);
   const tasks=load(K.tasks).filter(t=>t.due);
   const sanitize=s=>(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
-  let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LeanHQ//Personal OS//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:LeanHQ\r\n';
+  let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LeanLab//Personal OS//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:LeanLab\r\n';
   meetings.forEach(m=>{
     if(!m.date)return;
     const start=icsDateTime(m.date,m.time);
@@ -3566,7 +3566,7 @@ function exportICS(){
   ics+='END:VCALENDAR';
   const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='LeanHQ.ics';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  const a=document.createElement('a');a.href=url;a.download='LeanLab.ics';document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
@@ -4699,7 +4699,7 @@ function exportContacts(){
   const csv=[header,...rows].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`LeanHQ-Directory-${today()}.csv`;
+  a.download=`LeanLab-Directory-${today()}.csv`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   showToast(`Exported ${contacts.length} contacts`);
 }
@@ -4750,7 +4750,7 @@ function openPomodoro(id){
 function closePomodoro(){
   clearInterval(_pomInterval);_pomRunning=false;_pomInterval=null;
   $('pomOverlay').style.display='none';
-  document.title='LeanHQ by StreamLean';
+  document.title='LeanLab by StreamLean';
 }
 
 function setPomMode(mode,reset=true){
@@ -4807,7 +4807,7 @@ function _pomComplete(){
   }catch(e){}
   // Notification
   try{if(Notification.permission==='granted')
-    new Notification('LeanHQ',{body:_pomMode==='focus'?'🍅 Focus done! Take a break.':'☀️ Break over — time to focus!'});
+    new Notification('LeanLab',{body:_pomMode==='focus'?'🍅 Focus done! Take a break.':'☀️ Break over — time to focus!'});
   }catch(e){}
   if(_pomMode==='focus'){
     _pomDone++;
@@ -4824,8 +4824,8 @@ function _pomUpdateTime(){
   const m=Math.floor(_pomSecs/60),s=_pomSecs%60;
   const str=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   const el=$('pomTime');if(el)el.textContent=str;
-  if(_pomRunning)document.title=`${str} · LeanHQ`;
-  else document.title='LeanHQ by StreamLean';
+  if(_pomRunning)document.title=`${str} · LeanLab`;
+  else document.title='LeanLab by StreamLean';
 }
 
 function _pomUpdateRing(){
@@ -5133,7 +5133,7 @@ async function deleteVideoMemo(id){
 }
 
 // ── Obsidian Sync ─────────────────────────────────────
-const OBS_PORT = 27124; // HTTPS port (required when LeanHQ is served over HTTPS)
+const OBS_PORT = 27124; // HTTPS port (required when LeanLab is served over HTTPS)
 const OBS_KEY_MAP = {
   [K.tasks]:'Tasks.md', [K.meetings]:'Meetings.md',
   [K.habits]:'Habits.md', [K.habitLog]:'Habits.md',
@@ -5150,7 +5150,7 @@ const _obsThrottle={};
 
 async function pushToObsidian(file, md){
   const key=localStorage.getItem('obs_api_key');
-  const folder=(localStorage.getItem('obs_vault_folder')||'LeanHQ/Data').replace(/\/$/,'');
+  const folder=(localStorage.getItem('obs_vault_folder')||'LeanLab/Data').replace(/\/$/,'');
   if(!key) return;
   try{
     await fetch(`https://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
@@ -5176,7 +5176,7 @@ function obsMarkdown(file){
     const work=tasks.filter(t=>t.type!=='personal');
     const personal=tasks.filter(t=>t.type==='personal');
     const row=t=>`- [${t.done?'x':' '}] ${t.title}${t.priority?' #'+t.priority.toLowerCase():''}${t.business?' · '+t.business:''}${t.dept?' · '+t.dept:''}${t.due?' 📅 '+t.due:''}`;
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# ✅ Tasks\n\n## 💼 Work\n${work.length?work.map(row).join('\n'):'_None_'}\n\n## 🏠 Personal\n${personal.length?personal.map(row).join('\n'):'_None_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# ✅ Tasks\n\n## 💼 Work\n${work.length?work.map(row).join('\n'):'_None_'}\n\n## 🏠 Personal\n${personal.length?personal.map(row).join('\n'):'_None_'}\n`;
   }
   if(file==='Meetings.md'){
     const meetings=load(K.meetings).sort((a,b)=>a.date>b.date?1:-1);
@@ -5184,7 +5184,7 @@ function obsMarkdown(file){
     const upcoming=meetings.filter(m=>m.date>=today);
     const past=meetings.filter(m=>m.date<today);
     const row=m=>`### ${m.date}${m.time?' at '+m.time:''} · ${m.title}\n${m.business?'**Business:** '+m.business+'\n':''}${m.attendees?'**Attendees:** '+m.attendees+'\n':''}${m.notes?'**Notes:** '+m.notes+'\n':''}`;
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 📅 Meetings\n\n## Upcoming\n${upcoming.length?upcoming.map(row).join('\n'):'_None_'}\n\n## Past\n${past.slice(-10).reverse().map(row).join('\n')||'_None_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 📅 Meetings\n\n## Upcoming\n${upcoming.length?upcoming.map(row).join('\n'):'_None_'}\n\n## Past\n${past.slice(-10).reverse().map(row).join('\n')||'_None_'}\n`;
   }
   if(file==='Habits.md'){
     const habits=load(K.habits);
@@ -5193,60 +5193,60 @@ function obsMarkdown(file){
     const todayLog=log[todayStr]||[];
     const rows=habits.map(h=>`| ${h.icon||'⭐'} ${h.name} | ${h.streak||0}🔥 | ${todayLog.includes(h.id)?'✅':'❌'} |`).join('\n');
     const done=habits.filter(h=>todayLog.includes(h.id)).length;
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# ⭐ Habits\n\n**Today's Score:** ${habits.length?Math.round(done/habits.length*100):0}% (${done}/${habits.length})\n\n| Habit | Streak | Today |\n|---|---|---|\n${rows||'_No habits_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# ⭐ Habits\n\n**Today's Score:** ${habits.length?Math.round(done/habits.length*100):0}% (${done}/${habits.length})\n\n| Habit | Streak | Today |\n|---|---|---|\n${rows||'_No habits_'}\n`;
   }
   if(file==='Goals.md'){
     const goals=load(K.goals);
     const bar=p=>('█'.repeat(Math.round(p/10))+'░'.repeat(10-Math.round(p/10)));
     const rows=goals.map(g=>`## ${g.title}\n**Category:** ${g.cat||'—'} | **Progress:** ${g.progress}% | **Deadline:** ${g.deadline||'—'}\n\`${bar(g.progress)}\` ${g.progress}%\n${g.milestones&&g.milestones.length?'\n**Milestones:**\n'+g.milestones.map(m=>`- [${m.done?'x':' '}] ${m.text}`).join('\n'):''}` ).join('\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🎯 Goals\n\n${rows||'_No goals_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 🎯 Goals\n\n${rows||'_No goals_'}\n`;
   }
   if(file==='Journal.md'){
     const entries=load(K.journal).sort((a,b)=>b.date.localeCompare(a.date));
     const moods=['','😩','😞','😐','😊','🔥'];
     const rows=entries.slice(0,30).map(e=>`## ${e.date} ${moods[e.mood]||''}\n${e.dump?'**Brain Dump:** '+e.dump+'\n':''}${e.grat?'**Gratitude:** '+e.grat+'\n':''}${e.intent?'**Tomorrow\'s Priority:** '+e.intent+'\n':''}`).join('\n---\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🧠 Journal\n\n${rows||'_No entries_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 🧠 Journal\n\n${rows||'_No entries_'}\n`;
   }
   if(file==='Knowledge.md'){
     const items=load(K.knowledge);
     const groups={};
     items.forEach(i=>{const s=i.skill||'Other';if(!groups[s])groups[s]=[];groups[s].push(i);});
     const rows=Object.entries(groups).map(([skill,list])=>`## ${skill}\n${list.map(i=>`- ${i.type==='Book'?'📖':i.type==='Course'?'🎓':'📌'} **${i.title}**${i.source?' · '+i.source:''} · ${i.status==='done'?'✅ Done':i.progress+'%'}${i.link?'\n  🔗 '+i.link:''}`).join('\n')}`).join('\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 📚 Knowledge\n\n${rows||'_No knowledge logged_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 📚 Knowledge\n\n${rows||'_No knowledge logged_'}\n`;
   }
   if(file==='Fitness.md'){
     const workouts=load(K.workouts).sort((a,b)=>b.date.localeCompare(a.date));
     const metrics=load(K.metrics).sort((a,b)=>b.date.localeCompare(a.date));
     const wRows=workouts.slice(0,20).map(w=>`| ${w.date} | ${w.type} | ${w.name||'—'} | ${w.notes||'—'} |`).join('\n');
     const mRows=metrics.slice(0,10).map(m=>`| ${m.date} | ${toLbs(m.weight)}lbs (${m.weight}kg) | ${m.notes||'—'} |`).join('\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💪 Fitness\n\n## Workouts\n| Date | Type | Focus | Notes |\n|---|---|---|---|\n${wRows||'_None_'}\n\n## Body Metrics\n| Date | Weight | Notes |\n|---|---|---|\n${mRows||'_None_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 💪 Fitness\n\n## Workouts\n| Date | Type | Focus | Notes |\n|---|---|---|---|\n${wRows||'_None_'}\n\n## Body Metrics\n| Date | Weight | Notes |\n|---|---|---|\n${mRows||'_None_'}\n`;
   }
   if(file==='Notes.md'){
     const notes=load(K.notes);
     const groups={};
     notes.forEach(n=>{const c=n.category||'Uncategorised';if(!groups[c])groups[c]=[];groups[c].push(n);});
     const rows=Object.entries(groups).map(([cat,list])=>`## ${cat}\n${list.map(n=>`### ${fmtDateShort(n.created)}\n${n.text}${n.source?'\n🔗 '+n.source:''}`).join('\n\n')}`).join('\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💡 Notes\n\n${rows||'_No notes_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 💡 Notes\n\n${rows||'_No notes_'}\n`;
   }
   if(file==='Weekly Reviews.md'){
     const reviews=load(K.reviews).sort((a,b)=>b.week.localeCompare(a.week));
     const rows=reviews.map(r=>`## Week of ${r.week}\n**Overall:** ${r.overall}/10 · **Energy:** ${r.energy}/10 · **Focus:** ${r.focus}/10\n${r.wins?'\n**3 Biggest Wins:**\n'+r.wins+'\n':''}${r.losses?'\n**What Held Me Back:**\n'+r.losses+'\n':''}${r.priority?'\n**Next Week Priority:** '+r.priority+'\n':''}`).join('\n---\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 🧭 Weekly Reviews\n\n${rows||'_No reviews_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 🧭 Weekly Reviews\n\n${rows||'_No reviews_'}\n`;
   }
   if(file==='Directory.md'){
     const contacts=load(K.directory).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     const rows=contacts.map(c=>`### ${c.name}${c.category?' · '+c.category:''}\n${c.company?'**Company:** '+c.company+'\n':''}${c.email?'**Email:** '+c.email+'\n':''}${c.phone?'**Phone:** '+c.phone+'\n':''}${c.linkedIn?'**LinkedIn:** '+c.linkedIn+'\n':''}${c.tags?'**Tags:** '+c.tags+'\n':''}${c.source?'**Source:** '+c.source+'\n':''}${c.notes?'**Notes:** '+c.notes+'\n':''}`).join('\n---\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 👥 Directory\n\n${rows||'_No contacts_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 👥 Directory\n\n${rows||'_No contacts_'}\n`;
   }
   if(file==='Quotes.md'){
     const quotes=load(K.quotes).sort((a,b)=>(a.author||'').localeCompare(b.author||''));
     const rows=quotes.map(q=>`> ${q.text}\n\n— **${q.author||'Unknown'}**${q.source?' · _'+q.source+'_':''}${q.category?' · '+q.category:''}`).join('\n\n---\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 💬 Quotes\n\n${rows||'_No quotes_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 💬 Quotes\n\n${rows||'_No quotes_'}\n`;
   }
   if(file==='Vocabulary.md'){
     const words=load(K.vocab).sort((a,b)=>(a.word||'').localeCompare(b.word||''));
     const rows=words.map(w=>`### ${w.word}\n${w.definition}`).join('\n\n');
-    return `---\nupdated: ${now}\nsource: LeanHQ\n---\n# 📖 Vocabulary\n\n${rows||'_No words_'}\n`;
+    return `---\nupdated: ${now}\nsource: LeanLab\n---\n# 📖 Vocabulary\n\n${rows||'_No words_'}\n`;
   }
   return '';
 }
@@ -5254,11 +5254,11 @@ function obsMarkdown(file){
 // Add sidebar Obsidian settings button
 function openObsSettings(){
   const key=localStorage.getItem('obs_api_key')||'';
-  const folder=localStorage.getItem('obs_vault_folder')||'LeanHQ/Data';
+  const folder=localStorage.getItem('obs_vault_folder')||'LeanLab/Data';
   $('modalTitle').textContent='Obsidian Sync Settings';
   $('modalBody').innerHTML=`
     <div class="field"><label>Local REST API Key</label><input class="input" id="obs-key" value="${esc(key)}" placeholder="Paste your API key here…" style="font-family:'JetBrains Mono',monospace;font-size:12px"></div>
-    <div class="field"><label>Vault Folder</label><input class="input" id="obs-folder" value="${esc(folder)}" placeholder="LeanHQ/Data"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Folder inside your vault where notes will be saved. Created automatically if it doesn't exist.</div></div>
+    <div class="field"><label>Vault Folder</label><input class="input" id="obs-folder" value="${esc(folder)}" placeholder="LeanLab/Data"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Folder inside your vault where notes will be saved. Created automatically if it doesn't exist.</div></div>
     <div style="font-size:11px;color:var(--text-muted);line-height:1.7;padding:10px;background:var(--bg-alt);border-radius:var(--r-sm)">
       Requires the <strong style="color:var(--text-secondary)">Local REST API</strong> community plugin in Obsidian.<br>
       Only syncs when Obsidian is open on this PC.
@@ -5272,7 +5272,7 @@ function openObsSettings(){
 
 function saveObsSettings(){
   const key=$('obs-key').value.trim();
-  const folder=$('obs-folder').value.trim()||'LeanHQ/Data';
+  const folder=$('obs-folder').value.trim()||'LeanLab/Data';
   if(key) localStorage.setItem('obs_api_key',key); else localStorage.removeItem('obs_api_key');
   localStorage.setItem('obs_vault_folder',folder);
   closeModal();
@@ -5484,7 +5484,7 @@ function init(){
 
 // Set Obsidian API key on first run (stored in localStorage only, never sent externally)
 if(!localStorage.getItem('obs_api_key')) localStorage.setItem('obs_api_key','bce3935f101e19c7eb4a39e47add4fd6f3bfbea2d1366deb60e079e41f366d5a');
-if(!localStorage.getItem('obs_vault_folder')) localStorage.setItem('obs_vault_folder','LeanHQ/Data');
+if(!localStorage.getItem('obs_vault_folder')) localStorage.setItem('obs_vault_folder','LeanLab/Data');
 
 // Boot — Supabase first, then render
 initSupabase();
