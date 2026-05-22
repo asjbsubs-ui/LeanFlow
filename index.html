@@ -2989,10 +2989,9 @@ async function renderNotes(){
   const metaMemos=load(K.mediaMemos)||[];
   const idbIds=new Set(idbMemos.map(m=>m.id));
   const remoteOnly=metaMemos.filter(m=>!idbIds.has(m.id)&&m.storagePath);
-  const remoteWithUrls=await Promise.all(remoteOnly.map(async m=>({...m,_remoteUrl:await sbStorageUrl(m.storagePath)})));
   const allMedia=[
     ...idbMemos.map(m=>({...m,_kind:m.kind||'video'})),
-    ...remoteWithUrls.map(m=>({...m,_kind:m.kind||'video'}))
+    ...remoteOnly.map(m=>({...m,_kind:m.kind||'video'}))
   ];
   // Category filter chips
   const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
@@ -3027,20 +3026,29 @@ async function renderNotes(){
   el.innerHTML=merged.map(item=>{
     if(item._kind==='video'||item._kind==='audio'){
       const isAudio=item._kind==='audio';
-      const url=item.blob?URL.createObjectURL(item.blob):(item._remoteUrl||'');
       const ext=(item.mimeType||'').includes('mp4')?'mp4':(item.mimeType||'').includes('ogg')?'ogg':'webm';
       const filename=`${(item.title||'memo').replace(/[^a-z0-9]/gi,'_')}.${ext}`;
-      const mediaEl=isAudio
-        ?`<div style="padding:14px 16px 0"><audio src="${url}" controls style="width:100%"></audio></div>`
-        :`<video src="${url}" controls playsinline preload="metadata" style="width:100%;display:block;max-height:300px;background:#000"></video>`;
       const icon=isAudio?'🎙️':'📹';
+      let mediaEl='';
+      if(item.blob){
+        // Local blob — object URL, no egress. preload="none" stops auto-buffering.
+        const url=URL.createObjectURL(item.blob);
+        mediaEl=isAudio
+          ?`<div style="padding:14px 16px 0"><audio src="${url}" controls preload="none" style="width:100%"></audio></div>`
+          :`<video src="${url}" controls playsinline preload="none" style="width:100%;display:block;max-height:300px;background:#000"></video>`;
+      } else if(item.storagePath){
+        // Remote-only — render a play button; fetch signed URL only when user taps play
+        mediaEl=`<div class="memo-play-wrap" data-path="${item.storagePath}" data-kind="${item._kind}" style="padding:14px 16px 0">
+          <button onclick="playRemoteMemo(this)" style="width:100%;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--text-primary)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">▶ Play ${isAudio?'Audio':'Video'}</button>
+        </div>`;
+      }
       return `<div class="vm-card">
-        ${url?mediaEl:''}
+        ${mediaEl}
         <div style="padding:12px 14px;display:flex;align-items:center;gap:8px">
           <span style="font-size:12px">${icon}</span>
           <span style="font-size:13px;font-weight:600;color:var(--text-primary);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.title||'Memo')}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);flex-shrink:0">${fmtDateShort(item.date)}</span>
-          ${url?`<a href="${url}" download="${filename}" title="Download" style="color:var(--text-muted);font-size:14px;text-decoration:none;flex-shrink:0" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">⬇</a>`:''}
+          ${item.storagePath?`<button onclick="downloadRemoteMemo('${item.storagePath}','${filename}')" title="Download" style="background:transparent;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;flex-shrink:0;padding:0" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">⬇</button>`:(item.blob?`<a href="${URL.createObjectURL(item.blob)}" download="${filename}" title="Download" style="color:var(--text-muted);font-size:14px;text-decoration:none;flex-shrink:0" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">⬇</a>`:'')}
           <button class="delete-btn" onclick="deleteVideoMemo('${item.id}')">✕</button>
         </div>
       </div>`;
@@ -4909,13 +4917,33 @@ async function sbStorageUpload(blob,id){
 }
 async function sbStorageUrl(path){
   if(!_sb||!_sbUser||!path)return null;
+  const cached=_signedUrlCache.get(path);
+  if(cached&&cached.exp>Date.now())return cached.url;
   const {data,error}=await _sb.storage.from('leanhq-media').createSignedUrl(path,3600);
   if(error||!data)return null;
+  _signedUrlCache.set(path,{url:data.signedUrl,exp:Date.now()+50*60*1000});
   return data.signedUrl;
 }
 async function sbStorageDelete(path){
   if(!_sb||!_sbUser||!path)return;
   await _sb.storage.from('leanhq-media').remove([path]).catch(()=>{});
+}
+async function playRemoteMemo(btn){
+  const wrap=btn.closest('[data-path]');
+  if(!wrap)return;
+  btn.textContent='Loading…';btn.disabled=true;
+  const url=await sbStorageUrl(wrap.dataset.path);
+  if(!url){btn.textContent='▶ Play (unavailable)';btn.disabled=false;return;}
+  const isAudio=wrap.dataset.kind==='audio';
+  const tag=isAudio
+    ?`<audio src="${url}" controls preload="none" autoplay style="width:100%"></audio>`
+    :`<video src="${url}" controls playsinline preload="none" autoplay style="width:100%;display:block;max-height:300px;background:#000"></video>`;
+  wrap.innerHTML=tag;
+}
+async function downloadRemoteMemo(path,filename){
+  const url=await sbStorageUrl(path);
+  if(!url){showToast('Could not get download link');return;}
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
 }
 
 async function mediaMemosSync(){
@@ -5358,6 +5386,7 @@ function obsFullSync(){
 const _SB_URL = 'https://eewyzqyxwwkdimonltjy.supabase.co';
 const _SB_KEY = 'sb_publishable_qgfJXOAlB33B2mDNqeWAUQ_nFpBv-bN';
 let _sb = null, _sbUser = null;
+const _signedUrlCache = new Map(); // path → {url, exp} — 50-min TTL, avoids re-fetching on every render
 const SYNC_KEYS = Object.values(K); // all ahq_* keys
 
 function initSupabase(){
