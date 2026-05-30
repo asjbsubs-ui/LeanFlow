@@ -1768,6 +1768,7 @@ function renderHabits(){
         return `<div class="h-dot ${done?'done':''} ${isToday&&!done?'today':''}" onclick="${isToday?`toggleHabitHome('${h.id}')`:'void(0)'}" title="${d}">${done?'✓':''}</div>`;
       }).join('')}</div>
       <div class="habit-streak-col"><span class="habit-streak">${calcStreak(h.id,log)}🔥</span></div>
+      <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
       <button class="delete-btn" onclick="deleteHabit('${h.id}')">✕</button>
     </div>`).join('');
   updateScore();
@@ -1785,6 +1786,18 @@ function toggleHabitHome(id){
   if(activeTab==='home')renderHomeHabits();
 }
 function deleteHabit(id){const _hh=load(K.habits);const _hi=_hh.find(h=>h.id===id);if(_hi)trashItem('habits',_hi);save(K.habits,_hh.filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
+
+let _editingHabitId=null;
+function editHabit(id){
+  const h=load(K.habits).find(x=>x.id===id);if(!h)return;
+  _editingHabitId=id;
+  openModal('habit');
+  setTimeout(()=>{
+    if($('m-habit-name'))$('m-habit-name').value=h.name||'';
+    if($('m-habit-icon'))$('m-habit-icon').value=h.icon||'';
+    if($('modalTitle'))$('modalTitle').textContent='Edit Habit';
+  },60);
+}
 
 let _habitDragId=null;
 function habitDragStart(e,id){
@@ -3287,8 +3300,15 @@ const MODAL_FORMS = {
     </div>`,
     save:()=>{
       const name=$('m-habit-name').value.trim();if(!name)return alert('Name required');
+      const icon=$('m-habit-icon').value||'⭐';
       const habits=load(K.habits);
-      habits.push({id:uid(),name,icon:$('m-habit-icon').value||'⭐',streak:0});
+      if(_editingHabitId){
+        const i=habits.findIndex(h=>h.id===_editingHabitId);
+        if(i>=0){habits[i].name=name;habits[i].icon=icon;}
+        _editingHabitId=null;
+      } else {
+        habits.push({id:uid(),name,icon,streak:0});
+      }
       save(K.habits,habits);closeModal();renderHabits();if(activeTab==='home')renderHome();
     }},
   meeting:{title:'New Meeting',html:`
@@ -3598,7 +3618,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_mtgSelectedContacts=[];resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -5388,6 +5408,7 @@ const _SB_KEY = 'sb_publishable_qgfJXOAlB33B2mDNqeWAUQ_nFpBv-bN';
 let _sb = null, _sbUser = null;
 const _signedUrlCache = new Map(); // path → {url, exp} — 50-min TTL, avoids re-fetching on every render
 const SYNC_KEYS = Object.values(K); // all ahq_* keys
+const _SYNC_TS_KEY = '_sb_last_sync'; // localStorage key storing last pull timestamp for delta sync
 
 function initSupabase(){
   if(typeof supabase !== 'undefined'){
@@ -5413,9 +5434,18 @@ async function sbCheckSession(){
 async function sbPullAndStart(){
   setSyncStatus('syncing','Syncing…');
   try{
-    const {data,error} = await _sb.from('leanhq_sync').select('key,value').eq('user_id',_sbUser.id);
+    const lastSync = localStorage.getItem(_SYNC_TS_KEY);
+    let q = _sb.from('leanhq_sync').select('key,value,updated_at').eq('user_id',_sbUser.id);
+    if(lastSync) q = q.gt('updated_at', lastSync);
+    const {data,error} = await q;
     if(!error && data && data.length){
       data.forEach(r=>{ if(r.value!==null) localStorage.setItem(r.key,JSON.stringify(r.value)); });
+      // Advance the cursor to the latest row we received so next pull is truly incremental
+      const maxTs = data.reduce((m,r)=>r.updated_at>m?r.updated_at:m,'');
+      if(maxTs) localStorage.setItem(_SYNC_TS_KEY, maxTs);
+    } else if(!lastSync){
+      // First login with no rows — mark as synced so future pulls are incremental
+      localStorage.setItem(_SYNC_TS_KEY, new Date().toISOString());
     }
   }catch(e){ console.warn('Pull error',e); }
   const email = _sbUser.email||'Synced';
@@ -5472,6 +5502,7 @@ async function doAuth(){
 async function doSignOut(){
   if(_sb) await _sb.auth.signOut();
   _sbUser=null;
+  localStorage.removeItem(_SYNC_TS_KEY);
   setSyncStatus('off','Not signed in');
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('auth-password').value='';
