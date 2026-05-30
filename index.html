@@ -1508,7 +1508,7 @@ function taskCard(t){
         ${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color:var(--green);border-radius:99px">🏢 ${esc(t.business)}</span>`:''}
         ${t.dept?`<span class="task-cat" style="background:rgba(96,165,250,.1);color:#60a5fa;border-radius:99px">◈ ${esc(t.dept)}</span>`:''}
         ${t.due?(()=>{const overdue=t.due<today()&&!t.done,isToday=t.due===today()&&!t.done;return `<span class="task-cat" style="${overdue?'background:rgba(248,113,113,.15);color:var(--red);border-color:rgba(248,113,113,.3)':isToday?'background:rgba(251,191,36,.12);color:var(--yellow);border-color:rgba(251,191,36,.3)':''}">📅 ${fmtDateShort(t.due)}</span>`})():''}
-        ${t.recur?`<span class="task-cat" style="background:rgba(74,222,128,.08);color:var(--green);border-radius:99px">🔁 ${t.recur==='monthly'&&t.recurDays&&t.recurDays.length?'day '+t.recurDays.join(', '):t.recur}</span>`:''}
+        ${t.recur?`<span class="task-cat" style="background:rgba(74,222,128,.08);color:var(--green);border-radius:99px">🔁 ${t.recur==='monthly'&&t.recurDays&&t.recurDays.length?'day '+t.recurDays.map(d=>d===-1?'last':d===-2?'2nd last':d).join(', '):t.recur}</span>`:''}
       </div>
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0">
@@ -1584,17 +1584,25 @@ function renderTasks(){
     </div>
     ${(()=>{const doneCount=load(K.tasks).filter(t=>t.done).length;return doneCount?`<div style="text-align:center;padding:14px 0 4px"><button onclick="document.getElementById('taskFilter').value='done';renderTasks()" style="background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:'Outfit',sans-serif" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">✓ ${doneCount} completed — view archived</button></div>`:'';})()}`;
 }
+function resolveRecurDays(year,month,days){
+  const last=new Date(year,month+1,0).getDate();
+  return days.map(d=>d<0?last+d+1:Math.min(d,last)).sort((a,b)=>a-b);
+}
 function nextRecurDue(due,recur,recurDays){
   const d=new Date((due||today())+'T12:00:00');
   if(recur==='daily') d.setDate(d.getDate()+1);
   else if(recur==='weekly') d.setDate(d.getDate()+7);
   else if(recur==='monthly'){
     if(recurDays&&recurDays.length){
-      const sorted=[...recurDays].sort((a,b)=>a-b);
-      const cur=d.getDate();
-      const nextDay=sorted.find(day=>day>cur);
+      const cur=d.getDate(),m=d.getMonth(),y=d.getFullYear();
+      const thisDays=resolveRecurDays(y,m,recurDays);
+      const nextDay=thisDays.find(day=>day>cur);
       if(nextDay){ d.setDate(nextDay); }
-      else{ d.setMonth(d.getMonth()+1); d.setDate(sorted[0]); }
+      else{
+        const nm=(m+1)%12,ny=m===11?y+1:y;
+        const nextDays=resolveRecurDays(ny,nm,recurDays);
+        d.setFullYear(ny);d.setMonth(nm);d.setDate(nextDays[0]);
+      }
     } else { d.setMonth(d.getMonth()+1); }
   }
   return d.toLocaleDateString('sv');
@@ -3264,6 +3272,13 @@ function toggleRecurDays(v){
   const el=document.getElementById('m-task-recur-days-wrap');
   if(el) el.style.display=v==='monthly'?'':'none';
 }
+function addRecurDay(day){
+  const el=document.getElementById('m-task-recur-days');
+  if(!el)return;
+  const existing=el.value.split(',').map(s=>s.trim()).filter(Boolean);
+  const str=day.toString();
+  if(!existing.includes(str)) el.value=[...existing,str].join(', ');
+}
 function clearTaskChips(dim){
   const chipId=dim==='biz'?'m-task-biz-chips':'m-task-dept-chips';
   document.querySelectorAll(`#${chipId} button`).forEach(c=>{
@@ -3305,6 +3320,10 @@ const MODAL_FORMS = {
     <div class="field" id="m-task-recur-days-wrap" style="display:none">
       <label>On day(s) of month</label>
       <input class="input" id="m-task-recur-days" placeholder="e.g. 1, 15, 28" style="font-size:12px">
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button type="button" onclick="addRecurDay(-1)" style="padding:3px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">Last day</button>
+        <button type="button" onclick="addRecurDay(-2)" style="padding:3px 10px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">2nd last day</button>
+      </div>
     </div>
     <div class="field">
       <label>Eisenhower — Urgency</label>
@@ -3327,7 +3346,7 @@ const MODAL_FORMS = {
       const isWork=_taskTypeDefault==='work';
       const fields={title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
         recur:$('m-task-recur').value||null,
-        recurDays:(()=>{const raw=($('m-task-recur-days')||{value:''}).value;return raw?raw.split(',').map(s=>parseInt(s.trim())).filter(n=>n>=1&&n<=31):null;})(),
+        recurDays:(()=>{const raw=($('m-task-recur-days')||{value:''}).value;return raw?raw.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n!==0&&Math.abs(n)<=31):null;})(),
         business:isWork?($('m-task-biz').value.trim()||''):'',
         dept:isWork?($('m-task-dept').value.trim()||''):'',
         urgency:_eimUrgency||null,importance:_eimImportance||null};
