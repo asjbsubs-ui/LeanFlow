@@ -4069,6 +4069,7 @@ function _trashSummary(type,item){
   if(type==='vocab') return esc(item.word||'');
   if(type==='notes') return esc((item.text||'').slice(0,80));
   if(type==='directory') return esc(item.name||'Untitled');
+  if(type==='review') return `Week of ${item.week||'?'} · ${item.overall||'?'}/10`;
   return '—';
 }
 function _updateTrashBtn(){
@@ -4343,6 +4344,14 @@ function setSdFilter(dim,val){
   renderLogsSD(document.getElementById('logs-search').value||'');
 }
 
+function deleteReview(id){
+  const all=load(K.reviews);
+  const item=all.find(r=>r.id===id);
+  if(item) trashItem('review',item);
+  save(K.reviews,all.filter(r=>r.id!==id));
+  if(_logsTab==='review') renderCurrentLogs('');
+}
+
 // ── Weekly Review Logs ────────────────────────────────
 function renderLogsR(q){
   const q_=(q||'').toLowerCase();
@@ -4357,10 +4366,12 @@ function renderLogsR(q){
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.energy)}">${r.energy}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.focus)}">${r.focus}</span>`,
     `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.wins||'').slice(0,80))}${(r.wins||'').length>80?'…':''}</span>`,
-    `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.priority||'—').slice(0,80))}</span>`
+    `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.losses||'—').slice(0,80))}</span>`,
+    `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.priority||'—').slice(0,80))}</span>`,
+    dbDelBtn('deleteReview',r.id)
   ]));
 
-  logsHtml(dbTable([sortHdr('review','Week'),'Overall','Energy','Focus','3 Biggest Wins','Next Week Priority'],rows));
+  logsHtml(dbTable([sortHdr('review','Week'),'Overall','Energy','Focus','Wins','Held Back','Next Priority',''],rows)+renderTrashSection('review'));
 }
 
 // ── Fitness Logs ──────────────────────────────────────
