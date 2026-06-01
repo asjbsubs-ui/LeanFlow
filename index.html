@@ -1641,12 +1641,16 @@ function renderHabitMonth(){
     days.push(`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
   }
   // Header padding-left = drag(20)+gap(10)+icon(20)+gap(10)+name(112)+gap(10) = 182px
+  const totalCells = 42;
+  const trailing = totalCells - offset - daysInMonth;
+  const phantom = '<div style="width:18px;flex-shrink:0"></div>';
+  const phantomCell = '<div style="width:18px;height:18px;flex-shrink:0"></div>';
   const dowHeader = `<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:2px">
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:112px;flex-shrink:0"></div>
     <div style="display:flex;gap:3px">
-      ${Array(offset).fill('<div style="width:18px;flex-shrink:0"></div>').join('')}
+      ${Array(offset).fill(phantom).join('')}
       ${days.map(ds=>{
         const d=new Date(ds+'T12:00:00').getDay();
         const isT=ds===todayStr;
@@ -1654,6 +1658,7 @@ function renderHabitMonth(){
         const num=new Date(ds+'T12:00:00').getDate();
         return `<div style="width:18px;flex-shrink:0;text-align:center"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
       }).join('')}
+      ${Array(trailing).fill(phantom).join('')}
     </div>
   </div>`;
   const habitRows = habits.map(h => {
@@ -1661,11 +1666,11 @@ function renderHabitMonth(){
     const monthDone = done.filter(Boolean).length;
     const pct = Math.round((monthDone/daysInMonth)*100);
     const streak = calcStreak(h.id, log);
-    const cells = `${Array(offset).fill('<div style="width:18px;height:18px"></div>').join('')}${days.map((ds,i)=>{
+    const cells = `${Array(offset).fill(phantomCell).join('')}${days.map((ds,i)=>{
       const isDone = done[i];
       const isToday = ds === todayStr;
       return `<div title="${ds}" style="width:18px;height:18px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:${isToday?'pointer':'default'};flex-shrink:0;transition:opacity .1s" ${isToday?`onclick="toggleHabitHome('${h.id}');renderHabitMonth()"`:''}></div>`;
-    }).join('')}`;
+    }).join('')}${Array(trailing).fill(phantomCell).join('')}`;
     return `<div class="habit-row" style="gap:10px" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
       <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
       <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
