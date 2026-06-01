@@ -981,56 +981,46 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <div id="reviewScorecard" style="margin-bottom:18px"></div>
   <!-- Weekly Report (auto-generated) -->
   <div id="weekReportSection" style="margin-bottom:18px"></div>
-  <div class="grid-2" style="align-items:start">
-    <div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-accent" style="background:var(--t-review)"></div>
-        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
-          <span class="card-title" style="color:var(--t-review)">Weekly Review</span>
-          <select id="reviewWeekSelect" class="input" style="width:150px;font-size:12px" onchange="onReviewWeekChange()"></select>
-        </div>
-        <div class="card-body">
-          <div class="review-section">
-            <div class="review-section-label">Rate This Week</div>
-            <div style="display:flex;gap:20px;margin-bottom:14px">
-              <div style="flex:1">
-                <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Overall / 10</div>
-                <div class="rating-input"><input type="range" id="rv-overall" min="1" max="10" value="7" oninput="document.getElementById('rv-overall-val').textContent=this.value"><span class="rating-val" id="rv-overall-val">7</span></div>
-              </div>
-              <div style="flex:1">
-                <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Energy / 10</div>
-                <div class="rating-input"><input type="range" id="rv-energy" min="1" max="10" value="7" oninput="document.getElementById('rv-energy-val').textContent=this.value"><span class="rating-val" id="rv-energy-val">7</span></div>
-              </div>
-              <div style="flex:1">
-                <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Focus / 10</div>
-                <div class="rating-input"><input type="range" id="rv-focus" min="1" max="10" value="7" oninput="document.getElementById('rv-focus-val').textContent=this.value"><span class="rating-val" id="rv-focus-val">7</span></div>
-              </div>
-            </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-accent" style="background:var(--t-review)"></div>
+    <div class="card-header"><span class="card-title" style="color:var(--t-review)">Week of <span id="reviewWeekLabel"></span></span></div>
+    <div class="card-body">
+      <div class="review-section">
+        <div class="review-section-label">Rate This Week</div>
+        <div style="display:flex;gap:20px;margin-bottom:14px">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Overall / 10</div>
+            <div class="rating-input"><input type="range" id="rv-overall" min="1" max="10" value="7" oninput="document.getElementById('rv-overall-val').textContent=this.value"><span class="rating-val" id="rv-overall-val">7</span></div>
           </div>
-          <div class="review-section">
-            <div class="review-section-label">3 Biggest Wins</div>
-            <textarea class="textarea" id="rv-wins" placeholder="1. …&#10;2. …&#10;3. …" style="min-height:80px"></textarea>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Energy / 10</div>
+            <div class="rating-input"><input type="range" id="rv-energy" min="1" max="10" value="7" oninput="document.getElementById('rv-energy-val').textContent=this.value"><span class="rating-val" id="rv-energy-val">7</span></div>
           </div>
-          <div class="review-section">
-            <div class="review-section-label">What Held Me Back</div>
-            <textarea class="textarea" id="rv-losses" placeholder="Where did I fall short? What got in the way?…" style="min-height:72px"></textarea>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Focus / 10</div>
+            <div class="rating-input"><input type="range" id="rv-focus" min="1" max="10" value="7" oninput="document.getElementById('rv-focus-val').textContent=this.value"><span class="rating-val" id="rv-focus-val">7</span></div>
           </div>
-          <div class="review-section">
-            <div class="review-section-label">Next Week's #1 Priority</div>
-            <textarea class="textarea" id="rv-priority" placeholder="The one thing that will make next week a success…" style="min-height:56px"></textarea>
-          </div>
-          <div class="review-section">
-            <div class="review-section-label">What Would Make Next Week a 10/10?</div>
-            <textarea class="textarea" id="rv-vision" placeholder="Be specific. Paint the picture…" style="min-height:56px"></textarea>
-          </div>
-          <button class="btn btn-primary" style="background:var(--t-review);color:#fff;width:100%" onclick="saveReview()">Save Weekly Review</button>
         </div>
       </div>
+      <div class="review-section">
+        <div class="review-section-label">3 Biggest Wins</div>
+        <textarea class="textarea" id="rv-wins" placeholder="1. …&#10;2. …&#10;3. …" style="min-height:80px"></textarea>
+      </div>
+      <div class="review-section">
+        <div class="review-section-label">What Held Me Back</div>
+        <textarea class="textarea" id="rv-losses" placeholder="Where did I fall short? What got in the way?…" style="min-height:72px"></textarea>
+      </div>
+      <div class="review-section">
+        <div class="review-section-label">Next Week's #1 Priority</div>
+        <textarea class="textarea" id="rv-priority" placeholder="The one thing that will make next week a success…" style="min-height:56px"></textarea>
+      </div>
+      <div class="review-section">
+        <div class="review-section-label">What Would Make Next Week a 10/10?</div>
+        <textarea class="textarea" id="rv-vision" placeholder="Be specific. Paint the picture…" style="min-height:56px"></textarea>
+      </div>
+      <button class="btn btn-primary" style="background:var(--t-review);color:#fff;width:100%" onclick="saveReview()">Save Weekly Review</button>
     </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title" style="color:var(--t-review)">Review History</span></div>
-      <div class="card-body" id="reviewHistory"><div class="empty"><span class="empty-icon">📊</span><span class="empty-text">No reviews yet. Complete your first weekly review.</span></div></div>
-    </div>
+  </div>
   </div>
 </div>
 
@@ -1283,6 +1273,16 @@ function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return 
 // ── Keys ──────────────────────────────────────────────
 const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab'};
 
+function migrateReviewsToSunday(){
+  const reviews=load(K.reviews);
+  let changed=false;
+  reviews.forEach(r=>{
+    if(!r.week) return;
+    const d=new Date(r.week+'T12:00:00');
+    if(d.getDay()!==0){d.setDate(d.getDate()-d.getDay());r.week=d.toLocaleDateString('sv');changed=true;}
+  });
+  if(changed) save(K.reviews,reviews);
+}
 function migrateKnowledge(){
   if(localStorage.getItem('ahq_km_done')) return;
   const existing=load(K.knowledge);
@@ -2590,14 +2590,12 @@ function editMetric(id){_editingMetricId=id;openModal('metric');}
 // ── WEEKLY REVIEW ─────────────────────────────────────
 function renderReview(){
   const d=new Date();
-  const sel=$('reviewWeekSelect');
-  if(sel){
-    const prev=sel.value;
-    const sun=new Date(d);sun.setDate(d.getDate()-d.getDay());
-    const opts=[];for(let i=0;i<16;i++){opts.push(sun.toLocaleDateString('sv'));sun.setDate(sun.getDate()-7);}
-    sel.innerHTML=opts.map(s=>`<option value="${s}">Sun ${fmtDateShort(s)}</option>`).join('');
-    if(prev&&opts.includes(prev))sel.value=prev;
-  }
+  const sun=new Date(d);sun.setDate(d.getDate()-d.getDay());
+  const sunStr=sun.toLocaleDateString('sv');
+  if($('reviewWeekLabel')) $('reviewWeekLabel').textContent=fmtDateShort(sunStr);
+  // Load this week's review if it exists
+  const existing=load(K.reviews).find(r=>r.week===sunStr);
+  if(existing) _fillReviewForm(existing);
   // Athena scorecard + AI review
   const sc = $('reviewScorecard');
   if(sc){
@@ -2637,7 +2635,6 @@ function renderReview(){
       </div>`;
   }
   renderWeeklyReport();
-  renderReviewHistory();
 }
 
 function renderWeeklyReport(){
@@ -2732,13 +2729,13 @@ function renderWeeklyReport(){
 }
 
 function saveReview(){
-  const sel=$('reviewWeekSelect');
-  const week=sel?sel.value:(()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());return d.toLocaleDateString('sv');})();
+  const _sd=new Date();_sd.setDate(_sd.getDate()-_sd.getDay());
+  const week=_sd.toLocaleDateString('sv');
   const reviews=load(K.reviews);
   const entry={id:uid(),week,overall:parseInt($('rv-overall').value),energy:parseInt($('rv-energy').value),focus:parseInt($('rv-focus').value),wins:$('rv-wins').value.trim(),losses:$('rv-losses').value.trim(),priority:$('rv-priority').value.trim(),vision:$('rv-vision').value.trim(),ts:Date.now()};
   const ex=reviews.findIndex(r=>r.week===week);
   if(ex>=0)reviews[ex]=entry;else reviews.unshift(entry);
-  save(K.reviews,reviews);renderReviewHistory();
+  save(K.reviews,reviews);
   alert('Weekly review saved! 🔥');
 }
 function renderReviewHistory(){
@@ -5526,6 +5523,7 @@ function clearWorkoutChips(){
 // ── Init ──────────────────────────────────────────────
 function init(){
   seedIfEmpty();
+  migrateReviewsToSunday();
   migrateKnowledge();
   // Set time of day greeting
   const h=new Date().getHours();
@@ -5535,8 +5533,8 @@ function init(){
   $('heroDate').textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('sbDate').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
   // Set current week label for review
-  const mon=new Date(now);mon.setDate(now.getDate()-now.getDay()+1);
-  if($('reviewWeekLabel'))$('reviewWeekLabel').textContent=fmtDateShort(mon.toISOString().slice(0,10));
+  const sun=new Date(now);sun.setDate(now.getDate()-now.getDay());
+  if($('reviewWeekLabel'))$('reviewWeekLabel').textContent=fmtDateShort(sun.toLocaleDateString('sv'));
   // Initial renders
   document.documentElement.style.setProperty('--tab-color','var(--t-home)');
   updateScore();
