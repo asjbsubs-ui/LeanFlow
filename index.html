@@ -5524,6 +5524,21 @@ function switchAuthTab(t){
 }
 
 // ── Notes Logs ────────────────────────────────────────
+function viewNote(id){
+  const n=load(K.notes).find(x=>x.id===id);if(!n)return;
+  const el=document.getElementById('reviewReadOverlay');
+  el.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
+    <button onclick="document.getElementById('reviewReadOverlay').style.display='none'" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+    <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:4px">Capture</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600;color:var(--text-bright)">${fmtDate(n.created)}</span>
+      ${n.category?`<span class="note-cat">${esc(n.category)}</span>`:''}
+      ${n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗 ${esc(n.source.slice(0,40))}${n.source.length>40?'…':''}</a>`:''}
+    </div>
+    <div style="font-size:14px;color:var(--text-primary);line-height:1.7;white-space:pre-wrap">${esc(n.text)}</div>
+  </div>`;
+  el.style.display='flex';
+}
 async function renderLogsN(q){
   const q_=(q||'').toLowerCase();
   const textNotes=load(K.notes).filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
@@ -5546,9 +5561,9 @@ async function renderLogsN(q){
     `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
     n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(n.created)}</span>`,
-    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa">🔗</a>`:'—',
-    dbDelBtn('deleteNote',n.id)
-  ]));
+    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa" onclick="event.stopPropagation()">🔗</a>`:'—',
+    `<span onclick="event.stopPropagation()">${dbDelBtn('deleteNote',n.id)}</span>`
+  ],`viewNote('${n.id}')`))
   logsHtml(dbTable(['','Content / Title','Type',sortHdr('notes','Date'),'Sync',''],[ ...memoRows,...noteRows])+renderTrashSection('notes'));
 }
 
