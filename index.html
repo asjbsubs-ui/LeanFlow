@@ -820,7 +820,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <!-- Week view -->
   <div id="habit-week-view">
     <div class="card">
-      <div class="card-header"><span class="card-title" style="color:var(--t-habits)">Daily Tracker — Last 7 Days</span></div>
+      <div class="card-header"><span class="card-title" style="color:var(--t-habits)">Weekly Tracker</span></div>
       <div class="card-body" id="habitList"><div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet. Add your first habit.</span></div></div>
     </div>
   </div>
@@ -1715,7 +1715,7 @@ function renderHabits(){
   ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   if(!habits.length){el.innerHTML='<div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet.</span></div>';return;}
   // Current week: Sunday – Saturday
-  const days=[];const _wd=new Date();_wd.setDate(_wd.getDate()-_wd.getDay());for(let i=0;i<7;i++){const _d=new Date(_wd);_d.setDate(_wd.getDate()+i);days.push(_d.toLocaleDateString('sv'));}
+  const days=[];for(let i=6;i>=0;i--){const _d=new Date();_d.setDate(_d.getDate()-i);days.push(_d.toLocaleDateString('sv'));}
   const dayLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'}));
   el.innerHTML=`
     <div id="habits-day-header" style="display:flex;align-items:center;gap:12px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
