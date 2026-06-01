@@ -866,43 +866,35 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div id="journal-ai-content"></div>
   </div>
   <div id="journal-brain">
-  <div class="grid-2" style="align-items:start">
-    <div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-accent" style="background:var(--t-journal)"></div>
-        <div class="card-header"><span class="card-title" style="color:var(--t-journal)" id="journalDateLabel">Today's Entry</span></div>
-        <div class="card-body">
-          <div style="margin-bottom:12px">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">How are you feeling?</div>
-            <div class="mood-row" id="moodRow">
-              <button class="mood-btn" data-mood="1" onclick="selectMood(this)">😩</button>
-              <button class="mood-btn" data-mood="2" onclick="selectMood(this)">😞</button>
-              <button class="mood-btn" data-mood="3" onclick="selectMood(this)">😐</button>
-              <button class="mood-btn" data-mood="4" onclick="selectMood(this)">😊</button>
-              <button class="mood-btn" data-mood="5" onclick="selectMood(this)">🔥</button>
-            </div>
+    <div class="card">
+      <div class="card-accent" style="background:var(--t-journal)"></div>
+      <div class="card-header"><span class="card-title" style="color:var(--t-journal)" id="journalDateLabel">Today's Entry</span></div>
+      <div class="card-body">
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">How are you feeling?</div>
+          <div class="mood-row" id="moodRow">
+            <button class="mood-btn" data-mood="1" onclick="selectMood(this)">😩</button>
+            <button class="mood-btn" data-mood="2" onclick="selectMood(this)">😞</button>
+            <button class="mood-btn" data-mood="3" onclick="selectMood(this)">😐</button>
+            <button class="mood-btn" data-mood="4" onclick="selectMood(this)">😊</button>
+            <button class="mood-btn" data-mood="5" onclick="selectMood(this)">🔥</button>
           </div>
-          <div class="field">
-            <label>Brain Dump — What's on your mind?</label>
-            <textarea class="textarea" id="journalDump" style="min-height:120px" placeholder="Let it all out. No filters, no judgment. Just write…"></textarea>
-          </div>
-          <div class="field">
-            <label>3 Things I'm Grateful For</label>
-            <textarea class="textarea" id="journalGratitude" style="min-height:72px" placeholder="1. …"></textarea>
-          </div>
-          <div class="field">
-            <label>Tomorrow's #1 Priority</label>
-            <textarea class="textarea" id="journalIntention" style="min-height:56px" placeholder="The one thing that will make tomorrow a win…"></textarea>
-          </div>
-          <button class="btn btn-primary" style="background:#10b981;color:#fff;width:100%" onclick="saveJournal()">Save Entry</button>
         </div>
+        <div class="field">
+          <label>Brain Dump — What's on your mind?</label>
+          <textarea class="textarea" id="journalDump" style="min-height:120px" placeholder="Let it all out. No filters, no judgment. Just write…"></textarea>
+        </div>
+        <div class="field">
+          <label>3 Things I'm Grateful For</label>
+          <textarea class="textarea" id="journalGratitude" style="min-height:72px" placeholder="1. …"></textarea>
+        </div>
+        <div class="field">
+          <label>Tomorrow's #1 Priority</label>
+          <textarea class="textarea" id="journalIntention" style="min-height:56px" placeholder="The one thing that will make tomorrow a win…"></textarea>
+        </div>
+        <button class="btn btn-primary" style="background:#10b981;color:#fff;width:100%" onclick="saveJournal()">Save Entry</button>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title" style="color:var(--t-journal)">Past Entries</span></div>
-      <div class="card-body" id="journalHistory"><div class="empty"><span class="empty-icon">📖</span><span class="empty-text">No entries yet.</span></div></div>
-    </div>
-  </div>
   </div><!-- /journal-brain -->
 </div>
 
@@ -1874,6 +1866,7 @@ function renderJournal(){
   const entries=load(K.journal);
   const el=$('journalHistory');
   // Pre-fill today if exists
+
   const todayEntry=entries.find(e=>e.date===today());
   if(todayEntry){
     $('journalDump').value=todayEntry.dump||'';
@@ -1884,6 +1877,7 @@ function renderJournal(){
       selectedMood=todayEntry.mood;
     }
   }
+  if(!el) return;
   if(!entries.length){el.innerHTML='<div class="empty"><span class="empty-icon">📖</span><span class="empty-text">No entries yet.</span></div>';return;}
   const moods=['','😩','😞','😐','😊','🔥'];
   const t=today();
