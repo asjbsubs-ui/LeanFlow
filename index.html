@@ -1720,7 +1720,7 @@ function renderHabits(){
   el.innerHTML=`
     <div id="habits-day-header" style="display:flex;align-items:center;gap:12px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
       <div style="flex:1"></div>
-      <div style="display:flex;gap:0">${dayLabels.map((l,i)=>`<div style="width:24px;text-align:center;font-size:9px;color:${days[i]===today()?'var(--t-habits)':'var(--text-muted)'};font-weight:700;letter-spacing:.06em;text-transform:uppercase">${l}</div>`).join('')}</div>
+      <div style="display:flex;gap:0">${days.map((d,i)=>{const isT=d===today();const c=isT?'var(--t-habits)':'var(--text-muted)';const num=new Date(d+'T12:00:00').getDate();return `<div style="width:24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${c}">${dayLabels[i]}</span><span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${c}">${num}</span></div>`;}).join('')}</div>
       <div style="width:60px;text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Streak</div>
       <div style="width:28px"></div>
     </div>`+
