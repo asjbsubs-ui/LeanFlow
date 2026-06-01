@@ -1233,6 +1233,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
 </div>
 
+<div id="reviewReadOverlay" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:20px"></div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal" id="modal">
     <div class="modal-head">
@@ -4362,6 +4363,25 @@ function deleteReview(id){
   save(K.reviews,all.filter(r=>r.id!==id));
   if(_logsTab==='review') renderCurrentLogs('');
 }
+function viewReview(id){
+  const r=load(K.reviews).find(x=>x.id===id);if(!r)return;
+  const scoreCol=n=>n>=8?'var(--green)':n>=5?'var(--yellow)':'var(--red)';
+  const field=(label,val)=>val?`<div style="margin-bottom:14px"><div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px">${label}</div><div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap">${esc(val)}</div></div>`:'';
+  const el=document.getElementById('reviewReadOverlay');
+  el.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
+    <button onclick="document.getElementById('reviewReadOverlay').style.display='none'" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+    <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t-review);margin-bottom:4px">Weekly Review</div>
+    <div style="font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:16px">Week of ${fmtDate(r.week)}</div>
+    <div style="display:flex;gap:16px;margin-bottom:18px">
+      ${[['Overall',r.overall],['Energy',r.energy],['Focus',r.focus]].map(([l,v])=>`<div style="text-align:center"><div style="font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreCol(v)}">${v}</div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em">${l}</div></div>`).join('')}
+    </div>
+    ${field('3 Biggest Wins',r.wins)}
+    ${field('What Held Me Back',r.losses)}
+    ${field("Next Week's #1 Priority",r.priority)}
+    ${field('What Would Make Next Week a 10/10?',r.vision)}
+  </div>`;
+  el.style.display='flex';
+}
 
 // ── Weekly Review Logs ────────────────────────────────
 function renderLogsR(q){
@@ -4379,7 +4399,7 @@ function renderLogsR(q){
     `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.wins||'').slice(0,80))}${(r.wins||'').length>80?'…':''}</span>`,
     `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.losses||'—').slice(0,80))}</span>`,
     `<span style="max-width:200px;display:block;color:var(--text-secondary)">${esc((r.priority||'—').slice(0,80))}</span>`,
-    dbDelBtn('deleteReview',r.id)
+    `<button onclick="viewReview('${r.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-review)'" onmouseout="this.style.color='var(--text-muted)'">👁</button>`+dbDelBtn('deleteReview',r.id)
   ]));
 
   logsHtml(dbTable([sortHdr('review','Week'),'Overall','Energy','Focus','Wins','Held Back','Next Priority',''],rows)+renderTrashSection('review'));
