@@ -807,26 +807,13 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="ph-sub">Small daily wins compound into massive results.</div>
     </div>
     <div class="ph-actions">
-      <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px">
-        <button class="btn btn-sm" id="habit-view-week" onclick="setHabitView('week')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">7 Days</button>
-        <button class="btn btn-sm" id="habit-view-month" onclick="setHabitView('month')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">Monthly</button>
-      </div>
       <button class="btn btn-primary" style="background:var(--t-habits);color:#000" onclick="openModal('habit')">+ Add Habit</button>
       <button class="btn btn-ghost" onclick="openLogs('habits')">📋 Logs</button>
     </div>
   </div>
   <div class="grid-4" id="habitStats" style="margin-bottom:16px"></div>
 
-  <!-- Week view -->
-  <div id="habit-week-view">
-    <div class="card">
-      <div class="card-header"><span class="card-title" style="color:var(--t-habits)">Weekly Tracker</span></div>
-      <div class="card-body" id="habitList"><div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet. Add your first habit.</span></div></div>
-    </div>
-  </div>
-
-  <!-- Monthly view -->
-  <div id="habit-month-view" style="display:none">
+  <div id="habit-month-view">
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
         <span class="card-title" style="color:var(--t-habits)" id="habitMonthLabel">Monthly Tracker</span>
@@ -1615,23 +1602,8 @@ function restoreTask(id){
 }
 
 // ── HABITS ────────────────────────────────────────────
-// ── Habit view toggle ─────────────────────────────────
-let _habitView = 'week';
 let _habitMonthYear = new Date().getFullYear();
 let _habitMonthIdx  = new Date().getMonth();
-
-function setHabitView(v){
-  _habitView = v;
-  const wv=$('habit-week-view'), mv=$('habit-month-view');
-  const bw=$('habit-view-week'), bm=$('habit-view-month');
-  wv.style.display = v==='week'?'block':'none';
-  mv.style.display = v==='month'?'block':'none';
-  bw.style.background = v==='week'?'rgba(255,255,255,.08)':'transparent';
-  bw.style.color = v==='week'?'var(--text-primary)':'var(--text-muted)';
-  bm.style.background = v==='month'?'rgba(255,255,255,.08)':'transparent';
-  bm.style.color = v==='month'?'var(--text-primary)':'var(--text-muted)';
-  if(v==='month') renderHabitMonth();
-}
 
 function habitMonthPrev(){ _habitMonthIdx--; if(_habitMonthIdx<0){_habitMonthIdx=11;_habitMonthYear--;} renderHabitMonth(); }
 function habitMonthNext(){ _habitMonthIdx++; if(_habitMonthIdx>11){_habitMonthIdx=0;_habitMonthYear++;} renderHabitMonth(); }
@@ -1643,32 +1615,32 @@ function renderHabitMonth(){
   const year   = _habitMonthYear, month = _habitMonthIdx;
   const label  = new Date(year, month, 1).toLocaleDateString('en-GB', {month:'long', year:'numeric'});
   const el     = $('habitMonthLabel');
-  if(el) el.textContent = label + ' — Monthly Tracker';
-
+  if(el) el.textContent = label;
+  const todayLog = log[today()]||[];
+  const doneTodayCount = habits.filter(h=>todayLog.includes(h.id)).length;
+  $('habitStats').innerHTML=[
+    {val:habits.length,label:'Total Habits',c:'--t-habits'},
+    {val:doneTodayCount,label:'Done Today',c:'--t-habits'},
+    {val:habits.length-doneTodayCount,label:'Remaining',c:'--t-review'},
+    {val:Math.max(0,...habits.map(h=>calcStreak(h.id,log))),label:'Best Streak 🔥',c:'--t-fitness'},
+  ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const todayStr    = today();
-
-  // Day-of-week header (Mon–Sun)
   const dowLabels = ['M','T','W','T','F','S','S'];
-  const firstDow  = new Date(year, month, 1).getDay(); // 0=Sun
+  const firstDow  = new Date(year, month, 1).getDay();
   const offset    = firstDow === 0 ? 6 : firstDow - 1;
-
   const list = $('habitMonthList');
   if(!list) return;
-
   if(!habits.length){
     list.innerHTML = '<div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet.</span></div>';
     return;
   }
-
-  // Build day strings for the month
   const days = [];
   for(let d=1; d<=daysInMonth; d++){
     days.push(`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
   }
-
-  // DOW header row
-  const dowHeader = `<div style="display:flex;gap:3px;margin-bottom:2px;padding-left:152px">
+  // padding-left = drag(~16) + gap(12) + icon(20) + gap(12) + name(90) + gap(12) = 162px
+  const dowHeader = `<div style="display:flex;gap:3px;margin-bottom:2px;padding-left:162px">
     ${Array(offset).fill('<div style="width:18px"></div>').join('')}
     ${days.map(ds=>{
       const d=new Date(ds+'T12:00:00').getDay();
@@ -1678,73 +1650,31 @@ function renderHabitMonth(){
       return `<div style="width:18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'}">${lbl}</span><span style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'}">${num}</span></div>`;
     }).join('')}
   </div>`;
-
   const habitRows = habits.map(h => {
     const done = days.map(ds => (log[ds]||[]).includes(h.id));
     const monthDone = done.filter(Boolean).length;
     const pct = Math.round((monthDone/daysInMonth)*100);
-
+    const streak = calcStreak(h.id, log);
     const cells = `${Array(offset).fill('<div style="width:18px;height:18px"></div>').join('')}${days.map((ds,i)=>{
       const isDone = done[i];
       const isToday = ds === todayStr;
       return `<div title="${ds}" style="width:18px;height:18px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:${isToday?'pointer':'default'};flex-shrink:0;transition:opacity .1s" ${isToday?`onclick="toggleHabitHome('${h.id}');renderHabitMonth()"`:''}></div>`;
     }).join('')}`;
-
-    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+    return `<div class="habit-row" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
+      <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
       <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
-      <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:112px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
+      <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
       <div style="display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};white-space:nowrap;margin-left:6px">${monthDone}/${daysInMonth}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};white-space:nowrap">${monthDone}/${daysInMonth}</span>
+      <span class="habit-streak">${streak}🔥</span>
       <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
       <button class="delete-btn" onclick="deleteHabit('${h.id}')">✕</button>
     </div>`;
   }).join('');
-
   list.innerHTML = dowHeader + habitRows;
 }
 
-function renderHabits(){
-  const habits=load(K.habits);
-  const log=loadObj(K.habitLog,{});
-  const todayLog=log[today()]||[];
-  const el=$('habitList');
-  // Stats
-  const done=habits.filter(h=>todayLog.includes(h.id)).length;
-  $('habitStats').innerHTML=[
-    {val:habits.length,label:'Total Habits',c:'--t-habits'},
-    {val:done,label:'Done Today',c:'--t-habits'},
-    {val:habits.length-done,label:'Remaining',c:'--t-review'},
-    {val:Math.max(...habits.map(h=>calcStreak(h.id,log)),0),label:'Best Streak 🔥',c:'--t-fitness'},
-  ].map(s=>`<div class="stat-block" style="--stat-color:var(${s.c})"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('');
-  if(!habits.length){el.innerHTML='<div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits yet.</span></div>';return;}
-  // Current week: Sunday – Saturday
-  const days=[];for(let i=6;i>=0;i--){const _d=new Date();_d.setDate(_d.getDate()-i);days.push(_d.toLocaleDateString('sv'));}
-  const dayLabels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'}));
-  el.innerHTML=`
-    <div id="habits-day-header" style="display:flex;align-items:center;gap:12px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
-      <div style="flex:1"></div>
-      <div style="display:flex;gap:3px">${days.map((d,i)=>{const isT=d===today();const c=isT?'var(--t-habits)':'var(--text-muted)';const num=new Date(d+'T12:00:00').getDate();return `<div style="width:18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${c}">${dayLabels[i]}</span><span style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${c}">${num}</span></div>`;}).join('')}</div>
-      <div style="width:60px;text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Streak</div>
-      <div style="width:28px"></div>
-    </div>`+
-    habits.map(h=>`
-    <div class="habit-row" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
-      <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
-      <div class="habit-icon">${h.icon||'⭐'}</div>
-      <div class="habit-name-wrap" style="flex:1;min-width:0">
-        <div class="habit-name">${esc(h.name)}</div>
-      </div>
-      <div class="habit-days">${days.map(d=>{
-        const done=(log[d]||[]).includes(h.id);
-        const isToday=d===today();
-        return `<div class="h-dot ${done?'done':''} ${isToday&&!done?'today':''}" onclick="${isToday?`toggleHabitHome('${h.id}')`:'void(0)'}" title="${d}"></div>`;
-      }).join('')}</div>
-      <div class="habit-streak-col"><span class="habit-streak">${calcStreak(h.id,log)}🔥</span></div>
-      <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
-      <button class="delete-btn" onclick="deleteHabit('${h.id}')">✕</button>
-    </div>`).join('');
-  updateScore();
-}
+function renderHabits(){renderHabitMonth();}
 function toggleHabitHome(id){
   const log=loadObj(K.habitLog,{});
   const t=today();
@@ -1754,7 +1684,7 @@ function toggleHabitHome(id){
   else{log[t].push(id);}
   save(K.habitLog,log);
   updateScore();
-  if(activeTab==='habits'){if(_habitView==='month')renderHabitMonth();else renderHabits();}
+  if(activeTab==='habits') renderHabitMonth();
   if(activeTab==='home')renderHomeHabits();
 }
 function deleteHabit(id){const _hh=load(K.habits);const _hi=_hh.find(h=>h.id===id);if(_hi)trashItem('habits',_hi);save(K.habits,_hh.filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
@@ -1797,7 +1727,7 @@ function habitDrop(e,id){
   habits.splice(to,0,item);
   _habitDragId=null;
   save(K.habits,habits);
-  renderHabits();
+  renderHabitMonth();
 }
 function habitDragEnd(){
   document.querySelectorAll('.habit-row').forEach(r=>r.classList.remove('drag-over','habit-dragging'));
