@@ -4268,6 +4268,25 @@ function renderLogsG(q){
 }
 
 // ── Journal Logs ──────────────────────────────────────
+function viewJournal(id){
+  const e=load(K.journal).find(x=>x.id===id);if(!e)return;
+  const moods=['','😩','😞','😐','😊','🔥'];
+  const field=(label,val)=>val?`<div style="margin-bottom:14px"><div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px">${label}</div><div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap">${esc(val)}</div></div>`:'';
+  const el=document.getElementById('reviewReadOverlay');
+  el.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
+    <button onclick="document.getElementById('reviewReadOverlay').style.display='none'" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+    <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t-journal);margin-bottom:4px">Journal Entry</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:16px;font-weight:700;color:var(--text-bright)">${fmtDate(e.date)}</span>
+      ${e.mood?`<span style="font-size:22px">${moods[e.mood]||''}</span>`:''}
+    </div>
+    ${field('Brain Dump',e.dump)}
+    ${field('Gratitude',e.grat)}
+    ${field('Intention',e.intent)}
+    ${field('Notes',e.notes)}
+  </div>`;
+  el.style.display='flex';
+}
 function renderLogsJ(q){
   const q_=(q||'').toLowerCase();
   const moods=['','😩','😞','😐','😊','🔥'];
@@ -4279,7 +4298,7 @@ function renderLogsJ(q){
     `<span style="max-width:220px;display:block;color:var(--text-secondary)">${esc((e.dump||'').slice(0,100))}${(e.dump||'').length>100?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.grat||'').slice(0,70))}${(e.grat||'').length>70?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.intent||'').slice(0,70))}${(e.intent||'').length>70?'…':''}</span>`
-  ]));
+  ],`viewJournal('${e.id}')`));
   logsHtml(dbTable([sortHdr('journal','Date'),'Mood','Brain Dump','Gratitude','Intention'],rows)+renderTrashSection('journal'));
 }
 
