@@ -1641,42 +1641,37 @@ function renderHabitMonth(){
     days.push(`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
   }
   // Header mirrors row flex structure: drag(20)+gap(12)+icon(20)+gap(12)+name(90)+gap(12) = 166px of spacers
-  const trailing = 42 - offset - daysInMonth;
-  const emptyHdr = '<div style="flex:1"></div>';
-  const emptyCell = '<div style="flex:1;height:18px"></div>';
   const dowHeader = `<div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:2px">
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:90px;flex-shrink:0"></div>
-    <div style="flex:1;display:flex;gap:3px">
-      ${Array(offset).fill(emptyHdr).join('')}
+    <div style="display:flex;gap:3px">
+      ${Array(offset).fill('<div style="width:18px;flex-shrink:0"></div>').join('')}
       ${days.map(ds=>{
         const d=new Date(ds+'T12:00:00').getDay();
         const isT=ds===todayStr;
         const lbl=dowLabels[d===0?6:d-1];
         const num=new Date(ds+'T12:00:00').getDate();
-        return `<div style="flex:1;text-align:center;overflow:hidden"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
+        return `<div style="width:18px;flex-shrink:0;text-align:center;overflow:hidden"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
       }).join('')}
-      ${Array(trailing).fill(emptyHdr).join('')}
     </div>
-    <div style="width:144px;flex-shrink:0"></div>
   </div>`;
   const habitRows = habits.map(h => {
     const done = days.map(ds => (log[ds]||[]).includes(h.id));
     const monthDone = done.filter(Boolean).length;
     const pct = Math.round((monthDone/daysInMonth)*100);
     const streak = calcStreak(h.id, log);
-    const cells = `${Array(offset).fill(emptyCell).join('')}${days.map((ds,i)=>{
+    const cells = `${Array(offset).fill('<div style="width:18px;flex-shrink:0;height:18px;border-radius:3px"></div>').join('')}${days.map((ds,i)=>{
       const isDone = done[i];
       const isToday = ds === todayStr;
-      return `<div title="${ds}" style="flex:1;height:18px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:${isToday?'pointer':'default'};transition:opacity .1s" ${isToday?`onclick="toggleHabitHome('${h.id}');renderHabitMonth()"`:''}></div>`;
-    }).join('')}${Array(trailing).fill(emptyCell).join('')}`;
+      return `<div title="${ds}" style="width:18px;flex-shrink:0;height:18px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:${isToday?'pointer':'default'};transition:opacity .1s" ${isToday?`onclick="toggleHabitHome('${h.id}');renderHabitMonth()"`:''}></div>`;
+    }).join('')}`;
     return `<div class="habit-row" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
       <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
       <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
       <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
-      <div style="flex:1;display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:144px">
+      <div style="display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:144px;margin-left:auto">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};width:36px;flex-shrink:0;text-align:right">${monthDone}/${daysInMonth}</span>
         <span class="habit-streak" style="width:36px;flex-shrink:0">${streak}🔥</span>
         <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
