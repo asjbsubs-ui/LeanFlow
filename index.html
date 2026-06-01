@@ -748,10 +748,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="ph-sub">Work and personal — separated and prioritised.</div>
     </div>
     <div class="ph-actions">
-      <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px">
-        <button class="btn btn-sm" id="task-view-list" onclick="setTaskView('list')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">≡ List</button>
-        <button class="btn btn-sm" id="task-view-matrix" onclick="setTaskView('matrix')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">⊞ Matrix</button>
-      </div>
       <select class="input" id="taskFilter" style="width:120px" onchange="renderTasks()">
         <option value="all" selected>All active</option>
         <option value="high">High priority</option>
@@ -763,13 +759,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </div>
   </div>
   <div id="tasksAiSuggest"></div>
-  <!-- List view -->
-  <div id="task-list-view" style="display:none">
-    <div class="card">
-      <div class="card-body" id="taskList"><div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks yet. Add your first task.</span></div></div>
-    </div>
-  </div>
-  <!-- Matrix view -->
   <div id="task-matrix-view"></div>
 </div>
 
@@ -1520,71 +1509,7 @@ function taskCard(t){
     </div>
   </div>`;
 }
-function renderTasks(){
-  if(_taskView==='matrix'){renderMatrix();return;}
-  // Athena AI suggestion block
-  const allOpen = load(K.tasks).filter(t=>!t.done);
-  const topTask = allOpen.sort((a,b)=>{const p={High:0,Medium:1,Low:2};return(p[a.priority]||1)-(p[b.priority]||1);})[0];
-  const suggest = $('tasksAiSuggest');
-  if(suggest) suggest.innerHTML = topTask
-    ? `<div class="ai-suggest"><div style="font-size:22px">🧠</div><div class="ai-suggest-txt">If you only do <em>one thing</em> today — <em>${esc(topTask.title)}</em>. ${allOpen.filter(t=>t.due===today()).length} tasks due today, ${allOpen.filter(t=>t.priority==='High').length} high priority.</div></div>`
-    : '';
-  const filter=($('taskFilter')||{value:'all'}).value;
-  let all=load(K.tasks);
-  if(filter==='done') all=all.filter(t=>t.done);
-  else{all=all.filter(t=>!t.done);if(filter==='high')all=all.filter(t=>t.priority==='High');}
-  const _p={High:0,Medium:1,Low:2};
-  const _due=t=>t.due||'9999-99-99';
-  all.sort((a,b)=>{
-    const ad=a.done?1:0, bd=b.done?1:0;
-    if(ad!==bd) return ad-bd;
-    const da=_due(a), db=_due(b);
-    if(da!==db) return da<db?-1:1;
-    return (_p[a.priority]||1)-(_p[b.priority]||1);
-  });
-  const recurring=load(K.tasks).filter(t=>t.recur&&!t.done);
-  const work=all.filter(t=>(t.type||'work')==='work'&&!t.recur);
-  const personal=all.filter(t=>t.type==='personal'&&!t.recur);
-  const active=load(K.tasks).filter(t=>!t.done).length;
-  $('pill-tasks').textContent=active;
-  const emptyMsg='<div style="font-size:12px;color:var(--text-muted);padding:14px 0;text-align:center">No tasks here.</div>';
-  const recurSection=recurring.length?`
-    <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span style="font-size:15px">🔁</span>
-        <span style="font-family:'Orbitron',monospace;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--green)">Recurring</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:2px">${recurring.length} active</span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="openModal('task','work')">+ Add</button>
-      </div>
-      ${recurring.sort((a,b)=>(a.due||'9999')>(b.due||'9999')?1:-1).map(taskCard).join('')}
-    </div>
-    <div style="height:1px;background:var(--border);margin:4px 0 18px;position:relative">
-      <span style="position:absolute;top:50%;left:0;transform:translateY(-50%);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:var(--bg-card);padding:0 10px;color:var(--text-muted)">One-off</span>
-    </div>`:'';
-  $('taskList').innerHTML=recurSection+`
-    <div style="margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span style="font-size:15px">💼</span>
-        <span style="font-family:'Orbitron',monospace;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--t-tasks)">Work Tasks</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:2px">${work.filter(t=>!t.done).length} active</span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="openModal('task','work')">+ Add</button>
-      </div>
-      ${work.length?work.map(taskCard).join(''):emptyMsg}
-    </div>
-    <div style="height:1px;background:var(--border);margin:18px 0;position:relative">
-      <span style="position:absolute;top:50%;left:0;transform:translateY(-50%);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:var(--bg-card);padding:0 10px;color:var(--text-muted)">Personal</span>
-    </div>
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span style="font-size:15px">🏠</span>
-        <span style="font-family:'Orbitron',monospace;font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--t-journal)">Personal Tasks</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);margin-left:2px">${personal.filter(t=>!t.done).length} active</span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="openModal('task','personal')">+ Add</button>
-      </div>
-      ${personal.length?personal.map(taskCard).join(''):emptyMsg}
-    </div>
-    ${(()=>{const doneCount=load(K.tasks).filter(t=>t.done).length;return doneCount?`<div style="text-align:center;padding:14px 0 4px"><button onclick="document.getElementById('taskFilter').value='done';renderTasks()" style="background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:'Outfit',sans-serif" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">✓ ${doneCount} completed — view archived</button></div>`:'';})()}`;
-}
+function renderTasks(){renderMatrix();}
 function resolveRecurDays(year,month,days){
   const last=new Date(year,month+1,0).getDate();
   return days.map(d=>d<0?last+d+1:Math.min(d,last)).sort((a,b)=>a-b);
@@ -1679,7 +1604,6 @@ function deleteTask(id){
   save(K.tasks,_tasks.filter(t=>t.id!==id));
   renderTasks();if(activeTab==='home')renderHome();
   if(_logsTab==='tasks')renderCurrentLogs('');
-  if(_taskView==='matrix')renderMatrix();
 }
 function restoreTask(id){
   const tasks=load(K.tasks);
@@ -1796,7 +1720,7 @@ function renderHabits(){
   el.innerHTML=`
     <div id="habits-day-header" style="display:flex;align-items:center;gap:12px;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
       <div style="flex:1"></div>
-      ${dayLabels.map((l,i)=>`<div style="width:24px;text-align:center;font-size:9px;color:${days[i]===today()?'var(--t-habits)':'var(--text-muted)'};font-weight:700;letter-spacing:.06em;text-transform:uppercase">${l}</div>`).join('')}
+      <div style="display:flex;gap:0">${dayLabels.map((l,i)=>`<div style="width:24px;text-align:center;font-size:9px;color:${days[i]===today()?'var(--t-habits)':'var(--text-muted)'};font-weight:700;letter-spacing:.06em;text-transform:uppercase">${l}</div>`).join('')}</div>
       <div style="width:60px;text-align:center;font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Streak</div>
       <div style="width:28px"></div>
     </div>`+
@@ -3161,22 +3085,10 @@ function prefillEim(urgency,importance){
   if(importance) setEim('importance',importance);
 }
 
-// ── Task view toggle ───────────────────────────────────
-let _taskView='matrix';
-function setTaskView(v){
-  _taskView=v;
-  const lv=$('task-list-view'),mv=$('task-matrix-view');
-  const bl=$('task-view-list'),bm=$('task-view-matrix');
-  lv.style.display=v==='list'?'block':'none';
-  mv.style.display=v==='matrix'?'block':'none';
-  bl.style.background=v==='list'?'rgba(255,255,255,.08)':'transparent';
-  bl.style.color=v==='list'?'var(--text-primary)':'var(--text-muted)';
-  bm.style.background=v==='matrix'?'rgba(255,255,255,.08)':'transparent';
-  bm.style.color=v==='matrix'?'var(--text-primary)':'var(--text-muted)';
-  if(v==='matrix') renderMatrix();
-}
 
 function renderMatrix(){
+  const _due=t=>t.due||'9999-99-99';
+  const byDue=(a,b)=>_due(a)<_due(b)?-1:_due(a)>_due(b)?1:0;
   const all=load(K.tasks).filter(t=>!t.done);
   const el=$('task-matrix-view'); if(!el) return;
   const assigned={q1:[],q2:[],q3:[],q4:[]};
@@ -3185,9 +3097,11 @@ function renderMatrix(){
     const q=EIM_Q.find(q=>q.u===t.urgency&&q.i===t.importance);
     if(q) assigned[q.key].push(t); else unsorted.push(t);
   });
+  Object.keys(assigned).forEach(k=>assigned[k].sort(byDue));
+  unsorted.sort(byDue);
   const taskRow=(t)=>`
     <div class="matrix-task ${t.done?'done':''}">
-      <div class="check-box" onclick="toggleTask('${t.id}');if(_taskView==='matrix')renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+      <div class="check-box" onclick="toggleTask('${t.id}');renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
       <div style="flex:1;min-width:0">
         <div class="matrix-task-title">${esc(t.title)}</div>
         ${t.due?`<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">📅 ${fmtDateShort(t.due)}</div>`:''}
@@ -3213,7 +3127,7 @@ function renderMatrix(){
     <div class="matrix-unsorted">
       <div style="font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">⊡ Unsorted — open task to assign quadrant</div>
       ${unsorted.map(t=>`<div class="matrix-task ${t.done?'done':''}">
-        <div class="check-box" onclick="toggleTask('${t.id}');if(_taskView==='matrix')renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+        <div class="check-box" onclick="toggleTask('${t.id}');renderMatrix()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
         <div style="flex:1"><div class="matrix-task-title">${esc(t.title)}</div></div>
         <button class="delete-btn" title="Pomodoro" onclick="openPomodoro('${t.id}')" style="font-size:11px;padding:2px 4px">🍅</button>
         <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
@@ -3358,7 +3272,7 @@ const MODAL_FORMS = {
       } else {
         tasks.unshift({id:uid(),...fields,done:false,created:today()});
       }
-      save(K.tasks,tasks);closeModal();renderTasks();if(_taskView==='matrix')renderMatrix();if(activeTab==='home')renderHome();
+      save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
     }},
   habit:{title:'New Habit',html:`
     <div class="field-row">
