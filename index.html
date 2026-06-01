@@ -2455,13 +2455,27 @@ function editKnowledge(id){
   _editingKnowledgeId=id;
   openModal('knowledge');
 }
-function viewKnowledgeNotes(id){
+function viewKnowledge(id){
   const k=load(K.knowledge).find(x=>x.id===id);if(!k)return;
-  $('modalTitle').textContent=k.title;
-  $('modalBody').innerHTML=`<div style="white-space:pre-wrap;line-height:1.8;font-size:14px;color:var(--text-primary)">${esc(k.notes||'')}</div>`;
-  $('modalFoot').innerHTML=`<button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="closeModal();editKnowledge('${id}')">Edit</button>`;
-  $('modalOverlay').classList.add('open');
+  const pct=k.status==='done'?100:k.progress||0;
+  const stLbl={done:'Done',active:'In Progress',reading:'In Progress',todo:'To Start'};
+  const el=document.getElementById('reviewReadOverlay');
+  el.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
+    <button onclick="document.getElementById('reviewReadOverlay').style.display='none'" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+    <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:4px">${esc(k.type||'Growth')}</div>
+    <div style="font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:10px">${esc(k.title)}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;font-size:12px;color:var(--text-muted)">
+      ${k.skill?`<span>${esc(k.skill)}</span>`:''}
+      ${k.source?`<span>📖 ${esc(k.source)}</span>`:''}
+      ${k.link?`<a href="${esc(k.link)}" target="_blank" rel="noopener" style="color:var(--t-selfdev)">🔗 Open</a>`:''}
+      ${k.date?`<span>${fmtDate(k.date)}</span>`:''}
+      <span style="color:var(--t-selfdev);font-weight:600">${stLbl[k.status]||''} · ${pct}%</span>
+    </div>
+    ${k.notes?`<div style="font-size:13px;color:var(--text-primary);line-height:1.7;white-space:pre-wrap">${esc(k.notes)}</div>`:''}
+  </div>`;
+  el.style.display='flex';
 }
+function viewKnowledgeNotes(id){viewKnowledge(id);}  // backward compat
 
 // ── FITNESS ───────────────────────────────────────────
 function renderFitness(){
@@ -4358,7 +4372,7 @@ function renderLogsSD(q){
       `<strong style="color:var(--text-primary)">${esc(i.title)}</strong>`,
       `<span>${SKILL_ICONS[i.skill]||'📚'} ${esc(i.skill||'Other')}</span>`,
       esc(i.source||'—'),
-      i.link?`<a href="${esc(i.link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--t-selfdev);text-decoration:none" title="${esc(i.link)}">🔗 Open</a>`:'—',
+      i.link?`<a href="${esc(i.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--t-selfdev);text-decoration:none" title="${esc(i.link)}">🔗 Open</a>`:'—',
       `<div style="display:flex;align-items:center;gap:6px">
         <div style="width:70px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
           <div style="height:100%;background:var(--t-selfdev);width:${pct}%"></div>
@@ -4367,9 +4381,9 @@ function renderLogsSD(q){
       </div>`,
       stLbl[i.status]||'—',
       `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${i.date?fmtDate(i.date):'—'}</span>`,
-      i.notes?`<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes.slice(0,60))}${i.notes.length>60?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">more</button>`:''}</span>`:'<span style="color:var(--text-muted)">—</span>',
-      `<button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteKnowledge',i.id)
-    ]);
+      i.notes?`<span style="font-size:11px;color:var(--text-muted)">${esc(i.notes.slice(0,60))}${i.notes.length>60?'…':''}</span>`:'<span style="color:var(--text-muted)">—</span>',
+      `<span onclick="event.stopPropagation()"><button onclick="editKnowledge('${i.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-selfdev)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>${dbDelBtn('deleteKnowledge',i.id)}</span>`
+    ],`viewKnowledge('${i.id}')`);
   });
 
   logsHtml(`
