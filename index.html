@@ -1653,7 +1653,7 @@ function renderHabitMonth(){
         const isT=ds===todayStr;
         const lbl=dowLabels[d===0?6:d-1];
         const num=new Date(ds+'T12:00:00').getDate();
-        return `<div style="flex:1;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'}">${lbl}</span><span style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'}">${num}</span></div>`;
+        return `<div style="flex:1;display:flex;flex-direction:column;gap:1px"><span style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};display:block;text-align:center">${lbl}</span><span style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};display:block;text-align:center">${num}</span></div>`;
       }).join('')}
     </div>
     <div style="width:144px;flex-shrink:0"></div>
