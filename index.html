@@ -1668,7 +1668,7 @@ function renderHabitMonth(){
     const cells = days.map((ds,i)=>{
       const isDone = done[i];
       const isToday = ds === todayStr;
-      return `<div title="${ds}" style="flex:1;height:22px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:${isToday?'pointer':'default'};transition:opacity .1s" ${isToday?`onclick="toggleHabitHome('${h.id}');renderHabitMonth()"`:''}></div>`;
+      return `<div title="${ds}" style="flex:1;height:22px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:pointer;transition:opacity .1s" onclick="toggleHabitDay('${h.id}','${ds}')"></div>`;
     }).join('');
     return `<div class="habit-row" style="gap:10px" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
       <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
@@ -1698,6 +1698,16 @@ function toggleHabitHome(id){
   updateScore();
   if(activeTab==='habits') renderHabitMonth();
   if(activeTab==='home')renderHomeHabits();
+}
+function toggleHabitDay(id,date){
+  const log=loadObj(K.habitLog,{});
+  if(!log[date])log[date]=[];
+  const i=log[date].indexOf(id);
+  if(i>=0)log[date].splice(i,1);else log[date].push(id);
+  save(K.habitLog,log);
+  updateScore();
+  renderHabitMonth();
+  if(date===today()&&activeTab==='home')renderHomeHabits();
 }
 function deleteHabit(id){const _hh=load(K.habits);const _hi=_hh.find(h=>h.id===id);if(_hi)trashItem('habits',_hi);save(K.habits,_hh.filter(h=>h.id!==id));renderHabits();if(_logsTab==='habits')renderCurrentLogs('');}
 
