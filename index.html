@@ -985,7 +985,10 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div>
       <div class="card" style="margin-bottom:14px">
         <div class="card-accent" style="background:var(--t-review)"></div>
-        <div class="card-header"><span class="card-title" style="color:var(--t-review)">Week of <span id="reviewWeekLabel"></span></span></div>
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <span class="card-title" style="color:var(--t-review)">Weekly Review</span>
+          <select id="reviewWeekSelect" class="input" style="width:150px;font-size:12px" onchange="onReviewWeekChange()"></select>
+        </div>
         <div class="card-body">
           <div class="review-section">
             <div class="review-section-label">Rate This Week</div>
@@ -2587,8 +2590,14 @@ function editMetric(id){_editingMetricId=id;openModal('metric');}
 // ── WEEKLY REVIEW ─────────────────────────────────────
 function renderReview(){
   const d=new Date();
-  const mon=new Date(d);mon.setDate(d.getDate()-d.getDay()+1);
-  $('reviewWeekLabel').textContent=fmtDateShort(mon.toISOString().slice(0,10));
+  const sel=$('reviewWeekSelect');
+  if(sel){
+    const prev=sel.value;
+    const sun=new Date(d);sun.setDate(d.getDate()-d.getDay());
+    const opts=[];for(let i=0;i<16;i++){opts.push(sun.toLocaleDateString('sv'));sun.setDate(sun.getDate()-7);}
+    sel.innerHTML=opts.map(s=>`<option value="${s}">Sun ${fmtDateShort(s)}</option>`).join('');
+    if(prev&&opts.includes(prev))sel.value=prev;
+  }
   // Athena scorecard + AI review
   const sc = $('reviewScorecard');
   if(sc){
@@ -2723,8 +2732,8 @@ function renderWeeklyReport(){
 }
 
 function saveReview(){
-  const d=new Date();const mon=new Date(d);mon.setDate(d.getDate()-d.getDay()+1);
-  const week=mon.toISOString().slice(0,10);
+  const sel=$('reviewWeekSelect');
+  const week=sel?sel.value:(()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());return d.toLocaleDateString('sv');})();
   const reviews=load(K.reviews);
   const entry={id:uid(),week,overall:parseInt($('rv-overall').value),energy:parseInt($('rv-energy').value),focus:parseInt($('rv-focus').value),wins:$('rv-wins').value.trim(),losses:$('rv-losses').value.trim(),priority:$('rv-priority').value.trim(),vision:$('rv-vision').value.trim(),ts:Date.now()};
   const ex=reviews.findIndex(r=>r.week===week);
@@ -2746,13 +2755,29 @@ function renderReviewHistory(){
       ${r.priority?`<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ ${esc(r.priority)}</div>`:''}
     </div>`).join('');
 }
-function loadReview(id){
-  const r=load(K.reviews).find(x=>x.id===id);if(!r)return;
+function _fillReviewForm(r){
+  if(!r){
+    ['rv-overall','rv-energy','rv-focus'].forEach(id=>{$(id).value=7;$( id.replace('rv-','rv-').replace('-val','')+'-val') && ($( id+'-val')&&($( id+'-val').textContent=7));});
+    $('rv-overall-val').textContent=7;$('rv-energy-val').textContent=7;$('rv-focus-val').textContent=7;
+    $('rv-wins').value='';$('rv-losses').value='';$('rv-priority').value='';$('rv-vision').value='';
+    return;
+  }
   $('rv-overall').value=r.overall;$('rv-overall-val').textContent=r.overall;
   $('rv-energy').value=r.energy;$('rv-energy-val').textContent=r.energy;
   $('rv-focus').value=r.focus;$('rv-focus-val').textContent=r.focus;
   $('rv-wins').value=r.wins||'';$('rv-losses').value=r.losses||'';
   $('rv-priority').value=r.priority||'';$('rv-vision').value=r.vision||'';
+}
+function onReviewWeekChange(){
+  const week=$('reviewWeekSelect').value;
+  const r=load(K.reviews).find(x=>x.week===week);
+  _fillReviewForm(r||null);
+}
+function loadReview(id){
+  const r=load(K.reviews).find(x=>x.id===id);if(!r)return;
+  const sel=$('reviewWeekSelect');
+  if(sel){const opts=[...sel.options].map(o=>o.value);if(opts.includes(r.week))sel.value=r.week;}
+  _fillReviewForm(r);
 }
 function showReviewHistory(){}
 
