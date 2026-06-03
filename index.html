@@ -585,6 +585,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   #habitMonthList .habit-drag{order:unset}
   #habitMonthList .habit-row .delete-btn{order:unset}
   .habit-mcells>div{height:34px!important;min-width:26px!important;border-radius:5px!important}
+  .habit-mheader-cell{min-width:26px!important;flex:1}
   .logs-content{padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
   .stat-block{padding:12px}
   .stat-val{font-size:22px}
@@ -1644,13 +1645,13 @@ function renderHabitMonth(){
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:112px;flex-shrink:0"></div>
-    <div style="flex:1;display:flex;gap:3px">
+    <div class="habit-mcells" style="flex:1;display:flex;gap:3px">
       ${days.map(ds=>{
         const d=new Date(ds+'T12:00:00').getDay();
         const isT=ds===todayStr;
         const lbl=dowLabels[d===0?6:d-1];
         const num=new Date(ds+'T12:00:00').getDate();
-        return `<div style="flex:1;text-align:center"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
+        return `<div class="habit-mheader-cell" style="flex:1;text-align:center"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
       }).join('')}
     </div>
     <div style="width:144px;flex-shrink:0"></div>
