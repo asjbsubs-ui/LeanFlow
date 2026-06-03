@@ -587,6 +587,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   .habit-mcells>div{height:34px!important;min-width:26px!important;border-radius:5px!important}
   .habit-mheader-cell{min-width:26px!important;flex:1}
   #habit-month-view .card{overflow:visible}
+  .habit-mname{position:sticky;left:0;background:var(--bg-card);z-index:5;box-shadow:6px 0 12px var(--bg-card)}
   .habit-mstats{position:sticky;right:0;background:var(--bg-card);z-index:5;box-shadow:-6px 0 12px var(--bg-card)}
   .logs-content{padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
   .stat-block{padding:12px}
@@ -1644,9 +1645,11 @@ function renderHabitMonth(){
   // Header padding-left = drag(20)+gap(10)+icon(20)+gap(10)+name(112)+gap(10) = 182px
   // right section: count(36)+gap(8)+streak(36)=80px frozen | edit(24)+gap(8)+delete(24)=56px scrollable
   const dowHeader = `<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:2px">
-    <div style="width:20px;flex-shrink:0"></div>
-    <div style="width:20px;flex-shrink:0"></div>
-    <div style="width:112px;flex-shrink:0"></div>
+    <div class="habit-mname" style="display:flex;gap:10px;align-items:flex-end;flex-shrink:0">
+      <div style="width:20px;flex-shrink:0"></div>
+      <div style="width:20px;flex-shrink:0"></div>
+      <div style="width:112px;flex-shrink:0"></div>
+    </div>
     <div class="habit-mcells" style="flex:1;display:flex;gap:3px">
       ${days.map(ds=>{
         const d=new Date(ds+'T12:00:00').getDay();
@@ -1670,9 +1673,11 @@ function renderHabitMonth(){
       return `<div title="${ds}" style="flex:1;height:22px;border-radius:3px;background:${isDone?'var(--t-habits)':'rgba(255,255,255,.05)'};border:1.5px solid ${isToday?'var(--t-habits)':'transparent'};cursor:pointer;transition:opacity .1s" onclick="toggleHabitDay('${h.id}','${ds}')"></div>`;
     }).join('');
     return `<div class="habit-row" style="gap:10px" ondragover="habitDragOver(event,'${h.id}')" ondrop="habitDrop(event,'${h.id}')" ondragleave="this.classList.remove('drag-over')">
-      <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
-      <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
-      <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:112px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
+      <div class="habit-mname" style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span class="habit-drag" draggable="true" ondragstart="habitDragStart(event,'${h.id}')" ondragend="habitDragEnd()" title="Drag to reorder">⠿</span>
+        <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
+        <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:112px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
+      </div>
       <div class="habit-mcells" style="flex:1;display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
