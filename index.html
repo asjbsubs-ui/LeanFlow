@@ -541,7 +541,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 @media(max-width:768px){
   html,body{overflow:auto;height:auto}
   .shell{flex-direction:column;height:auto;min-height:100vh}
-  .mob-header{display:flex;align-items:center;gap:12px;background:rgba(4,14,7,.98);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:300;padding:0 16px;min-height:54px;padding-top:env(safe-area-inset-top);padding-left:calc(16px + env(safe-area-inset-left));padding-right:calc(16px + env(safe-area-inset-right))}
+  .mob-header{display:flex;align-items:center;gap:12px;background:rgba(4,14,7,.98);border-bottom:1px solid var(--border);position:fixed;top:0;left:0;right:0;z-index:300;padding:0 16px;min-height:54px;padding-top:env(safe-area-inset-top);padding-left:calc(16px + env(safe-area-inset-left));padding-right:calc(16px + env(safe-area-inset-right))}
+  .shell{padding-top:calc(54px + env(safe-area-inset-top))}
   .mob-hamburger{width:38px;height:38px;border:1px solid var(--border-md);border-radius:var(--r-sm);background:transparent;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
   .mob-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:.06em;color:var(--text-bright);flex:1}
   .mob-title span{color:var(--green)}
@@ -588,7 +589,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   .habit-mheader-cell{min-width:26px!important;flex:1}
   #habit-month-view .card{overflow:visible}
   #habit-month-view .card-body{padding:0}
-  #habitMonthHeader{overflow:hidden;position:sticky;top:54px;z-index:4;background:var(--bg-card);padding:14px 14px 6px;border-bottom:1px solid var(--border)}
+  #habitMonthHeader{overflow:hidden;position:sticky;top:calc(54px + env(safe-area-inset-top));z-index:4;background:var(--bg-card);padding:14px 14px 6px;border-bottom:1px solid var(--border)}
   #habitMonthList{padding:0 14px 14px}
   .habit-mname{position:sticky;left:0;background:var(--bg-card);z-index:5;box-shadow:6px 0 12px var(--bg-card)}
   .habit-mstats{position:sticky;right:0;background:var(--bg-card);z-index:5;box-shadow:-6px 0 12px var(--bg-card)}
