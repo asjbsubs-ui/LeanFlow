@@ -5521,9 +5521,10 @@ async function sbPullAndStart(){
     }
   }catch(e){ console.warn('Pull error',e); }
   const email = _sbUser.email||'Synced';
-  setSyncStatus('on', email.split('@')[0]);
+  const _displayName=_sbUser.user_metadata?.full_name||email.split('@')[0];
+  setSyncStatus('on', _displayName);
   const _nr=$('nameRow'),_nd=$('nameDisplay');
-  if(_nr&&_nd){_nd.textContent=_sbUser.user_metadata?.full_name||email.split('@')[0];_nr.style.display='flex';}
+  if(_nr&&_nd){_nd.textContent=_displayName;_nr.style.display='flex';}
   document.getElementById('auth-screen').style.display='none';
   init();
   setTimeout(obsFullSync,2000);
