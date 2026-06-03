@@ -2650,9 +2650,7 @@ function renderReview(){
   const sun=new Date(d);sun.setDate(d.getDate()-d.getDay());
   const sunStr=sun.toLocaleDateString('sv');
   if($('reviewWeekLabel')) $('reviewWeekLabel').textContent=fmtDateShort(sunStr);
-  // Load this week's review if it exists
-  const existing=load(K.reviews).find(r=>r.week===sunStr);
-  if(existing) _fillReviewForm(existing);
+  _fillReviewForm(null);
   // Athena scorecard + AI review
   const sc = $('reviewScorecard');
   if(sc){
