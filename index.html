@@ -586,6 +586,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   #habitMonthList .habit-row .delete-btn{order:unset}
   .habit-mcells>div{height:34px!important;min-width:26px!important;border-radius:5px!important}
   .habit-mheader-cell{min-width:26px!important;flex:1}
+  #habit-month-view .card{overflow:visible}
+  .habit-mstats{position:sticky;right:0;background:var(--bg-card);z-index:5;box-shadow:-6px 0 12px var(--bg-card)}
   .logs-content{padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
   .stat-block{padding:12px}
   .stat-val{font-size:22px}
@@ -1654,7 +1656,7 @@ function renderHabitMonth(){
         return `<div class="habit-mheader-cell" style="flex:1;text-align:center"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
       }).join('')}
     </div>
-    <div style="width:144px;flex-shrink:0"></div>
+    <div class="habit-mstats" style="width:144px;flex-shrink:0"></div>
   </div>`;
   const habitRows = habits.map(h => {
     const done = days.map(ds => (log[ds]||[]).includes(h.id));
@@ -1671,7 +1673,7 @@ function renderHabitMonth(){
       <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
       <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:112px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
       <div class="habit-mcells" style="flex:1;display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:144px">
+      <div class="habit-mstats" style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:144px">
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};width:36px;flex-shrink:0;text-align:right">${monthDone}/${daysInMonth}</span>
         <span class="habit-streak" style="width:36px;flex-shrink:0">${streak}🔥</span>
         <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
