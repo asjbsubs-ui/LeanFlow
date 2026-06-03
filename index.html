@@ -700,6 +700,12 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <span style="font-size:11px;color:var(--text-muted);flex:1" id="syncLabel">Not signed in</span>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
+  <div id="nameRow" style="display:none;padding:0 16px 10px;align-items:center;gap:6px">
+    <span id="nameDisplay" style="font-size:11px;color:var(--text-muted);flex:1"></span>
+    <input id="nameInput" type="text" class="input" style="display:none;flex:1;font-size:11px;padding:3px 8px;height:26px" placeholder="Your name" onkeydown="if(event.key==='Enter')doUpdateName();if(event.key==='Escape')toggleNameEdit(false)">
+    <button id="nameEditBtn" onclick="toggleNameEdit(true)" style="background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'" title="Edit name">✏</button>
+    <button id="nameSaveBtn" onclick="doUpdateName()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--green);padding:0;flex-shrink:0">✓</button>
+  </div>
   <div style="padding:0 16px 10px;display:flex;gap:6px">
     <button onclick="openObsSettings()" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
       <span style="font-size:14px">📓</span> Obsidian Sync
@@ -5516,6 +5522,8 @@ async function sbPullAndStart(){
   }catch(e){ console.warn('Pull error',e); }
   const email = _sbUser.email||'Synced';
   setSyncStatus('on', email.split('@')[0]);
+  const _nr=$('nameRow'),_nd=$('nameDisplay');
+  if(_nr&&_nd){_nd.textContent=_sbUser.user_metadata?.full_name||email.split('@')[0];_nr.style.display='flex';}
   document.getElementById('auth-screen').style.display='none';
   init();
   setTimeout(obsFullSync,2000);
@@ -5572,6 +5580,7 @@ async function doSignOut(){
   _sbUser=null;
   localStorage.removeItem(_SYNC_TS_KEY);
   setSyncStatus('off','Not signed in');
+  const _nr=$('nameRow');if(_nr){_nr.style.display='none';toggleNameEdit(false);}
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('auth-password').value='';
   document.getElementById('auth-err').textContent='';
@@ -5579,6 +5588,25 @@ async function doSignOut(){
   document.getElementById('auth-btn').disabled=false;
 }
 
+function toggleNameEdit(editing){
+  $('nameDisplay').style.display=editing?'none':'';
+  $('nameInput').style.display=editing?'':'none';
+  $('nameEditBtn').style.display=editing?'none':'';
+  $('nameSaveBtn').style.display=editing?'':'none';
+  if(editing){$('nameInput').value=_sbUser?.user_metadata?.full_name||'';$('nameInput').focus();}
+}
+async function doUpdateName(){
+  const name=($('nameInput')||{value:''}).value.trim();
+  if(!name){showToast('Name cannot be empty','var(--red)');return;}
+  if(!_sb||!_sbUser){showToast('Not signed in','var(--red)');return;}
+  const {data,error}=await _sb.auth.updateUser({data:{full_name:name}});
+  if(error){showToast('Could not update name','var(--red)');return;}
+  _sbUser=data.user;
+  $('nameDisplay').textContent=name;
+  const gn=$('greetName');if(gn)gn.textContent=name;
+  toggleNameEdit(false);
+  showToast('Name updated!','var(--green)');
+}
 function switchAuthTab(t){
   document.getElementById('auth-tab-in').classList.toggle('on',t==='in');
   document.getElementById('auth-tab-up').classList.toggle('on',t==='up');
