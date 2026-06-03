@@ -1502,7 +1502,7 @@ function taskCard(t){
         ${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color:var(--green);border-radius:99px">🏢 ${esc(t.business)}</span>`:''}
         ${t.dept?`<span class="task-cat" style="background:rgba(96,165,250,.1);color:#60a5fa;border-radius:99px">◈ ${esc(t.dept)}</span>`:''}
         ${t.due?(()=>{const overdue=t.due<today()&&!t.done,isToday=t.due===today()&&!t.done;return `<span class="task-cat" style="${overdue?'background:rgba(248,113,113,.15);color:var(--red);border-color:rgba(248,113,113,.3)':isToday?'background:rgba(251,191,36,.12);color:var(--yellow);border-color:rgba(251,191,36,.3)':''}">📅 ${fmtDateShort(t.due)}</span>`})():''}
-        ${t.recur?`<span class="task-cat" style="background:rgba(74,222,128,.08);color:var(--green);border-radius:99px">🔁 ${t.recur==='monthly'&&t.recurDays&&t.recurDays.length?'day '+t.recurDays.map(d=>d===-1?'last':d===-2?'2nd last':d).join(', '):t.recur}</span>`:''}
+        ${t.recur?`<span class="task-cat" style="background:rgba(74,222,128,.08);color:var(--green);border-radius:99px">🔁 ${t.recur==='weekly'&&t.recurWeekDays&&t.recurWeekDays.length?['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_,i)=>t.recurWeekDays.includes(i)).join(', '):t.recur==='monthly'&&t.recurDays&&t.recurDays.length?'day '+t.recurDays.map(d=>d===-1?'last':d===-2?'2nd last':d).join(', '):t.recur}</span>`:''}
       </div>
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0">
@@ -1518,10 +1518,16 @@ function resolveRecurDays(year,month,days){
   const last=new Date(year,month+1,0).getDate();
   return days.map(d=>d<0?last+d+1:Math.min(d,last)).sort((a,b)=>a-b);
 }
-function nextRecurDue(due,recur,recurDays){
+function nextRecurDue(due,recur,recurDays,recurWeekDays){
   const d=new Date((due||today())+'T12:00:00');
   if(recur==='daily') d.setDate(d.getDate()+1);
-  else if(recur==='weekly') d.setDate(d.getDate()+7);
+  else if(recur==='weekly'){
+    if(recurWeekDays&&recurWeekDays.length){
+      const s=new Date(d);s.setDate(s.getDate()+1);
+      for(let i=0;i<7;i++){if(recurWeekDays.includes(s.getDay()))return s.toLocaleDateString('sv');s.setDate(s.getDate()+1);}
+    }
+    d.setDate(d.getDate()+7);
+  }
   else if(recur==='monthly'){
     if(recurDays&&recurDays.length){
       const cur=d.getDate(),m=d.getMonth(),y=d.getFullYear();
@@ -1543,7 +1549,7 @@ function toggleTask(id){
   if(!t)return;
   t.done=!t.done;
   if(t.done&&t.recur){
-    const next={...t,id:uid(),done:false,created:today(),due:nextRecurDue(t.due,t.recur,t.recurDays)};
+    const next={...t,id:uid(),done:false,created:today(),due:nextRecurDue(t.due,t.recur,t.recurDays,t.recurWeekDays)};
     tasks.unshift(next);
   }
   save(K.tasks,tasks);
@@ -1561,6 +1567,7 @@ function editTask(id){
     if($('m-task-due')) $('m-task-due').value=t.due||'';
     if($('m-task-recur')) $('m-task-recur').value=t.recur||'';
     if($('m-task-recur-days')){$('m-task-recur-days').value=t.recurDays?t.recurDays.join(', '):'';toggleRecurDays(t.recur||'');}
+    document.querySelectorAll('#m-task-weekday-chips button').forEach(b=>{const on=(t.recurWeekDays||[]).includes(parseInt(b.dataset.day));b.classList.toggle('wday-on',on);b.style.background=on?'var(--t-tasks)':'transparent';b.style.borderColor=on?'var(--t-tasks)':'var(--border-md)';b.style.color=on?'#000':'var(--text-muted)';});
     // Business chip
     if(t.business){
       const bc=document.querySelectorAll('#m-task-biz-chips button');
@@ -3200,8 +3207,17 @@ function selectMtgBiz(btn, label){
 }
 
 function toggleRecurDays(v){
-  const el=document.getElementById('m-task-recur-days-wrap');
-  if(el) el.style.display=v==='monthly'?'':'none';
+  const monthWrap=document.getElementById('m-task-recur-days-wrap');
+  const weekWrap=document.getElementById('m-task-recur-weekdays-wrap');
+  if(monthWrap) monthWrap.style.display=v==='monthly'?'':'none';
+  if(weekWrap) weekWrap.style.display=v==='weekly'?'':'none';
+}
+function toggleWeekDay(btn){
+  const on=!btn.classList.contains('wday-on');
+  btn.classList.toggle('wday-on',on);
+  btn.style.background=on?'var(--t-tasks)':'transparent';
+  btn.style.borderColor=on?'var(--t-tasks)':'var(--border-md)';
+  btn.style.color=on?'#000':'var(--text-muted)';
 }
 function addRecurDay(day){
   const el=document.getElementById('m-task-recur-days');
@@ -3248,6 +3264,12 @@ const MODAL_FORMS = {
       <div class="field"><label>Due Date</label><input class="input" id="m-task-due" type="date"></div>
       <div class="field"><label>Repeat</label><select class="select" id="m-task-recur" onchange="toggleRecurDays(this.value)"><option value="">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
     </div>
+    <div class="field" id="m-task-recur-weekdays-wrap" style="display:none">
+      <label>Repeat on</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="m-task-weekday-chips">
+        ${[['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0]].map(([l,v])=>`<button type="button" data-day="${v}" onclick="toggleWeekDay(this)" style="padding:4px 12px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('')}
+      </div>
+    </div>
     <div class="field" id="m-task-recur-days-wrap" style="display:none">
       <label>On day(s) of month</label>
       <input class="input" id="m-task-recur-days" placeholder="e.g. 1, 15, 28" style="font-size:12px">
@@ -3278,6 +3300,7 @@ const MODAL_FORMS = {
       const fields={title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
         recur:$('m-task-recur').value||null,
         recurDays:(()=>{const raw=($('m-task-recur-days')||{value:''}).value;return raw?raw.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n!==0&&Math.abs(n)<=31):null;})(),
+        recurWeekDays:(()=>{const sel=[...document.querySelectorAll('#m-task-weekday-chips button.wday-on')].map(b=>parseInt(b.dataset.day));return sel.length?sel:null;})(),
         business:isWork?($('m-task-biz').value.trim()||''):'',
         dept:isWork?($('m-task-dept').value.trim()||''):'',
         urgency:_eimUrgency||null,importance:_eimImportance||null};
