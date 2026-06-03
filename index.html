@@ -1642,7 +1642,7 @@ function renderHabitMonth(){
     days.push(`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
   }
   // Header padding-left = drag(20)+gap(10)+icon(20)+gap(10)+name(112)+gap(10) = 182px
-  // right section: stats(36)+gap(8)+streak(36)+gap(8)+edit(24)+gap(8)+delete(24) = 144px
+  // right section: count(36)+gap(8)+streak(36)=80px frozen | edit(24)+gap(8)+delete(24)=56px scrollable
   const dowHeader = `<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:2px">
     <div style="width:20px;flex-shrink:0"></div>
     <div style="width:20px;flex-shrink:0"></div>
@@ -1656,7 +1656,8 @@ function renderHabitMonth(){
         return `<div class="habit-mheader-cell" style="flex:1;text-align:center"><div style="font-size:8px;font-weight:700;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${lbl}</div><div style="font-size:8px;font-family:'JetBrains Mono',monospace;color:${isT?'var(--t-habits)':'var(--text-muted)'};line-height:1.2">${num}</div></div>`;
       }).join('')}
     </div>
-    <div class="habit-mstats" style="width:144px;flex-shrink:0"></div>
+    <div style="width:56px;flex-shrink:0"></div>
+    <div class="habit-mstats" style="width:80px;flex-shrink:0"></div>
   </div>`;
   const habitRows = habits.map(h => {
     const done = days.map(ds => (log[ds]||[]).includes(h.id));
@@ -1673,11 +1674,13 @@ function renderHabitMonth(){
       <span style="font-size:15px;flex-shrink:0;width:20px;text-align:center">${h.icon||'⭐'}</span>
       <span style="font-size:12.5px;font-weight:500;color:var(--text-primary);width:112px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(h.name)}">${esc(h.name)}</span>
       <div class="habit-mcells" style="flex:1;display:flex;gap:3px;flex-wrap:nowrap">${cells}</div>
-      <div class="habit-mstats" style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:144px">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};width:36px;flex-shrink:0;text-align:right">${monthDone}/${daysInMonth}</span>
-        <span class="habit-streak" style="width:36px;flex-shrink:0">${streak}🔥</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <button class="delete-btn" title="Edit" onclick="editHabit('${h.id}')" style="font-size:13px">✏️</button>
         <button class="delete-btn" onclick="deleteHabit('${h.id}')">✕</button>
+      </div>
+      <div class="habit-mstats" style="display:flex;align-items:center;gap:8px;flex-shrink:0;width:80px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--text-muted)'};width:36px;flex-shrink:0;text-align:right">${monthDone}/${daysInMonth}</span>
+        <span class="habit-streak" style="width:36px;flex-shrink:0">${streak}🔥</span>
       </div>
     </div>`;
   }).join('');
