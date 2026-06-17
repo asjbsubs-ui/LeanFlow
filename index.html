@@ -3981,6 +3981,7 @@ async function gcalAutoSync(){
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && activeTab==='meetings') gcalAutoSync();
 });
+window.addEventListener('online',()=>{ sbFlushPending(); });
 window.addEventListener('focus',()=>{
   if(!document.hidden && activeTab==='meetings') gcalAutoSync();
 });
