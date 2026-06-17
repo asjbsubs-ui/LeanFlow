@@ -701,6 +701,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <input id="nameInput" type="text" class="input" style="display:none;flex:1;font-size:11px;padding:3px 8px;height:26px" placeholder="Your name" onkeydown="if(event.key==='Enter')doUpdateName();if(event.key==='Escape')toggleNameEdit(false)">
     <button id="nameEditBtn" onclick="toggleNameEdit(true)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'" title="Edit name">✏</button>
     <button id="nameSaveBtn" onclick="doUpdateName()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--green);padding:0;flex-shrink:0">✓</button>
+    <button onclick="sbFullPush()" id="sbPushBtn" title="Push all local data → cloud (use when this device has unsynced data)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">↑</button>
+    <button onclick="sbFullPull()" id="sbPullBtn" title="Pull all data from cloud (use when another device has newer data)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">↓</button>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
   <div style="padding:0 16px 10px;display:flex;gap:6px">
@@ -708,6 +710,14 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
     <button onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
+  </div>
+  <div id="cloudSyncRow" style="display:none;padding:0 16px 12px;display:none;gap:6px">
+    <button onclick="sbFullPush()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'" title="Upload all data from this device to cloud">
+      <span style="font-size:13px">☁</span> Push ↑
+    </button>
+    <button onclick="sbFullPull()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'" title="Download all data from cloud to this device">
+      <span style="font-size:13px">☁</span> Pull ↓
+    </button>
   </div>
 </nav>
 
@@ -5511,8 +5521,14 @@ function setSyncStatus(state, label){
   if(!dot) return;
   dot.className='sync-dot'+(state==='on'?'':state==='syncing'?' syncing':' off');
   lbl.textContent=label;
-  if(btn) btn.style.display=state==='on'?'inline':'none';
-  if(editBtn) editBtn.style.display=state==='on'?'inline':'none';
+  const on=state==='on';
+  if(btn) btn.style.display=on?'inline':'none';
+  if(editBtn) editBtn.style.display=on?'inline':'none';
+  const pbtn=$('sbPushBtn'), pullbtn=$('sbPullBtn');
+  if(pbtn) pbtn.style.display=on?'inline':'none';
+  if(pullbtn) pullbtn.style.display=on?'inline':'none';
+  const crow=$('cloudSyncRow');
+  if(crow) crow.style.display=on?'flex':'none';
 }
 
 async function sbCheckSession(){
@@ -5539,6 +5555,7 @@ async function sbPullAndStart(){
       localStorage.setItem(_SYNC_TS_KEY, new Date().toISOString());
     }
   }catch(e){ console.warn('Pull error',e); }
+  await sbFlushPending();
   const email = _sbUser.email||'Synced';
   const _displayName=_sbUser.user_metadata?.full_name||email.split('@')[0];
   setSyncStatus('on', _displayName);
@@ -5554,7 +5571,55 @@ async function sbPush(k,v){
       {user_id:_sbUser.id, key:k, value:v, updated_at:new Date().toISOString()},
       {onConflict:'user_id,key'}
     );
-  }catch(e){ console.warn('Push error',e); }
+    _sbClearPending(k);
+  }catch(e){ console.warn('Push error',e); _sbQueuePending(k,v); }
+}
+
+function _sbQueuePending(k,v){
+  try{const p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');p[k]={v,ts:Date.now()};localStorage.setItem('_sb_pending',JSON.stringify(p));}catch{}
+}
+function _sbClearPending(k){
+  try{const p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');if(p[k]){delete p[k];localStorage.setItem('_sb_pending',JSON.stringify(p));}}catch{}
+}
+async function sbFlushPending(){
+  if(!_sb||!_sbUser) return;
+  let p;try{p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');}catch{return;}
+  const keys=Object.keys(p);if(!keys.length) return;
+  console.log(`Flushing ${keys.length} pending sync entries…`);
+  for(const k of keys){
+    try{
+      await _sb.from('leanhq_sync').upsert(
+        {user_id:_sbUser.id,key:k,value:p[k].v,updated_at:new Date().toISOString()},
+        {onConflict:'user_id,key'}
+      );
+      delete p[k];
+    }catch(e){console.warn('Flush error',k,e);}
+  }
+  localStorage.setItem('_sb_pending',JSON.stringify(p));
+}
+
+async function sbFullPush(){
+  if(!_sb||!_sbUser){showToast('Sign in to use cloud sync','var(--red)');return;}
+  showToast('Pushing all local data to cloud…','var(--yellow)');
+  let ok=0,fail=0;
+  for(const k of Object.values(K)){
+    const raw=localStorage.getItem(k);if(raw===null)continue;
+    try{
+      let v;try{v=JSON.parse(raw);}catch{continue;}
+      await _sb.from('leanhq_sync').upsert(
+        {user_id:_sbUser.id,key:k,value:v,updated_at:new Date().toISOString()},
+        {onConflict:'user_id,key'}
+      );
+      ok++;
+    }catch(e){console.warn('Full push error',k,e);fail++;}
+  }
+  showToast(fail?`Pushed ${ok} keys, ${fail} failed`:`All data pushed to cloud (${ok} keys)`,'var(--green)');
+}
+
+async function sbFullPull(){
+  if(!_sb||!_sbUser){showToast('Sign in to use cloud sync','var(--red)');return;}
+  localStorage.removeItem(_SYNC_TS_KEY);
+  await sbPullAndStart();
 }
 
 function skipAuth(){
