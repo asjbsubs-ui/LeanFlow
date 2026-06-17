@@ -701,8 +701,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <input id="nameInput" type="text" class="input" style="display:none;flex:1;font-size:11px;padding:3px 8px;height:26px" placeholder="Your name" onkeydown="if(event.key==='Enter')doUpdateName();if(event.key==='Escape')toggleNameEdit(false)">
     <button id="nameEditBtn" onclick="toggleNameEdit(true)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'" title="Edit name">✏</button>
     <button id="nameSaveBtn" onclick="doUpdateName()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--green);padding:0;flex-shrink:0">✓</button>
-    <button onclick="sbFullPush()" id="sbPushBtn" title="Push all local data → cloud (use when this device has unsynced data)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">↑</button>
-    <button onclick="sbFullPull()" id="sbPullBtn" title="Pull all data from cloud (use when another device has newer data)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">↓</button>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
   <div style="padding:0 16px 10px;display:flex;gap:6px">
@@ -710,14 +708,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
     <button onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
-  </div>
-  <div id="cloudSyncRow" style="display:none;padding:0 16px 12px;display:none;gap:6px">
-    <button onclick="sbFullPush()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'" title="Upload all data from this device to cloud">
-      <span style="font-size:13px">☁</span> Push ↑
-    </button>
-    <button onclick="sbFullPull()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'" title="Download all data from cloud to this device">
-      <span style="font-size:13px">☁</span> Pull ↓
-    </button>
   </div>
 </nav>
 
@@ -5525,11 +5515,6 @@ function setSyncStatus(state, label){
   const on=state==='on';
   if(btn) btn.style.display=on?'inline':'none';
   if(editBtn) editBtn.style.display=on?'inline':'none';
-  const pbtn=$('sbPushBtn'), pullbtn=$('sbPullBtn');
-  if(pbtn) pbtn.style.display=on?'inline':'none';
-  if(pullbtn) pullbtn.style.display=on?'inline':'none';
-  const crow=$('cloudSyncRow');
-  if(crow) crow.style.display=on?'flex':'none';
 }
 
 async function sbCheckSession(){
