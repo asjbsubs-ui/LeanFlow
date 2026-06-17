@@ -707,7 +707,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button onclick="openObsSettings()" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
-    <button onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
+    <button id="obsFullSyncBtn" onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
   </div>
 </nav>
 
@@ -5343,18 +5343,29 @@ const OBS_KEY_MAP = {
   [K.vocab]:'Vocabulary.md'
 };
 const _obsThrottle={};
+let _obsErrTs=0;
 
 async function pushToObsidian(file, md){
   const key=localStorage.getItem('obs_api_key');
   const folder=(localStorage.getItem('obs_vault_folder')||'LeanLab/Data').replace(/\/$/,'');
   if(!key) return;
   try{
-    await fetch(`https://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
+    const r=await fetch(`https://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
       method:'PUT',
       headers:{'Authorization':`Bearer ${key}`,'Content-Type':'text/markdown'},
       body:md
     });
-  }catch(e){ /* Obsidian not open — silent */ }
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    _obsErrTs=0;
+    const btn=$('obsFullSyncBtn');if(btn){btn.style.color='';btn.title='Sync all to Obsidian now';}
+  }catch(e){
+    if(Date.now()-_obsErrTs>30000){
+      _obsErrTs=Date.now();
+      const isCert=e.message&&(e.message.includes('fetch')||e.message.includes('Failed'));
+      showToast('📓 Obsidian sync failed — '+(isCert?'visit https://localhost:27124 in browser to accept certificate':'check Obsidian is open'),'var(--red)');
+      const btn=$('obsFullSyncBtn');if(btn){btn.style.color='var(--red)';btn.title='Obsidian sync failed — click to retry';}
+    }
+  }
 }
 
 function obsSync(k){
@@ -5793,7 +5804,10 @@ function init(){
 
 // Set Obsidian API key on first run (stored in localStorage only, never sent externally)
 if(!localStorage.getItem('obs_api_key')) localStorage.setItem('obs_api_key','bce3935f101e19c7eb4a39e47add4fd6f3bfbea2d1366deb60e079e41f366d5a');
-if(!localStorage.getItem('obs_vault_folder')) localStorage.setItem('obs_vault_folder','LeanLab/Data');
+// Migrate legacy LeanHQ folder path to LeanLab
+if(!localStorage.getItem('obs_vault_folder')||localStorage.getItem('obs_vault_folder')==='LeanHQ/Data'){
+  localStorage.setItem('obs_vault_folder','LeanLab/Data');
+}
 
 // Boot — Supabase first, then render
 initSupabase();
