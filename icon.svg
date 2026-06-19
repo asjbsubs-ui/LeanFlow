@@ -10,7 +10,8 @@
   <rect x="112" y="112" width="48" height="242" rx="8" fill="#4ade80"/>
   <rect x="112" y="308" width="124" height="46" rx="8" fill="#4ade80"/>
 
-  <!-- L — right -->
+  <!-- F — right -->
   <rect x="276" y="112" width="48" height="242" rx="8" fill="#4ade80"/>
-  <rect x="276" y="308" width="124" height="46" rx="8" fill="#4ade80"/>
+  <rect x="276" y="112" width="124" height="46" rx="8" fill="#4ade80"/>
+  <rect x="276" y="216" width="96" height="40" rx="8" fill="#4ade80"/>
 </svg>
