@@ -3465,7 +3465,7 @@ const MODAL_FORMS = {
   workout:{title:'Log Workout',html:()=>{
     const w=_editingWorkoutId?load(K.workouts).find(x=>x.id===_editingWorkoutId):null;
     $('modalTitle').textContent=w?'Edit Workout':'Log Workout';
-    const focusChips=['Push','Pull','Legs','Upper Body','Full Body','Chest & Shoulders','Chest & Back','Back & Biceps','Arms','Core','Cardio','Basketball','Golf','Pickleball','Yoga'];
+    const focusChips=loadWoCats();
     const presetFocuses=w?(w.name||'').split(' & ').filter(f=>focusChips.includes(f)):[];
     return `
     <div class="field-row">
@@ -3475,7 +3475,19 @@ const MODAL_FORMS = {
       <div class="field"><label>Date</label><input class="input" id="m-wo-date" type="date" value="${w?w.date:today()}"></div>
     </div>
     <div class="field">
-      <label>Name / Focus</label>
+      <label style="display:flex;align-items:center;gap:8px">Name / Focus
+        <button type="button" onclick="toggleWoCatEdit()" style="padding:2px 8px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:10px;font-weight:600">✏️ Edit</button>
+      </label>
+      <div id="wo-cat-editor" style="display:none;margin-bottom:10px;padding:10px;border-radius:var(--r-sm);background:var(--bg-input);border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Edit Categories</div>
+        <div id="wo-cat-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          ${focusChips.map((c,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid var(--border);font-size:11px;color:var(--text-secondary)">${esc(c)}<button type="button" onclick="removeWoCat(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;line-height:1" title="Remove">✕</button></span>`).join('')}
+        </div>
+        <div style="display:flex;gap:6px">
+          <input id="wo-cat-new" class="input" placeholder="New category…" style="font-size:12px" onkeydown="if(event.key==='Enter'){event.preventDefault();addWoCat()}">
+          <button type="button" onclick="addWoCat()" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;white-space:nowrap;flex-shrink:0">+ Add</button>
+        </div>
+      </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="m-wo-focus-chips">
         ${focusChips.map(f=>{const on=presetFocuses.includes(f);return`<button type="button" onclick="selectWorkoutFocus(this)" class="${on?'focus-active':''}" style="padding:5px 11px;border-radius:99px;border:1px solid ${on?'var(--purple)':'var(--border-md)'};background:${on?'rgba(192,132,252,.15)':'transparent'};color:${on?'var(--purple)':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s" onmouseover="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-strong)'" onmouseout="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-md)'">${f}</button>`;}).join('')}
       </div>
@@ -4675,6 +4687,14 @@ function _dirAvatarColor(name){
   let h=0;for(let i=0;i<(name||'').length;i++) h=(h*31+name.charCodeAt(i))&0xffffff;
   return `hsl(${h%360},55%,58%)`;
 }
+
+const _WO_CATS_DEFAULT=['Push','Pull','Legs','Upper Body','Full Body','Chest & Shoulders','Chest & Back','Back & Biceps','Arms','Core','Cardio','Basketball','Golf','Pickleball','Yoga'];
+function loadWoCats(){try{return JSON.parse(localStorage.getItem('ahq_wo_cats'))||_WO_CATS_DEFAULT;}catch(e){return _WO_CATS_DEFAULT;}}
+function toggleWoCatEdit(){const ed=document.getElementById('wo-cat-editor');if(ed)ed.style.display=ed.style.display==='none'?'block':'none';}
+function removeWoCat(idx){const cats=loadWoCats();cats.splice(idx,1);localStorage.setItem('ahq_wo_cats',JSON.stringify(cats));_renderWoCatEditor();_renderWoChips();}
+function addWoCat(){const inp=$('wo-cat-new');const val=(inp.value||'').trim();if(!val)return;const cats=loadWoCats();if(!cats.includes(val)){cats.push(val);localStorage.setItem('ahq_wo_cats',JSON.stringify(cats));}inp.value='';_renderWoCatEditor();_renderWoChips();}
+function _renderWoCatEditor(){const el=document.getElementById('wo-cat-list');if(!el)return;const cats=loadWoCats();el.innerHTML=cats.map((c,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid var(--border);font-size:11px;color:var(--text-secondary)">${esc(c)}<button type="button" onclick="removeWoCat(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 2px;line-height:1">✕</button></span>`).join('');}
+function _renderWoChips(){const el=document.getElementById('m-wo-focus-chips');if(!el)return;const cats=loadWoCats();const sel=($('m-wo-name').value||'').split(' & ').filter(Boolean);el.innerHTML=cats.map(f=>{const on=sel.includes(f);return`<button type="button" onclick="selectWorkoutFocus(this)" class="${on?'focus-active':''}" style="padding:5px 11px;border-radius:99px;border:1px solid ${on?'var(--purple)':'var(--border-md)'};background:${on?'rgba(192,132,252,.15)':'transparent'};color:${on?'var(--purple)':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s" onmouseover="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-strong)'" onmouseout="if(!this.classList.contains('focus-active'))this.style.borderColor='var(--border-md)'">${f}</button>`;}).join('');}
 
 function fmtPhone(p){
   if(!p)return p;
