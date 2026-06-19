@@ -5792,7 +5792,7 @@ async function renderLogsN(q){
   const idbMemos=await vmGetAll().catch(()=>[]);
   const metaMemos=(load(K.mediaMemos)||[]);
   const idbIds=new Set(idbMemos.map(m=>m.id));
-  const allMemos=(_logsNoteStatusFilter?[]):[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
+  const allMemos=_logsNoteStatusFilter?[]:[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
   logsCount(`${textNotes.length} notes · ${allMemos.length} media`);
   const noteDir=_logsDateSort['notes']||'desc';
   const memoRows=allMemos.sort((a,b)=>noteDir==='asc'?(a.ts||0)-(b.ts||0):(b.ts||0)-(a.ts||0)).map(m=>dbRow([
