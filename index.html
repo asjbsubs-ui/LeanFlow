@@ -3565,7 +3565,7 @@ const MODAL_FORMS = {
       <div class="field"><label>Email</label><input class="input" id="m-con-email" type="email" placeholder="email@example.com" autocomplete="email" autocapitalize="none"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Phone</label><input class="input" id="m-con-phone" type="tel" placeholder="+1 (555) 000-0000" autocomplete="tel"></div>
+      <div class="field"><label>Phone</label><input class="input" id="m-con-phone" type="tel" placeholder="xxx-xxx-xxxx" autocomplete="tel" oninput="const d=this.value.replace(/\D/g,'').slice(0,10);this.value=d.length>6?d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6):d.length>3?d.slice(0,3)+'-'+d.slice(3):d"></div>
       <div class="field"><label>LinkedIn URL</label><input class="input" id="m-con-linkedin" placeholder="linkedin.com/in/…" autocapitalize="none"></div>
     </div>
     <div class="field-row">
