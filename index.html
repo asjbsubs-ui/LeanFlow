@@ -2258,19 +2258,19 @@ function renderSelfDev(){
       const typeIcon = TYPE_ICONS[i.type]||'📌';
       const statusLbl = STATUS_MAP[i.status]||i.status||'In Progress';
       const statusCol = i.status==='done'?'var(--green)':i.status==='todo'?'var(--text-muted)':'#60a5fa';
-      return `<div class="book-row">
+      return `<div class="book-row" onclick="viewKnowledge('${i.id}')" style="cursor:pointer">
         <div class="book-cover" style="background:rgba(34,211,238,.08);font-size:18px">${typeIcon}</div>
         <div class="book-info" style="flex:1;min-width:0">
           <div class="book-title">${esc(i.title)}</div>
           <div class="book-author">${i.type}${i.source?' · '+esc(i.source):''}${i.date?' · '+fmtDateShort(i.date):''}</div>
-          ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes.slice(0,100))}${i.notes.length>100?`… <button onclick="viewKnowledgeNotes('${i.id}')" style="background:none;border:none;color:var(--t-selfdev);font-size:11px;cursor:pointer;padding:0;font-family:'Outfit',sans-serif">Read more</button>`:''}</div>`:''}
+          ${i.notes?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5">${esc(i.notes.slice(0,100))}${i.notes.length>100?'…':''}</div>`:''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <div class="progress-track" style="flex:1"><div class="progress-fill" style="width:${pct}%;background:var(--t-selfdev)"></div></div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${statusCol};white-space:nowrap">${i.status==='done'?'✓ Done':pct+'%'}</span>
           </div>
         </div>
-        <button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="editKnowledge('${i.id}')">✏️</button>
-        <button class="delete-btn" onclick="deleteKnowledge('${i.id}')">✕</button>
+        <button class="delete-btn" style="color:var(--text-muted);margin-right:2px" onclick="event.stopPropagation();editKnowledge('${i.id}')">✏️</button>
+        <button class="delete-btn" onclick="event.stopPropagation();deleteKnowledge('${i.id}')">✕</button>
       </div>`;
     }).join('');
 
