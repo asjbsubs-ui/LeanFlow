@@ -3565,7 +3565,7 @@ const MODAL_FORMS = {
       <div class="field"><label>Email</label><input class="input" id="m-con-email" type="email" placeholder="email@example.com" autocomplete="email" autocapitalize="none"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Phone</label><input class="input" id="m-con-phone" type="tel" placeholder="xxx-xxx-xxxx" autocomplete="tel" oninput="const d=this.value.replace(/\D/g,'').slice(0,10);this.value=d.length>6?d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6):d.length>3?d.slice(0,3)+'-'+d.slice(3):d"></div>
+      <div class="field"><label>Phone</label><input class="input" id="m-con-phone" type="tel" placeholder="xxx-xxx-xxxx" autocomplete="tel" oninput="fmtPhoneInput(this)"></div>
       <div class="field"><label>LinkedIn URL</label><input class="input" id="m-con-linkedin" placeholder="linkedin.com/in/…" autocapitalize="none"></div>
     </div>
     <div class="field-row">
@@ -4682,6 +4682,18 @@ function fmtPhone(p){
   if(d.length===10)return d.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
   if(d.length===11&&d[0]==='1')return d.slice(1).replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
   return p;
+}
+function fmtPhoneInput(el){
+  const pos=el.selectionStart;
+  const raw=el.value;
+  const d=raw.replace(/\D/g,'').slice(0,10);
+  const fmt=d.length>6?d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6):d.length>3?d.slice(0,3)+'-'+d.slice(3):d;
+  if(raw===fmt)return;
+  el.value=fmt;
+  const digitsBeforeCursor=raw.slice(0,pos).replace(/\D/g,'').length;
+  let newPos=0,count=0;
+  while(newPos<fmt.length&&count<digitsBeforeCursor){if(/\d/.test(fmt[newPos]))count++;newPos++;}
+  el.setSelectionRange(newPos,newPos);
 }
 
 function renderDirectory(){
