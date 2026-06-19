@@ -5597,7 +5597,6 @@ async function sbPullAndStart(){
   document.getElementById('auth-screen').style.display='none';
   if(btn){btn.textContent='Sign In';btn.disabled=false;}
   init();
-  setTimeout(obsFullSync,2000);
 }
 async function _sbDoPull(){
   const lastSync = localStorage.getItem(_SYNC_TS_KEY);
@@ -5675,7 +5674,6 @@ async function sbFullPull(){
 function skipAuth(){
   document.getElementById('auth-screen').style.display='none';
   init();
-  setTimeout(obsFullSync,2000);
 }
 
 async function doAuth(){
@@ -5883,7 +5881,7 @@ if(!localStorage.getItem('obs_vault_folder')||_obsLegacyPaths.includes(localStor
 // Boot — Supabase first, then render
 initSupabase();
 if(_sb){ sbCheckSession(); }
-else { document.getElementById('auth-screen').style.display='none'; init(); setTimeout(obsFullSync,2000); }
+else { document.getElementById('auth-screen').style.display='none'; init(); }
 </script>
 </body>
 </html>
