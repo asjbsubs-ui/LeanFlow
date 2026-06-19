@@ -5388,7 +5388,7 @@ const OBS_KEY_MAP = {
 const _obsThrottle={};
 let _obsErrTs=0;
 
-async function pushToObsidian(file, md){
+async function pushToObsidian(file, md, silent=false){
   const key=localStorage.getItem('obs_api_key');
   const folder=(localStorage.getItem('obs_vault_folder')||'3. Business/LeanFlow/data').replace(/\/$/,'');
   if(!key) return;
@@ -5402,7 +5402,7 @@ async function pushToObsidian(file, md){
     _obsErrTs=0;
     const btn=$('obsFullSyncBtn');if(btn){btn.style.color='';btn.title='Sync all to Obsidian now';}
   }catch(e){
-    if(Date.now()-_obsErrTs>30000){
+    if(!silent && Date.now()-_obsErrTs>30000){
       _obsErrTs=Date.now();
       const isCert=e.message&&(e.message.includes('fetch')||e.message.includes('Failed'));
       showToast('📓 Obsidian sync failed — '+(isCert?'visit https://localhost:27124 in browser to accept certificate':'check Obsidian is open'),'var(--red)');
@@ -5539,12 +5539,12 @@ async function testObsSync(){
   }catch(e){ showToast('Not reachable — visit https://localhost:'+OBS_PORT+' in browser first to accept the certificate','var(--red)'); }
 }
 
-function obsFullSync(){
+function obsFullSync(silent=false){
   if(!localStorage.getItem('obs_api_key')) return;
   Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i).forEach(file=>{
-    pushToObsidian(file,obsMarkdown(file));
+    pushToObsidian(file,obsMarkdown(file),silent);
   });
-  showToast('📓 Synced to Obsidian','var(--green)');
+  if(!silent) showToast('📓 Synced to Obsidian','var(--green)');
 }
 
 // ── Supabase Cloud Sync ────────────────────────────────
@@ -5597,6 +5597,7 @@ async function sbPullAndStart(){
   document.getElementById('auth-screen').style.display='none';
   if(btn){btn.textContent='Sign In';btn.disabled=false;}
   init();
+  setTimeout(()=>obsFullSync(true),2000);
 }
 async function _sbDoPull(){
   const lastSync = localStorage.getItem(_SYNC_TS_KEY);
@@ -5674,6 +5675,7 @@ async function sbFullPull(){
 function skipAuth(){
   document.getElementById('auth-screen').style.display='none';
   init();
+  setTimeout(()=>obsFullSync(true),2000);
 }
 
 async function doAuth(){
@@ -5881,7 +5883,7 @@ if(!localStorage.getItem('obs_vault_folder')||_obsLegacyPaths.includes(localStor
 // Boot — Supabase first, then render
 initSupabase();
 if(_sb){ sbCheckSession(); }
-else { document.getElementById('auth-screen').style.display='none'; init(); }
+else { document.getElementById('auth-screen').style.display='none'; init(); setTimeout(()=>obsFullSync(true),2000); }
 </script>
 </body>
 </html>
