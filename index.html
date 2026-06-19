@@ -4676,6 +4676,14 @@ function _dirAvatarColor(name){
   return `hsl(${h%360},55%,58%)`;
 }
 
+function fmtPhone(p){
+  if(!p)return p;
+  const d=p.replace(/\D/g,'');
+  if(d.length===10)return d.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
+  if(d.length===11&&d[0]==='1')return d.slice(1).replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
+  return p;
+}
+
 function renderDirectory(){
   const q=(($('dirSearch')||{}).value||'').toLowerCase();
   const contacts=load(K.directory);
@@ -4726,7 +4734,7 @@ function renderDirectory(){
     const color=_dirAvatarColor(c.name||'?');
     const catColor=DIR_CAT_COLORS[c.category]||'rgba(255,255,255,.25)';
     const initial=(c.name||'?').charAt(0).toUpperCase();
-    const metaParts=[c.company,c.email,c.phone].filter(Boolean);
+    const metaParts=[c.company,c.email,c.phone?fmtPhone(c.phone):null].filter(Boolean);
     const tagChips=(c.tags||'').split(',').map(t=>t.trim()).filter(Boolean)
       .map(t=>`<span style="font-size:9px;padding:1px 7px;border-radius:99px;background:rgba(255,255,255,.06);color:var(--text-muted);border:1px solid var(--border)">${esc(t)}</span>`).join('');
     const isSel=_dirSelected.has(c.id);
