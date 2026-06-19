@@ -5347,7 +5347,7 @@ let _obsErrTs=0;
 
 async function pushToObsidian(file, md){
   const key=localStorage.getItem('obs_api_key');
-  const folder=(localStorage.getItem('obs_vault_folder')||'LeanFlow/Data').replace(/\/$/,'');
+  const folder=(localStorage.getItem('obs_vault_folder')||'3. Business/leanflow/data').replace(/\/$/,'');
   if(!key) return;
   try{
     const r=await fetch(`https://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
@@ -5461,11 +5461,11 @@ function obsMarkdown(file){
 // Add sidebar Obsidian settings button
 function openObsSettings(){
   const key=localStorage.getItem('obs_api_key')||'';
-  const folder=localStorage.getItem('obs_vault_folder')||'LeanFlow/Data';
+  const folder=localStorage.getItem('obs_vault_folder')||'3. Business/leanflow/data';
   $('modalTitle').textContent='Obsidian Sync Settings';
   $('modalBody').innerHTML=`
     <div class="field"><label>Local REST API Key</label><input class="input" id="obs-key" value="${esc(key)}" placeholder="Paste your API key here…" style="font-family:'JetBrains Mono',monospace;font-size:12px"></div>
-    <div class="field"><label>Vault Folder</label><input class="input" id="obs-folder" value="${esc(folder)}" placeholder="LeanFlow/Data"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Folder inside your vault where notes will be saved. Created automatically if it doesn't exist.</div></div>
+    <div class="field"><label>Vault Folder</label><input class="input" id="obs-folder" value="${esc(folder)}" placeholder="3. Business/leanflow/data"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Folder inside your vault where notes will be saved. Created automatically if it doesn't exist.</div></div>
     <div style="font-size:11px;color:var(--text-muted);line-height:1.7;padding:10px;background:var(--bg-alt);border-radius:var(--r-sm)">
       Requires the <strong style="color:var(--text-secondary)">Local REST API</strong> community plugin in Obsidian.<br>
       Only syncs when Obsidian is open on this PC.
@@ -5479,7 +5479,7 @@ function openObsSettings(){
 
 function saveObsSettings(){
   const key=$('obs-key').value.trim();
-  const folder=$('obs-folder').value.trim()||'LeanFlow/Data';
+  const folder=$('obs-folder').value.trim()||'3. Business/leanflow/data';
   if(key) localStorage.setItem('obs_api_key',key); else localStorage.removeItem('obs_api_key');
   localStorage.setItem('obs_vault_folder',folder);
   closeModal();
@@ -5804,9 +5804,10 @@ function init(){
 
 // Set Obsidian API key on first run (stored in localStorage only, never sent externally)
 if(!localStorage.getItem('obs_api_key')) localStorage.setItem('obs_api_key','bce3935f101e19c7eb4a39e47add4fd6f3bfbea2d1366deb60e079e41f366d5a');
-// Migrate legacy LeanHQ/LeanLab folder paths to LeanFlow
-if(!localStorage.getItem('obs_vault_folder')||localStorage.getItem('obs_vault_folder')==='LeanHQ/Data'||localStorage.getItem('obs_vault_folder')==='LeanLab/Data'){
-  localStorage.setItem('obs_vault_folder','LeanFlow/Data');
+// Migrate legacy/incorrect folder paths to correct ASJ vault location
+const _obsLegacyPaths=['LeanHQ/Data','LeanLab/Data','LeanFlow/Data'];
+if(!localStorage.getItem('obs_vault_folder')||_obsLegacyPaths.includes(localStorage.getItem('obs_vault_folder'))){
+  localStorage.setItem('obs_vault_folder','3. Business/leanflow/data');
 }
 
 // Boot — Supabase first, then render
