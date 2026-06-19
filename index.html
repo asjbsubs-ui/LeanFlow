@@ -397,8 +397,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .pnum{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);flex-shrink:0;width:18px;margin-top:2px}
 .ptitle{font-size:13.5px;font-weight:600;margin-bottom:3px;color:var(--text-bright)}
 .psub{font-size:11px;color:var(--text-muted);line-height:1.4}
-.pimpact{font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700}
-.pimpact.high{color:var(--red)}.pimpact.med{color:var(--yellow)}.pimpact.low{color:var(--green)}
 .schedule-item{display:flex;gap:14px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
 .schedule-item:last-child{border-bottom:none}
 .stime{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:72px;flex-shrink:0;margin-top:2px}
@@ -768,12 +766,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="ph-sub">Work and personal — separated and prioritised.</div>
     </div>
     <div class="ph-actions">
-      <select class="input" id="taskFilter" style="width:120px" onchange="renderTasks()">
-        <option value="all" selected>All active</option>
-        <option value="high">High priority</option>
-        <option value="done">✓ Done</option>
-      </select>
-      <button class="btn btn-ghost" onclick="openModal('task','personal')" style="gap:5px">🏠 Personal</button>
+<button class="btn btn-ghost" onclick="openModal('task','personal')" style="gap:5px">🏠 Personal</button>
       <button class="btn btn-primary" style="background:var(--t-tasks);color:#000;gap:5px" onclick="openModal('task','work')">💼 Work</button>
       <button class="btn btn-ghost" onclick="openLogs('tasks')">📋 Logs</button>
     </div>
@@ -1407,9 +1400,7 @@ function renderHome(){
     let s = 0;
     if(t.due && t.due < td) s += 80;           // overdue
     if(t.due === td) s += 40;                   // due today
-    if(t.priority==='High') s += 30;
-    else if(t.priority==='Medium') s += 10;
-    if(t.urgency==='urgent') s += 20;
+if(t.urgency==='urgent') s += 20;
     if(t.importance==='important') s += 15;
     return s;
   }
@@ -1430,9 +1421,6 @@ function renderHome(){
       <div style="flex:1">
         <div class="ptitle">${esc(t.title)}</div>
         <div class="psub">${t.type==='personal'?'Personal':'Work'}${t.business?' · '+esc(t.business):''}${t.due?' · '+dueLbl:''}</div>
-      </div>
-      <div style="text-align:right">
-        <div class="pimpact ${!t.priority||t.priority==='Medium'?'med':t.priority==='High'?'high':'low'}">${(t.priority||'MED').toUpperCase()}</div>
       </div>
     </div>`;
   }).join('')
@@ -1463,7 +1451,7 @@ function renderHomeTasks(){
   const tasks = load(K.tasks).filter(t=>!t.done && t.due===today());
   const el = $('homeTasks');
   if(!tasks.length){el.innerHTML='<div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks due today</span></div>';return;}
-  el.innerHTML = tasks.slice(0,4).map(t=>`<div class="check-row ${t.done?'done':''}" onclick="toggleTask('${t.id}')"><div class="check-box">${t.done?'✓':''}</div><span class="check-text">${esc(t.title)}</span><span class="check-meta">${t.priority||''}</span></div>`).join('');
+  el.innerHTML = tasks.slice(0,4).map(t=>`<div class="check-row ${t.done?'done':''}" onclick="toggleTask('${t.id}')"><div class="check-box">${t.done?'✓':''}</div><span class="check-text">${esc(t.title)}</span><span class="check-meta">${t.due?fmtDateShort(t.due):''}</span></div>`).join('');
 }
 function renderHomeHabits(){
   const habits = load(K.habits);
@@ -1514,8 +1502,7 @@ function taskCard(t){
     <div style="flex:1;min-width:0">
       <div class="task-title">${esc(t.title)}</div>
       <div class="task-meta">
-        ${t.priority?`<span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span>`:''}
-        ${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color:var(--green);border-radius:99px">🏢 ${esc(t.business)}</span>`:''}
+${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color:var(--green);border-radius:99px">🏢 ${esc(t.business)}</span>`:''}
         ${t.dept?`<span class="task-cat" style="background:rgba(96,165,250,.1);color:#60a5fa;border-radius:99px">◈ ${esc(t.dept)}</span>`:''}
         ${t.due?(()=>{const overdue=t.due<today()&&!t.done,isToday=t.due===today()&&!t.done;return `<span class="task-cat" style="${overdue?'background:rgba(248,113,113,.15);color:var(--red);border-color:rgba(248,113,113,.3)':isToday?'background:rgba(251,191,36,.12);color:var(--yellow);border-color:rgba(251,191,36,.3)':''}">📅 ${fmtDateShort(t.due)}</span>`})():''}
         ${t.recur?`<span class="task-cat" style="background:rgba(74,222,128,.08);color:var(--green);border-radius:99px">🔁 ${t.recur==='weekly'&&t.recurWeekDays&&t.recurWeekDays.length?['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].filter((_,i)=>t.recurWeekDays.includes(i)).join(', '):t.recur==='monthly'&&t.recurDays&&t.recurDays.length?'day '+t.recurDays.map(d=>d===-1?'last':d===-2?'2nd last':d).join(', '):t.recur}</span>`:''}
@@ -1580,7 +1567,6 @@ function editTask(id){
   // Pre-fill form after modal opens
   setTimeout(()=>{
     if($('m-task-title')) $('m-task-title').value=t.title||'';
-    if($('m-task-priority')) $('m-task-priority').value=t.priority||'Medium';
     if($('m-task-due')) $('m-task-due').value=t.due||'';
     if($('m-task-recur')) $('m-task-recur').value=t.recur||'';
     if($('m-task-recur-days')){$('m-task-recur-days').value=t.recurDays?t.recurDays.join(', '):'';toggleRecurDays(t.recur||'');}
@@ -1611,7 +1597,7 @@ async function addTaskToGcal(id){
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
   const startStr=`${t.due}T09:00:00`;
   const endStr=`${t.due}T10:00:00`;
-  const desc=[t.business,t.dept,t.priority?`Priority: ${t.priority}`:''].filter(Boolean).join(' · ');
+  const desc=[t.business,t.dept].filter(Boolean).join(' · ');
   if(token&&Date.now()<exp){
     try{
       const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
@@ -3276,8 +3262,7 @@ const MODAL_FORMS = {
     </div>
     <div class="field"><label>Task Title *</label><input class="input" id="m-task-title" placeholder="What needs to get done?"></div>
     <div class="field-row">
-      <div class="field"><label>Priority</label><select class="select" id="m-task-priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
-      <div class="field"><label>Due Date</label><input class="input" id="m-task-due" type="date"></div>
+<div class="field"><label>Due Date</label><input class="input" id="m-task-due" type="date"></div>
       <div class="field"><label>Repeat</label><select class="select" id="m-task-recur" onchange="toggleRecurDays(this.value)"><option value="">None</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
     </div>
     <div class="field" id="m-task-recur-weekdays-wrap" style="display:none">
@@ -3313,7 +3298,7 @@ const MODAL_FORMS = {
       const title=$('m-task-title').value.trim();if(!title)return alert('Title required');
       const tasks=load(K.tasks);
       const isWork=_taskTypeDefault==='work';
-      const fields={title,type:_taskTypeDefault,priority:$('m-task-priority').value,due:$('m-task-due').value,
+      const fields={title,type:_taskTypeDefault,due:$('m-task-due').value,
         recur:$('m-task-recur').value||null,
         recurDays:(()=>{const raw=($('m-task-recur-days')||{value:''}).value;return raw?raw.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)&&n!==0&&Math.abs(n)<=31):null;})(),
         recurWeekDays:(()=>{const sel=[...document.querySelectorAll('#m-task-weekday-chips button.wday-on')].map(b=>parseInt(b.dataset.day));return sel.length?sel:null;})(),
@@ -3695,7 +3680,7 @@ function exportICS(){
   });
   tasks.forEach(t=>{
     const dt=t.due.replace(/-/g,'');
-    ics+=`BEGIN:VTODO\r\nUID:${t.id}@leanhq\r\nSUMMARY:${sanitize(t.title)}\r\nDUE;VALUE=DATE:${dt}\r\nSTATUS:${t.done?'COMPLETED':'NEEDS-ACTION'}\r\nPRIORITY:${t.priority==='High'?1:t.priority==='Low'?9:5}\r\nEND:VTODO\r\n`;
+    ics+=`BEGIN:VTODO\r\nUID:${t.id}@leanhq\r\nSUMMARY:${sanitize(t.title)}\r\nDUE;VALUE=DATE:${dt}\r\nSTATUS:${t.done?'COMPLETED':'NEEDS-ACTION'}\r\nEND:VTODO\r\n`;
   });
   ics+='END:VCALENDAR';
   const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
@@ -4271,11 +4256,9 @@ function renderLogsT(q){
   const q_=(q||'').toLowerCase();
   const all=load(K.tasks).filter(t=>!q_||t.title.toLowerCase().includes(q_)||(t.cat||'').toLowerCase().includes(q_));
   logsCount(all.length+' tasks');
-  const imp={High:'<span class="lbl lbl-r">High</span>',Medium:'<span class="lbl lbl-a">Med</span>',Low:'<span class="lbl lbl-g">Low</span>'};
   const rows=[...all].sort((a,b)=>a.done-b.done||((_logsDateSort['tasks']||'asc')==='asc'?(a.due||'').localeCompare(b.due||''):(b.due||'').localeCompare(a.due||''))).map(t=>dbRow([
     `<span style="${t.done?'text-decoration:line-through;color:var(--text-muted)':'color:var(--text-primary);font-weight:500'}">${esc(t.title)}</span>`,
     `<span class="lbl ${t.type==='personal'?'lbl-p':'lbl-b'}">${t.type==='personal'?'Personal':'Work'}</span>`,
-    imp[t.priority]||'<span class="lbl" style="background:rgba(255,255,255,.05);color:var(--text-muted)">—</span>',
     t.business?`<span style="font-size:11px;color:var(--green)">🏢 ${esc(t.business)}</span>`:'—',
     t.dept?`<span style="font-size:11px;color:#60a5fa">◈ ${esc(t.dept)}</span>`:'—',
     t.due?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(t.due)}</span>`:'—',
@@ -4284,7 +4267,7 @@ function renderLogsT(q){
       :'<span class="lbl lbl-a">Open</span>',
     `<button onclick="editTask('${t.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-tasks)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteTask',t.id)
   ]));
-  logsHtml(dbTable(['Title','Type','Priority','Business','Area',sortHdr('tasks','Due'),'Status',''],rows)+renderTrashSection('tasks'));
+  logsHtml(dbTable(['Title','Type','Business','Area',sortHdr('tasks','Due'),'Status',''],rows)+renderTrashSection('tasks'));
 }
 
 // ── Meetings Logs ─────────────────────────────────────
@@ -5441,7 +5424,7 @@ function obsMarkdown(file){
     const tasks=load(K.tasks);
     const work=tasks.filter(t=>t.type!=='personal');
     const personal=tasks.filter(t=>t.type==='personal');
-    const row=t=>`- [${t.done?'x':' '}] ${t.title}${t.priority?' #'+t.priority.toLowerCase():''}${t.business?' · '+t.business:''}${t.dept?' · '+t.dept:''}${t.due?' 📅 '+t.due:''}`;
+    const row=t=>`- [${t.done?'x':' '}] ${t.title}${t.business?' · '+t.business:''}${t.dept?' · '+t.dept:''}${t.due?' 📅 '+t.due:''}`;
     return `---\nupdated: ${now}\nsource: LeanFlow\n---\n# ✅ Tasks\n\n## 💼 Work\n${work.length?work.map(row).join('\n'):'_None_'}\n\n## 🏠 Personal\n${personal.length?personal.map(row).join('\n'):'_None_'}\n`;
   }
   if(file==='Meetings.md'){
