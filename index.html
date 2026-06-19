@@ -1283,6 +1283,7 @@ function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);obsSync
 
 function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+function fmtWeekRange(sunStr){const sun=new Date(sunStr+'T12:00:00');const sat=new Date(sun);sat.setDate(sun.getDate()+6);const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];return sun.getMonth()===sat.getMonth()?`${mn[sun.getMonth()]} ${sun.getDate()}-${sat.getDate()}`:`${mn[sun.getMonth()]} ${sun.getDate()} – ${mn[sat.getMonth()]} ${sat.getDate()}`;}
 
 // ── Keys ──────────────────────────────────────────────
 const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab'};
@@ -2649,7 +2650,7 @@ function renderReview(){
   const d=new Date();
   const sun=new Date(d);sun.setDate(d.getDate()-d.getDay());
   const sunStr=sun.toLocaleDateString('sv');
-  if($('reviewWeekLabel')) $('reviewWeekLabel').textContent=fmtDateShort(sunStr);
+  if($('reviewWeekLabel')) $('reviewWeekLabel').textContent=fmtWeekRange(sunStr);
   _fillReviewForm(null);
   // Athena scorecard + AI review
   const sc = $('reviewScorecard');
@@ -5816,7 +5817,7 @@ function init(){
   $('sbDate').textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
   // Set current week label for review
   const sun=new Date(now);sun.setDate(now.getDate()-now.getDay());
-  if($('reviewWeekLabel'))$('reviewWeekLabel').textContent=fmtDateShort(sun.toLocaleDateString('sv'));
+  if($('reviewWeekLabel'))$('reviewWeekLabel').textContent=fmtWeekRange(sun.toLocaleDateString('sv'));
   // Initial renders
   document.documentElement.style.setProperty('--tab-color','var(--t-home)');
   updateScore();
