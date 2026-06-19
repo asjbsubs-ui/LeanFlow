@@ -5586,7 +5586,9 @@ async function sbCheckSession(){
 
 async function sbPullAndStart(){
   setSyncStatus('syncing','Syncing…');
-  const pullTimeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sync timed out')),15000));
+  const btn=document.getElementById('auth-btn');
+  if(btn){btn.textContent='Syncing data…';btn.disabled=true;}
+  const pullTimeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sync timed out')),8000));
   try{
     await Promise.race([_sbDoPull(),pullTimeout]);
   }catch(e){ console.warn('Pull/flush error — starting with local data',e); }
@@ -5594,6 +5596,7 @@ async function sbPullAndStart(){
   const _displayName=_sbUser.user_metadata?.full_name||email.split('@')[0];
   setSyncStatus('on', _displayName);
   document.getElementById('auth-screen').style.display='none';
+  if(btn){btn.textContent='Sign In';btn.disabled=false;}
   init();
   setTimeout(obsFullSync,2000);
 }
