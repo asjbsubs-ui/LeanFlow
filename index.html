@@ -1402,25 +1402,40 @@ function updateScore(){
 // ── HOME ──────────────────────────────────────────────
 function renderHome(){
   updateScore();
-  // Build Athena AI instruction + priority cards from localStorage
-  const allOpen = load(K.tasks).filter(t=>!t.done).sort((a,b)=>{const p={High:0,Medium:1,Low:2};return(p[a.priority]||1)-(p[b.priority]||1)||((a.due===today()?0:1)-(b.due===today()?0:1));});
+  const td = today();
+  function taskScore(t){
+    let s = 0;
+    if(t.due && t.due < td) s += 80;           // overdue
+    if(t.due === td) s += 40;                   // due today
+    if(t.priority==='High') s += 30;
+    else if(t.priority==='Medium') s += 10;
+    if(t.urgency==='urgent') s += 20;
+    if(t.importance==='important') s += 15;
+    return s;
+  }
+  const allOpen = load(K.tasks).filter(t=>!t.done).sort((a,b)=>taskScore(b)-taskScore(a));
   const top3 = allOpen.slice(0,3);
   const pclass = ['p1','p2','p3'];
-  const firstHigh = allOpen.find(t=>t.priority==='High');
-  const aiText = firstHigh ? `Do this first: <strong>${esc(firstHigh.title)}</strong>` : 'All clear. Add your top priorities in the Tasks tab to see them ranked here.';
-  const todayCount = allOpen.filter(t=>t.due===today()).length;
-  const aiSub = `${allOpen.length} open task${allOpen.length!==1?'s':''} · ${todayCount} due today`;
-  const priorityCards = top3.length ? top3.map((t,i)=>`
-    <div class="priority-card ${pclass[i]}" onclick="toggleTask('${t.id}')">
+  const todayCount = allOpen.filter(t=>t.due===td).length;
+  const overdueCount = allOpen.filter(t=>t.due && t.due < td).length;
+  const topTask = top3[0];
+  const aiText = topTask ? `Do this first: <strong>${esc(topTask.title)}</strong>` : 'All clear. Add tasks to see your top priorities here.';
+  const aiSub = `${allOpen.length} open task${allOpen.length!==1?'s':''} · ${todayCount} due today${overdueCount?' · '+overdueCount+' overdue':''}`;
+  const priorityCards = top3.length ? top3.map((t,i)=>{
+    const isOverdue = t.due && t.due < td;
+    const isToday = t.due === td;
+    const dueLbl = isOverdue ? `<span style="color:var(--red);font-weight:700">overdue</span>` : isToday ? `<span style="color:var(--yellow)">today</span>` : t.due ? fmtDateShort(t.due) : '';
+    return `<div class="priority-card ${pclass[i]}" onclick="toggleTask('${t.id}')">
       <div class="pnum">0${i+1}</div>
       <div style="flex:1">
         <div class="ptitle">${esc(t.title)}</div>
-        <div class="psub">${t.type==='personal'?'Personal':'Work'}${t.cat?' · '+esc(t.cat):''}${t.due?' · due '+fmtDateShort(t.due):''}</div>
+        <div class="psub">${t.type==='personal'?'Personal':'Work'}${t.business?' · '+esc(t.business):''}${t.due?' · '+dueLbl:''}</div>
       </div>
       <div style="text-align:right">
         <div class="pimpact ${!t.priority||t.priority==='Medium'?'med':t.priority==='High'?'high':'low'}">${(t.priority||'MED').toUpperCase()}</div>
       </div>
-    </div>`).join('')
+    </div>`;
+  }).join('')
     : '<div class="empty" style="padding:24px"><span class="empty-icon">✓</span><span class="empty-text">No open tasks — add some in Tasks</span></div>';
 
   const el = $('homeAthena');
