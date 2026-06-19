@@ -1553,8 +1553,9 @@ function toggleTask(id){
     const next={...t,id:uid(),done:false,created:today(),due:nextRecurDue(t.due,t.recur,t.recurDays,t.recurWeekDays)};
     tasks.unshift(next);
   }
+  if(t.done&&t.sourceNoteId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===t.sourceNoteId);if(_ni>=0){_ns[_ni].status='done';save(K.notes,_ns);}}
   save(K.tasks,tasks);
-  renderTasks();if(activeTab==='home')renderHome();
+  renderTasks();if(activeTab==='home')renderHome();if(t.sourceNoteId)renderNotes();
 }
 function editTask(id){
   const t=load(K.tasks).find(x=>x.id===id);if(!t)return;
@@ -3309,7 +3310,7 @@ const MODAL_FORMS = {
         if(i>=0) tasks[i]={...tasks[i],...fields};
         _editingTaskId=null;
       } else {
-        tasks.unshift({id:uid(),...fields,done:false,created:today()});
+        tasks.unshift({id:uid(),...fields,done:false,created:today(),...(_noteToTaskSourceId?{sourceNoteId:_noteToTaskSourceId}:{})});
       }
       save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
       if(_noteToTaskSourceId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===_noteToTaskSourceId);if(_ni>=0){_ns[_ni].status='in-progress';save(K.notes,_ns);renderNotes();}_noteToTaskSourceId=null;}
