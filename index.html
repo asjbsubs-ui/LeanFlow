@@ -4094,12 +4094,12 @@ function addMeetingToGcal(id){
 }
 
 // ── LOGS PAGE ─────────────────────────────────────────
-let _logsTab = null;
+let _logsTab = null;let _logsNoteStatusFilter='';
 const LOG_TITLES = {tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',fitness:'Fitness',review:'Weekly Review',notes:'Capture',directory:'Directory'};
 
 function openLogs(tab){
   _logsTab = tab;
-  _sdFilterSkill='';_sdFilterType='';_sdFilterStatus='';
+  _sdFilterSkill='';_sdFilterType='';_sdFilterStatus='';_logsNoteStatusFilter='';
   if(window.innerWidth<=768) closeMobSidebar();
   document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
   const lp = document.getElementById('logs-page');
@@ -5758,30 +5758,56 @@ function viewNote(id){
 }
 async function renderLogsN(q){
   const q_=(q||'').toLowerCase();
-  const textNotes=load(K.notes).filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
+  const allNotes=load(K.notes);
+  // Status filter chips
+  const sfChips=[{key:'',l:'All'},...NOTE_STATUSES.map(s=>({key:s.v===null?'__open__':s.v,l:s.l,col:s.col,bg:s.bg}))];
+  const filterBar=sfChips.map(c=>{
+    const matchSt=c.key===''?undefined:c.key==='__open__'?null:c.key;
+    const cnt=c.key===''?allNotes.length:allNotes.filter(n=>(n.status||null)===matchSt).length;
+    if(cnt===0&&c.key!=='') return '';
+    const on=_logsNoteStatusFilter===c.key;
+    const border=on?(c.col?`color-mix(in srgb,${c.col} 50%,transparent)`:'var(--purple)'):'var(--border-md)';
+    const bg=on?(c.bg||'rgba(167,139,250,.15)'):'transparent';
+    const col=on?(c.col||'#a78bfa'):'var(--text-muted)';
+    return `<button onclick="_logsNoteStatusFilter='${c.key}';renderCurrentLogs(document.getElementById('logs-search').value)" style="padding:4px 12px;border-radius:99px;border:1px solid ${border};background:${bg};color:${col};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;transition:all .15s">${c.l}<span style="opacity:.65;font-size:9px;margin-left:3px">${cnt}</span></button>`;
+  }).join('');
+  const filterBarHtml=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${filterBar}</div>`;
+  // Apply status filter
+  let statusFiltered=allNotes;
+  if(_logsNoteStatusFilter!==''){
+    const target=_logsNoteStatusFilter==='__open__'?null:_logsNoteStatusFilter;
+    statusFiltered=allNotes.filter(n=>(n.status||null)===target);
+  }
+  const textNotes=statusFiltered.filter(n=>!q_||n.text.toLowerCase().includes(q_)||(n.category||'').toLowerCase().includes(q_));
   const idbMemos=await vmGetAll().catch(()=>[]);
   const metaMemos=(load(K.mediaMemos)||[]);
   const idbIds=new Set(idbMemos.map(m=>m.id));
-  const allMemos=[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
+  const allMemos=(_logsNoteStatusFilter?[]):[...idbMemos,...metaMemos.filter(m=>!idbIds.has(m.id))].filter(m=>!q_||m.title.toLowerCase().includes(q_));
   logsCount(`${textNotes.length} notes · ${allMemos.length} media`);
   const noteDir=_logsDateSort['notes']||'desc';
   const memoRows=allMemos.sort((a,b)=>noteDir==='asc'?(a.ts||0)-(b.ts||0):(b.ts||0)-(a.ts||0)).map(m=>dbRow([
     `<span style="font-size:15px">${m.kind==='audio'?'🎙️':'📹'}</span>`,
     `<strong style="color:var(--text-primary)">${esc(m.title||'Memo')}</strong>`,
     `<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;font-weight:600">${m.kind==='audio'?'Voice':'Video'}</span>`,
+    '—',
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(m.date)}</span>`,
     m.storagePath?`<span style="font-size:10px;color:var(--green)">☁ synced</span>`:`<span style="font-size:10px;color:var(--text-muted)">local</span>`,
     dbDelBtn('deleteVideoMemo',m.id)
   ]));
-  const noteRows=textNotes.map(n=>dbRow([
-    `<span style="font-size:15px">💡</span>`,
-    `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
-    n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(n.created)}</span>`,
-    n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa" onclick="event.stopPropagation()">🔗</a>`:'—',
-    `<span onclick="event.stopPropagation()">${dbDelBtn('deleteNote',n.id)}</span>`
-  ],`viewNote('${n.id}')`))
-  logsHtml(dbTable(['','Content / Title','Type',sortHdr('notes','Date'),'Sync',''],[ ...memoRows,...noteRows])+renderTrashSection('notes'));
+  const noteRows=textNotes.sort(dateSortFn('notes','created')).map(n=>{
+    const ns=NOTE_STATUSES.find(s=>s.v===n.status)||NOTE_STATUSES[0];
+    const statusBadge=`<span onclick="event.stopPropagation();cycleNoteStatus('${n.id}');renderCurrentLogs(document.getElementById('logs-search').value)" style="font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;cursor:pointer;border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);background:${ns.bg};color:${ns.col};font-family:'Outfit',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">${ns.l}</span>`;
+    return dbRow([
+      `<span style="font-size:15px">💡</span>`,
+      `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
+      n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
+      statusBadge,
+      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(n.created)}</span>`,
+      n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa" onclick="event.stopPropagation()">🔗</a>`:'—',
+      `<span onclick="event.stopPropagation()">${dbDelBtn('deleteNote',n.id)}</span>`
+    ],`viewNote('${n.id}')`);
+  });
+  logsHtml(filterBarHtml+dbTable(['','Content / Title','Category','Status',sortHdr('notes','Date'),'Source',''],[ ...memoRows,...noteRows])+renderTrashSection('notes'));
 }
 
 // ── Workout focus chip selector ───────────────────────
