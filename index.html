@@ -2645,42 +2645,38 @@ async function _ytFetchMeta(videoId){
   return meta;
 }
 
-let _geminiModel=null;
-async function _ytGetModel(key){
-  if(_geminiModel) return _geminiModel;
-  try{
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+key);
-    if(!r.ok) return null;
-    const {models=[]}=await r.json();
-    const gc=models.filter(m=>m.supportedGenerationMethods?.includes('generateContent'));
-    for(const p of ['gemini-1.5-flash','gemini-2.0-flash','gemini-1.5-pro','gemini-pro','gemini-1.0-pro']){
-      const m=gc.find(m=>m.name.includes(p));
-      if(m){_geminiModel=m.name.replace('models/','');return _geminiModel;}
-    }
-    if(gc.length){_geminiModel=gc[0].name.replace('models/','');return _geminiModel;}
-  }catch{}
-  return null;
-}
-
 async function _ytCallClaude(system,user,videoUrl=null){
   const key=localStorage.getItem('gemini_api_key');
   if(!key) throw new Error('NO_KEY');
-  const model=await _ytGetModel(key);
-  if(!model) throw new Error('No Gemini model found — check your API key at aistudio.google.com/apikey');
-  const isMultimodal=model.includes('1.5')||model.includes('2.0');
-  let body;
-  if(videoUrl&&isMultimodal){
-    body={contents:[{role:'user',parts:[{file_data:{mime_type:'video/*',file_uri:videoUrl}},{text:system+'\n\n'+user}]}],generationConfig:{maxOutputTokens:1024}};
-  }else if(isMultimodal){
-    body={system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:1024}};
-  }else{
-    body={contents:[{role:'user',parts:[{text:system+'\n\n'+user}]}],generationConfig:{maxOutputTokens:1024}};
+  const models=[
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro-latest',
+    'gemini-1.5-pro',
+  ];
+  let lastErr='No available Gemini model — check your API key at aistudio.google.com/apikey';
+  for(const model of models){
+    let body;
+    if(videoUrl){
+      body={contents:[{role:'user',parts:[{file_data:{mime_type:'video/*',file_uri:videoUrl}},{text:system+'\n\n'+user}]}],generationConfig:{maxOutputTokens:1024}};
+    }else{
+      body={system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:1024}};
+    }
+    try{
+      const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+      });
+      if(r.status===404||r.status===429||r.status===400){
+        const e=await r.json().catch(()=>({}));
+        lastErr=e.error?.message||'Model unavailable ('+r.status+')';
+        continue;
+      }
+      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
+      return (await r.json()).candidates[0].content.parts[0].text;
+    }catch(e){if(e.message===lastErr||/not found|NOT_FOUND|quota|RESOURCE_EXHAUSTED|not supported/i.test(e.message)){lastErr=e.message;continue;}throw e;}
   }
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
-    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
-  });
-  if(!r.ok){_geminiModel=null;const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
-  return (await r.json()).candidates[0].content.parts[0].text;
+  throw new Error('Gemini quota exceeded on all models — wait a minute and try again, or paste the transcript manually');
 }
 
 async function _ytQuickFromInput(){
@@ -2813,7 +2809,6 @@ function openClaudeSettings(){
 function saveClaudeSettings(){
   const gKey=$('gemini-key').value.trim();
   if(gKey) localStorage.setItem('gemini_api_key',gKey); else localStorage.removeItem('gemini_api_key');
-  _geminiModel=null;
   closeModal();showToast('Settings saved','var(--t-selfdev)');
 }
 
