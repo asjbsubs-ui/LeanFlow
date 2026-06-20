@@ -702,11 +702,16 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button id="nameSaveBtn" onclick="doUpdateName()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--green);padding:0;flex-shrink:0">✓</button>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
-  <div style="padding:0 16px 10px;display:flex;gap:6px">
+  <div style="padding:0 16px 4px;display:flex;gap:6px">
     <button onclick="openObsSettings()" style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
     <button id="obsFullSyncBtn" onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
+  </div>
+  <div style="padding:0 16px 10px">
+    <button onclick="openClaudeSettings()" style="width:100%;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--t-selfdev)';this.style.color='var(--t-selfdev)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
+      <span style="font-size:14px">🤖</span> Claude AI
+    </button>
   </div>
 </nav>
 
@@ -932,7 +937,13 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button id="sdtab-quotes" onclick="switchSdTab('quotes')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">💬 Quotes</button>
     <button id="sdtab-vocab" onclick="switchSdTab('vocab')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">📖 Vocabulary</button>
   </div>
-  <div id="sd-knowledge"><div id="knowledgeList"><div class="empty"><span class="empty-icon">📚</span><span class="empty-text">No knowledge logged yet.</span></div></div></div>
+  <div id="sd-knowledge">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <input id="yt-quick-url" class="input" placeholder="Paste a YouTube URL to extract knowledge…" style="flex:1" onkeydown="if(event.key==='Enter')_ytQuickFromInput()">
+      <button onclick="_ytQuickFromInput()" style="padding:0 16px;height:40px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Extract</button>
+    </div>
+    <div id="knowledgeList"><div class="empty"><span class="empty-icon">📚</span><span class="empty-text">No knowledge logged yet.</span></div></div>
+  </div>
   <div id="sd-quotes" style="display:none"><div id="quotesList"><div class="empty"><span class="empty-icon">💬</span><span class="empty-text">No quotes yet.</span></div></div></div>
   <div id="sd-vocab" style="display:none">
     <div style="display:flex;gap:10px;margin-bottom:20px">
@@ -1240,6 +1251,9 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 </div>
 
 <div id="reviewReadOverlay" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:20px"></div>
+<div id="ytFlowOverlay" onclick="if(event.target===this)ytFlowClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);z-index:610;align-items:center;justify-content:center;padding:20px">
+  <div id="ytFlowInner" style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px;position:relative"></div>
+</div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal" id="modal">
     <div class="modal-head">
@@ -2511,6 +2525,314 @@ function viewKnowledge(id){
   el.style.display='flex';
 }
 function viewKnowledgeNotes(id){viewKnowledge(id);}  // backward compat
+
+// ── YouTube → Knowledge Flow ──────────────────────────
+let _ytFlow={state:'idle',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:''};
+
+function ytFlowOpen(){
+  _ytFlow={state:'url',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:''};
+  $('ytFlowOverlay').style.display='flex';
+  _ytRender();
+}
+function ytFlowClose(){$('ytFlowOverlay').style.display='none';_ytFlow.state='idle';}
+
+function _ytRender(){
+  const el=$('ytFlowInner');if(!el)return;
+  const s=_ytFlow.state;
+  if(s==='url')el.innerHTML=_ytHtmlUrl();
+  else if(s==='loading'||s==='loading2')el.innerHTML=_ytHtmlLoading(_ytFlow._loadMsg||'Working…');
+  else if(s==='manual')el.innerHTML=_ytHtmlManual();
+  else if(s==='review1')el.innerHTML=_ytHtmlReview1();
+  else if(s==='review2')el.innerHTML=_ytHtmlReview2();
+}
+
+function _ytX(){return `<button onclick="ytFlowClose()" style="position:absolute;top:16px;right:16px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1">✕</button>`;}
+
+function _ytHtmlUrl(){
+  const hasKey=!!localStorage.getItem('anthropic_api_key');
+  return `${_ytX()}
+  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:8px">Growth · Extract</div>
+  <div style="font-size:19px;font-weight:700;color:var(--text-bright);margin-bottom:6px">YouTube → Knowledge</div>
+  <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Claude extracts the lesson, quotes, and vocab for you to review before saving.</div>
+  ${!hasKey?`<div style="padding:10px 14px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);border-radius:var(--r-sm);font-size:12px;color:var(--yellow);margin-bottom:14px;display:flex;align-items:center;gap:10px">⚠ No Claude API key set. <button onclick="openClaudeSettings()" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.25);border-radius:var(--r-xs);padding:3px 10px;color:var(--yellow);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600">Set key →</button></div>`:''}
+  <div style="display:flex;gap:10px;margin-bottom:10px">
+    <input id="ytf-url" class="input" placeholder="https://youtube.com/watch?v=…" style="flex:1;font-size:14px" onkeydown="if(event.key==='Enter')_ytProcessUrl()">
+    <button onclick="_ytProcessUrl()" style="padding:0 20px;height:40px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Extract</button>
+  </div>
+  <button onclick="_ytShowManual()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:underline;padding:0">Paste transcript manually instead</button>`;
+}
+
+function _ytHtmlLoading(msg){
+  return `<div style="text-align:center;padding:48px 0">
+  <div style="width:36px;height:36px;border:3px solid var(--border-md);border-top-color:var(--t-selfdev);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px"></div>
+  <div style="font-size:14px;color:var(--text-secondary)">${esc(msg)}</div></div>`;
+}
+
+function _ytHtmlManual(){
+  return `${_ytX()}
+  <div style="font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:4px">Paste Transcript</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Couldn't auto-fetch the transcript. Paste it below, then hit Extract.</div>
+  <div style="display:flex;gap:10px;margin-bottom:10px">
+    <input id="ytf-m-title" class="input" placeholder="Video title" value="${esc(_ytFlow.meta?.title||'')}" style="flex:1">
+    <input id="ytf-m-author" class="input" placeholder="Channel / creator" value="${esc(_ytFlow.meta?.author||'')}" style="flex:1">
+  </div>
+  <textarea id="ytf-m-transcript" class="textarea" placeholder="Paste the full transcript here…" style="min-height:180px;margin-bottom:14px"></textarea>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button onclick="ytFlowClose()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Cancel</button>
+    <button onclick="_ytExtractFromManual()" style="padding:8px 20px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Extract</button>
+  </div>`;
+}
+
+function _ytHtmlReview1(){
+  const d=_ytFlow.draft||{};
+  const qc=d.quote_candidates||[];
+  const vc=d.vocab_candidates||[];
+  const chk=(id)=>`<input type="checkbox" id="${id}" checked style="margin-top:3px;flex-shrink:0;accent-color:var(--t-selfdev)">`;
+  return `${_ytX()}
+  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:4px">Review · Gate 1 of 2</div>
+  <div style="font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:2px">${esc(_ytFlow.meta?.title||'YouTube Video')}</div>
+  ${_ytFlow.meta?.author?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">${esc(_ytFlow.meta.author)}</div>`:'<div style="margin-bottom:18px"></div>'}
+
+  <div style="margin-bottom:18px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:7px">📌 Core Lesson</div>
+    <textarea id="ytf-lesson" class="textarea" placeholder="No lesson extracted — write your own takeaway here…" style="min-height:80px;font-size:13px">${esc(d.lesson?.summary||'')}</textarea>
+  </div>
+
+  ${qc.length?`<div style="margin-bottom:18px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px">💬 Quotes <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(uncheck to skip)</span></div>
+    ${qc.map((q,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--bg-alt);margin-bottom:6px;cursor:pointer">
+      ${chk('ytf-q-'+i)}
+      <div><div style="font-size:13px;color:var(--text-primary);font-style:italic">"${esc(q.text)}"</div>${q.context?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px">${esc(q.context)}</div>`:''}</div>
+    </label>`).join('')}
+  </div>`:''}
+
+  ${vc.length?`<div style="margin-bottom:18px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px">📖 Vocab <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(uncheck to skip)</span></div>
+    ${vc.map((v,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--bg-alt);margin-bottom:6px;cursor:pointer">
+      ${chk('ytf-v-'+i)}
+      <div><div style="font-size:13px;color:var(--t-selfdev);font-weight:700">${esc(v.term)}</div><div style="font-size:12px;color:var(--text-primary);margin-top:2px">${esc(v.definition)}</div>${v.context?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(v.context)}</div>`:''}</div>
+    </label>`).join('')}
+  </div>`:''}
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px">
+    <button onclick="ytFlowClose()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Cancel</button>
+    <button onclick="_ytApproveExtraction()" style="padding:8px 22px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Save & Generate Idea →</button>
+  </div>`;
+}
+
+function _ytHtmlReview2(){
+  return `${_ytX()}
+  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:8px">Executional Idea · Gate 2 of 2</div>
+  <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Based on your lesson — what could you actually do with it? Edit or approve to save to Ideas.</div>
+  <textarea id="ytf-idea" class="textarea" style="min-height:110px;font-size:13px;margin-bottom:18px">${esc(_ytFlow.idea||'')}</textarea>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button onclick="_ytSkipIdea()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Skip</button>
+    <button onclick="_ytApproveIdea()" style="padding:8px 22px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Save to Ideas</button>
+  </div>`;
+}
+
+function _ytExtractVideoId(url){
+  const m=url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+
+async function _ytFetchAll(videoId){
+  const proxy='https://corsproxy.io/?url=';
+  const pageUrl='https://www.youtube.com/watch?v='+encodeURIComponent(videoId);
+  const html=await fetch(proxy+encodeURIComponent(pageUrl)).then(r=>{if(!r.ok)throw new Error('fetch failed');return r.text();});
+  const titleMatch=html.match(/"title":\{"runs":\[\{"text":"([^"]+)"/);
+  const authorMatch=html.match(/"ownerChannelName":"([^"]+)"/);
+  const meta={
+    title:(titleMatch?.[1]||'YouTube Video').replace(/\\u0026/g,'&').replace(/\\"/g,'"').replace(/&#39;/g,"'"),
+    author:authorMatch?.[1]||''
+  };
+  const pr=html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var|const|let|window)/s);
+  if(!pr) return {meta,transcript:null};
+  let pd;try{pd=JSON.parse(pr[1]);}catch{return {meta,transcript:null};}
+  const tracks=pd?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if(!tracks?.length) return {meta,transcript:null};
+  const track=tracks.find(t=>t.languageCode?.startsWith('en'))||tracks[0];
+  if(!track?.baseUrl) return {meta,transcript:null};
+  try{
+    const xml=await fetch(proxy+encodeURIComponent(track.baseUrl+'&fmt=json3')).then(r=>r.text());
+    try{
+      const j=JSON.parse(xml);
+      const t=j.events?.filter(e=>e.segs).map(e=>e.segs.map(s=>s.utf8||'').join('')).join(' ').replace(/\n/g,' ').replace(/\s+/g,' ').trim();
+      if(t) return {meta,transcript:t};
+    }catch{}
+    const doc=new DOMParser().parseFromString(xml,'text/xml');
+    const t=Array.from(doc.querySelectorAll('text')).map(n=>n.textContent).join(' ').replace(/\s+/g,' ').trim();
+    return {meta,transcript:t||null};
+  }catch{return {meta,transcript:null};}
+}
+
+async function _ytCallClaude(system,user){
+  const key=localStorage.getItem('anthropic_api_key');
+  if(!key) throw new Error('NO_KEY');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,system,messages:[{role:'user',content:user}]})
+  });
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
+  return (await r.json()).content[0].text;
+}
+
+async function _ytQuickFromInput(){
+  const url=($('yt-quick-url')?.value||'').trim();
+  const videoId=url?_ytExtractVideoId(url):null;
+  if(!videoId){
+    $('yt-quick-url').value='';
+    ytFlowOpen();
+    return;
+  }
+  _ytFlow={state:'loading',videoId,ytUrl:url,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:'Fetching transcript…'};
+  $('ytFlowOverlay').style.display='flex';
+  _ytRender();
+  $('yt-quick-url').value='';
+  try{
+    const res=await _ytFetchAll(videoId);
+    _ytFlow.meta=res.meta;
+    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
+    _ytFlow.transcript=res.transcript;
+    _ytFlow._loadMsg='Extracting knowledge…';
+    _ytRender();
+    await _ytRunExtraction();
+  }catch{
+    _ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};
+    _ytFlow.state='manual';
+    _ytRender();
+  }
+}
+
+async function _ytProcessUrl(){
+  const url=($('ytf-url')?.value||'').trim();
+  if(!url){showToast('Paste a YouTube URL first','var(--red)');return;}
+  const videoId=_ytExtractVideoId(url);
+  if(!videoId){showToast('Not a valid YouTube URL','var(--red)');return;}
+  _ytFlow.videoId=videoId;_ytFlow.ytUrl=url;
+  _ytFlow.state='loading';_ytFlow._loadMsg='Fetching transcript…';_ytRender();
+  try{
+    const res=await _ytFetchAll(videoId);
+    _ytFlow.meta=res.meta;
+    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
+    _ytFlow.transcript=res.transcript;
+    _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
+    await _ytRunExtraction();
+  }catch{
+    _ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};
+    _ytFlow.state='manual';_ytRender();
+  }
+}
+
+function _ytShowManual(){
+  _ytFlow.state='manual';_ytRender();
+  setTimeout(()=>$('ytf-m-transcript')?.focus(),60);
+}
+
+async function _ytExtractFromManual(){
+  const transcript=($('ytf-m-transcript')?.value||'').trim();
+  if(!transcript){showToast('Paste the transcript first','var(--red)');return;}
+  _ytFlow.meta={title:($('ytf-m-title')?.value||'').trim()||'YouTube Video',author:($('ytf-m-author')?.value||'').trim()};
+  _ytFlow.transcript=transcript;
+  _ytFlow.state='loading';_ytFlow._loadMsg='Extracting knowledge…';_ytRender();
+  await _ytRunExtraction();
+}
+
+async function _ytRunExtraction(){
+  const system=`You extract structured knowledge from video transcripts. Return ONLY valid JSON — no markdown, no explanation:
+{"lesson":{"summary":"one clear personal takeaway","confidence":"high|medium|low"},"quote_candidates":[{"text":"exact quotable phrase","context":"brief context"}],"vocab_candidates":[{"term":"word or phrase","definition":"clear definition","context":"how it was used"}]}
+STRICT RULES: lesson=null if no real takeaway. quote_candidates=[] if nothing genuinely quotable — never pad. vocab_candidates=[] if no meaningful terms — never pad. Pure JSON only.`;
+  const user=`Video: "${_ytFlow.meta?.title||''}"${_ytFlow.meta?.author?' by '+_ytFlow.meta.author:''}\n\nTranscript:\n${(_ytFlow.transcript||'').slice(0,12000)}`;
+  try{
+    const raw=await _ytCallClaude(system,user);
+    const cleaned=raw.replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
+    _ytFlow.draft=JSON.parse(cleaned);
+    _ytFlow.state='review1';_ytRender();
+  }catch(e){
+    if(e.message==='NO_KEY'){
+      showToast('Set your Claude API key first','var(--red)');
+      _ytFlow.state='url';_ytRender();
+      setTimeout(openClaudeSettings,300);
+    }else{
+      showToast('Extraction failed — '+e.message,'var(--red)');
+      _ytFlow.state='manual';_ytRender();
+    }
+  }
+}
+
+function _ytApproveExtraction(){
+  const lesson=($('ytf-lesson')?.value||'').trim();
+  const d=_ytFlow.draft||{};
+  const qc=d.quote_candidates||[];
+  const vc=d.vocab_candidates||[];
+  const keptQuotes=qc.filter((_,i)=>document.getElementById('ytf-q-'+i)?.checked);
+  const keptVocab=vc.filter((_,i)=>document.getElementById('ytf-v-'+i)?.checked);
+
+  if(lesson){
+    const items=load(K.knowledge);
+    items.push({id:uid(),title:_ytFlow.meta?.title||'YouTube Video',type:'Video',skill:'Other',source:_ytFlow.meta?.author||'',link:_ytFlow.ytUrl||'',status:'done',progress:100,notes:lesson,date:today()});
+    save(K.knowledge,items);
+  }
+  if(keptQuotes.length){
+    const quotes=load(K.quotes);
+    keptQuotes.forEach(q=>quotes.push({id:uid(),text:q.text,author:_ytFlow.meta?.author||'',source:_ytFlow.meta?.title||'',category:'Other',date:today()}));
+    save(K.quotes,quotes);
+  }
+  if(keptVocab.length){
+    const vocab=load(K.vocab);
+    keptVocab.forEach(v=>vocab.push({id:uid(),word:v.term,definition:v.definition,date:today()}));
+    save(K.vocab,vocab);
+  }
+  _ytFlow.approved={lesson,quotes:keptQuotes,vocab:keptVocab};
+  if(activeTab==='selfdev') renderSelfDev();
+
+  if(!lesson){showToast('Saved','var(--green)');ytFlowClose();return;}
+  _ytFlow.state='loading2';_ytFlow._loadMsg='Generating idea…';_ytRender();
+  _ytGenerateIdea(lesson);
+}
+
+async function _ytGenerateIdea(lesson){
+  const system=`Given a lesson extracted from a video, draft ONE concrete executional idea — something specific and immediately actionable the person could actually do, build, test, or try. Return ONLY valid JSON: {"idea":"..."} — or the literal word null (not in quotes) if there is genuinely no clear action. No markdown.`;
+  try{
+    const raw=await _ytCallClaude(system,`Lesson: ${lesson}`);
+    const cleaned=raw.replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
+    if(cleaned==='null'){_ytFlow.idea=null;}
+    else{const j=JSON.parse(cleaned);_ytFlow.idea=j?.idea||null;}
+  }catch{_ytFlow.idea=null;}
+  if(!_ytFlow.idea){showToast('Saved','var(--green)');ytFlowClose();return;}
+  _ytFlow.state='review2';_ytRender();
+}
+
+function _ytApproveIdea(){
+  const idea=($('ytf-idea')?.value||'').trim();
+  if(idea){
+    const notes=load(K.notes);
+    notes.unshift({id:uid(),text:idea,category:'Idea',source:_ytFlow.ytUrl||'',status:null,created:today(),ts:Date.now()});
+    save(K.notes,notes);
+    showToast('Idea saved to Capture','var(--green)');
+  }
+  ytFlowClose();
+}
+function _ytSkipIdea(){showToast('Saved','var(--green)');ytFlowClose();}
+
+function openClaudeSettings(){
+  const key=localStorage.getItem('anthropic_api_key')||'';
+  $('modalTitle').textContent='Claude AI Settings';
+  $('modalBody').innerHTML=`
+    <div class="field"><label>Anthropic API Key</label><input class="input" id="claude-key" value="${esc(key)}" placeholder="sk-ant-…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"></div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.7;padding:10px;background:var(--bg-alt);border-radius:var(--r-sm)">Used for YouTube transcript extraction and idea generation.<br>Get your key at <strong style="color:var(--text-secondary)">console.anthropic.com</strong></div>`;
+  $('modalFoot').innerHTML=`
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
+  $('modalOverlay').classList.add('open');
+}
+function saveClaudeSettings(){
+  const key=$('claude-key').value.trim();
+  if(key) localStorage.setItem('anthropic_api_key',key);
+  else localStorage.removeItem('anthropic_api_key');
+  closeModal();showToast('Claude settings saved','var(--t-selfdev)');
+}
 
 // ── FITNESS ───────────────────────────────────────────
 function renderFitness(){
