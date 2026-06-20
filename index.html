@@ -710,7 +710,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
   <div style="padding:0 16px 10px">
     <button onclick="openClaudeSettings()" style="width:100%;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--t-selfdev)';this.style.color='var(--t-selfdev)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
-      <span style="font-size:14px">🤖</span> Claude AI
+      <span style="font-size:14px">🤖</span> AI Settings
     </button>
   </div>
 </nav>
@@ -2549,7 +2549,7 @@ function _ytRender(){
 function _ytX(){return `<button onclick="ytFlowClose()" style="position:absolute;top:16px;right:16px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1">✕</button>`;}
 
 function _ytHtmlUrl(){
-  const hasKey=!!localStorage.getItem('anthropic_api_key');
+  const hasKey=!!localStorage.getItem('gemini_api_key');
   return `${_ytX()}
   <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:8px">Growth · Extract</div>
   <div style="font-size:19px;font-weight:700;color:var(--text-bright);margin-bottom:6px">YouTube → Knowledge</div>
@@ -2659,15 +2659,19 @@ async function _ytFetchAll(videoId){
 }
 
 async function _ytCallClaude(system,user){
-  const key=localStorage.getItem('anthropic_api_key');
+  const key=localStorage.getItem('gemini_api_key');
   if(!key) throw new Error('NO_KEY');
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+key,{
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,system,messages:[{role:'user',content:user}]})
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      system_instruction:{parts:[{text:system}]},
+      contents:[{role:'user',parts:[{text:user}]}],
+      generationConfig:{maxOutputTokens:1024}
+    })
   });
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
-  return (await r.json()).content[0].text;
+  return (await r.json()).candidates[0].content.parts[0].text;
 }
 
 async function _ytQuickFromInput(){
@@ -2809,21 +2813,21 @@ function _ytApproveIdea(){
 function _ytSkipIdea(){showToast('Saved','var(--green)');ytFlowClose();}
 
 function openClaudeSettings(){
-  const aKey=localStorage.getItem('anthropic_api_key')||'';
+  const gKey=localStorage.getItem('gemini_api_key')||'';
   const sKey=localStorage.getItem('supadata_api_key')||'';
-  $('modalTitle').textContent='Claude AI Settings';
+  $('modalTitle').textContent='AI Settings';
   $('modalBody').innerHTML=`
-    <div class="field"><label>Anthropic API Key</label><input class="input" id="claude-key" value="${esc(aKey)}" placeholder="sk-ant-…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Lesson extraction &amp; idea generation · <strong style="color:var(--text-secondary)">console.anthropic.com</strong></div></div>
-    <div class="field"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Optional — free tier at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free account at <strong style="color:var(--text-secondary)">supadata.ai</strong> · 500 transcripts/month free</div></div>`;
+    <div class="field"><label>Google Gemini API Key</label><input class="input" id="gemini-key" value="${esc(gKey)}" placeholder="AIza…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free · Lesson extraction &amp; idea generation · <strong style="color:var(--text-secondary)">aistudio.google.com/apikey</strong></div></div>
+    <div class="field"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Free tier at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free account at <strong style="color:var(--text-secondary)">supadata.ai</strong> · 500 transcripts/month</div></div>`;
   $('modalFoot').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
   $('modalOverlay').classList.add('open');
 }
 function saveClaudeSettings(){
-  const aKey=$('claude-key').value.trim();
+  const gKey=$('gemini-key').value.trim();
   const sKey=$('supadata-key').value.trim();
-  if(aKey) localStorage.setItem('anthropic_api_key',aKey); else localStorage.removeItem('anthropic_api_key');
+  if(gKey) localStorage.setItem('gemini_api_key',gKey); else localStorage.removeItem('gemini_api_key');
   if(sKey) localStorage.setItem('supadata_api_key',sKey); else localStorage.removeItem('supadata_api_key');
   closeModal();showToast('Settings saved','var(--t-selfdev)');
 }
