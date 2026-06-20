@@ -2636,58 +2636,60 @@ function _ytExtractVideoId(url){
   return m?m[1]:null;
 }
 
-async function _ytFetchMeta(videoId){
+async function _ytFetchAll(videoId){
+  const ytUrl='https://www.youtube.com/watch?v='+videoId;
   let meta={title:'YouTube Video',author:''};
   try{
-    const o=await fetch('https://www.youtube.com/oembed?url='+encodeURIComponent('https://www.youtube.com/watch?v='+videoId)+'&format=json').then(r=>r.json());
+    const o=await fetch('https://www.youtube.com/oembed?url='+encodeURIComponent(ytUrl)+'&format=json').then(r=>r.json());
     meta={title:o.title||'YouTube Video',author:o.author_name||''};
   }catch{}
-  return meta;
+  try{
+    const key=localStorage.getItem('supadata_api_key')||'';
+    const headers=key?{'x-api-key':key}:{};
+    const r=await fetch('https://api.supadata.ai/v1/youtube/transcript?url='+encodeURIComponent(ytUrl)+'&text=true',{headers});
+    if(r.ok){
+      const d=await r.json();
+      const transcript=typeof d.content==='string'?d.content:null;
+      return {meta,transcript};
+    }
+  }catch{}
+  return {meta,transcript:null};
 }
 
-async function _ytCallClaude(system,user,videoUrl=null){
+async function _ytCallClaude(system,user){
   const key=localStorage.getItem('gemini_api_key');
   if(!key) throw new Error('NO_KEY');
-  const models=[
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro-latest',
-    'gemini-1.5-pro',
-  ];
-  let lastErr='No available Gemini model — check your API key at aistudio.google.com/apikey';
+  const models=['gemini-1.5-flash-8b','gemini-1.5-flash-latest','gemini-1.5-flash','gemini-1.5-pro-latest','gemini-1.5-pro'];
+  let lastErr='No available Gemini model';
   for(const model of models){
-    let body;
-    if(videoUrl){
-      body={contents:[{role:'user',parts:[{file_data:{mime_type:'video/*',file_uri:videoUrl}},{text:system+'\n\n'+user}]}],generationConfig:{maxOutputTokens:1024}};
-    }else{
-      body={system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:1024}};
-    }
+    const body={system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:1024}};
     try{
       const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
       });
-      if(r.status===404||r.status===429||r.status===400){
-        const e=await r.json().catch(()=>({}));
-        lastErr=e.error?.message||'Model unavailable ('+r.status+')';
-        continue;
-      }
+      if(r.status===404||r.status===429||r.status===400){const e=await r.json().catch(()=>({}));lastErr=e.error?.message||'Model unavailable';continue;}
       if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
       return (await r.json()).candidates[0].content.parts[0].text;
-    }catch(e){if(e.message===lastErr||/not found|NOT_FOUND|quota|RESOURCE_EXHAUSTED|not supported/i.test(e.message)){lastErr=e.message;continue;}throw e;}
+    }catch(e){if(/not found|NOT_FOUND|quota|RESOURCE_EXHAUSTED|not supported/i.test(e.message)){lastErr=e.message;continue;}throw e;}
   }
-  throw new Error('Gemini quota exceeded on all models — wait a minute and try again, or paste the transcript manually');
+  throw new Error('QUOTA_ALL');
 }
 
 async function _ytQuickFromInput(){
   const url=($('yt-quick-url')?.value||'').trim();
   const videoId=url?_ytExtractVideoId(url):null;
   if(!videoId){$('yt-quick-url').value='';ytFlowOpen();return;}
-  _ytFlow={state:'loading',videoId,ytUrl:url,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:'Analyzing video…'};
+  _ytFlow={state:'loading',videoId,ytUrl:url,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:'Fetching transcript…'};
   $('ytFlowOverlay').style.display='flex';_ytRender();
   $('yt-quick-url').value='';
-  _ytFlow.meta=await _ytFetchMeta(videoId);
-  await _ytRunExtraction();
+  try{
+    const res=await _ytFetchAll(videoId);
+    _ytFlow.meta=res.meta;
+    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
+    _ytFlow.transcript=res.transcript;
+    _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
+    await _ytRunExtraction();
+  }catch{_ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};_ytFlow.state='manual';_ytRender();}
 }
 
 async function _ytProcessUrl(){
@@ -2696,9 +2698,15 @@ async function _ytProcessUrl(){
   const videoId=_ytExtractVideoId(url);
   if(!videoId){showToast('Not a valid YouTube URL','var(--red)');return;}
   _ytFlow.videoId=videoId;_ytFlow.ytUrl=url;
-  _ytFlow.state='loading';_ytFlow._loadMsg='Analyzing video…';_ytRender();
-  _ytFlow.meta=await _ytFetchMeta(videoId);
-  await _ytRunExtraction();
+  _ytFlow.state='loading';_ytFlow._loadMsg='Fetching transcript…';_ytRender();
+  try{
+    const res=await _ytFetchAll(videoId);
+    _ytFlow.meta=res.meta;
+    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
+    _ytFlow.transcript=res.transcript;
+    _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
+    await _ytRunExtraction();
+  }catch{_ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};_ytFlow.state='manual';_ytRender();}
 }
 
 function _ytShowManual(){
@@ -2716,16 +2724,12 @@ async function _ytExtractFromManual(){
 }
 
 async function _ytRunExtraction(){
-  const system=`You extract structured knowledge from YouTube videos. Return ONLY valid JSON — no markdown, no explanation:
+  const system=`You extract structured knowledge from video transcripts. Return ONLY valid JSON — no markdown, no explanation:
 {"lesson":{"summary":"one clear personal takeaway","confidence":"high|medium|low"},"quote_candidates":[{"text":"exact quotable phrase","context":"brief context"}],"vocab_candidates":[{"term":"word or phrase","definition":"clear definition","context":"how it was used"}]}
 STRICT RULES: lesson=null if no real takeaway. quote_candidates=[] if nothing genuinely quotable — never pad. vocab_candidates=[] if no meaningful terms — never pad. Pure JSON only.`;
-  const hasTranscript=!!_ytFlow.transcript;
-  const user=hasTranscript
-    ?`Video: "${_ytFlow.meta?.title||''}"${_ytFlow.meta?.author?' by '+_ytFlow.meta.author:''}\n\nTranscript:\n${_ytFlow.transcript.slice(0,12000)}`
-    :`Watch this video and extract structured knowledge from it. Video title: "${_ytFlow.meta?.title||''}"${_ytFlow.meta?.author?' by '+_ytFlow.meta.author:''}`;
-  const videoUrl=hasTranscript?null:_ytFlow.ytUrl;
+  const user=`Video: "${_ytFlow.meta?.title||''}"${_ytFlow.meta?.author?' by '+_ytFlow.meta.author:''}\n\nTranscript:\n${(_ytFlow.transcript||'').slice(0,12000)}`;
   try{
-    const raw=await _ytCallClaude(system,user,videoUrl);
+    const raw=await _ytCallClaude(system,user);
     const cleaned=raw.replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
     _ytFlow.draft=JSON.parse(cleaned);
     _ytFlow.state='review1';_ytRender();
@@ -2734,6 +2738,9 @@ STRICT RULES: lesson=null if no real takeaway. quote_candidates=[] if nothing ge
       showToast('Set your Gemini API key first','var(--red)');
       _ytFlow.state='url';_ytRender();
       setTimeout(openClaudeSettings,300);
+    }else if(e.message==='QUOTA_ALL'){
+      showToast('Gemini quota hit — try again in a minute, or paste the transcript below','var(--orange)');
+      _ytFlow.state='manual';_ytRender();
     }else{
       showToast('Extraction failed — '+e.message,'var(--red)');
       _ytFlow.state='manual';_ytRender();
@@ -2798,9 +2805,11 @@ function _ytSkipIdea(){showToast('Saved','var(--green)');ytFlowClose();}
 
 function openClaudeSettings(){
   const gKey=localStorage.getItem('gemini_api_key')||'';
+  const sKey=localStorage.getItem('supadata_api_key')||'';
   $('modalTitle').textContent='AI Settings';
   $('modalBody').innerHTML=`
-    <div class="field"><label>Google Gemini API Key</label><input class="input" id="gemini-key" value="${esc(gKey)}" placeholder="AIza…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free at <strong style="color:var(--text-secondary)">aistudio.google.com/apikey</strong> · Gemini watches the video directly — no transcript service needed</div></div>`;
+    <div class="field"><label>Google Gemini API Key</label><input class="input" id="gemini-key" value="${esc(gKey)}" placeholder="AIza…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free at <strong style="color:var(--text-secondary)">aistudio.google.com/apikey</strong> · Text-only extraction — low quota usage</div></div>
+    <div class="field" style="margin-top:12px"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Optional — free at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">500 transcripts/month free · without a key you get fewer auto-fetches</div></div>`;
   $('modalFoot').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
@@ -2808,7 +2817,9 @@ function openClaudeSettings(){
 }
 function saveClaudeSettings(){
   const gKey=$('gemini-key').value.trim();
+  const sKey=$('supadata-key').value.trim();
   if(gKey) localStorage.setItem('gemini_api_key',gKey); else localStorage.removeItem('gemini_api_key');
+  if(sKey) localStorage.setItem('supadata_api_key',sKey); else localStorage.removeItem('supadata_api_key');
   closeModal();showToast('Settings saved','var(--t-selfdev)');
 }
 
