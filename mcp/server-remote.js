@@ -1,5 +1,5 @@
 import express from 'express';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
@@ -10,13 +10,15 @@ import {
 import { createClient } from '@supabase/supabase-js';
 
 // ── Config ───────────────────────────────────────────────
-const PORT    = process.env.PORT || 3000;
-const SB_URL  = process.env.LEANFLOW_SB_URL || 'https://eewyzqyxwwkdimonltjy.supabase.co';
-const SB_KEY  = process.env.LEANFLOW_SB_KEY;
-const USER_ID = process.env.LEANFLOW_USER_ID;
+const PORT      = process.env.PORT || 3000;
+const SB_URL    = process.env.LEANFLOW_SB_URL || 'https://eewyzqyxwwkdimonltjy.supabase.co';
+const SB_KEY    = process.env.LEANFLOW_SB_KEY;
+const USER_ID   = process.env.LEANFLOW_USER_ID;
+const MCP_TOKEN = process.env.MCP_TOKEN;
 
-if (!SB_KEY)  { console.error('LEANFLOW_SB_KEY env var required'); process.exit(1); }
-if (!USER_ID) { console.error('LEANFLOW_USER_ID env var required'); process.exit(1); }
+if (!SB_KEY)    { console.error('LEANFLOW_SB_KEY env var required'); process.exit(1); }
+if (!USER_ID)   { console.error('LEANFLOW_USER_ID env var required'); process.exit(1); }
+if (!MCP_TOKEN) { console.error('MCP_TOKEN env var required'); process.exit(1); }
 
 const sb = createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
 
@@ -389,10 +391,75 @@ function makeServer() {
 // ── HTTP server ──────────────────────────────────────────
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const sessions = new Map(); // sessionId -> transport
+const codes    = new Map(); // code -> { challenge, ts }
 
-app.all('/mcp', async (req, res) => {
+// ── OAuth 2.0 endpoints (required by Claude Cowork) ──────
+app.get('/.well-known/oauth-authorization-server', (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  res.json({
+    issuer: base,
+    authorization_endpoint:              `${base}/authorize`,
+    token_endpoint:                      `${base}/token`,
+    registration_endpoint:               `${base}/register`,
+    response_types_supported:            ['code'],
+    grant_types_supported:               ['authorization_code'],
+    code_challenge_methods_supported:    ['S256'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
+  });
+});
+
+app.post('/register', (req, res) => {
+  res.json({
+    client_id:              randomUUID(),
+    client_secret:          randomUUID(),
+    redirect_uris:          req.body?.redirect_uris || [],
+    grant_types:            ['authorization_code'],
+    response_types:         ['code'],
+    token_endpoint_auth_method: 'none',
+  });
+});
+
+app.get('/authorize', (req, res) => {
+  const { redirect_uri, state, code_challenge, code_challenge_method } = req.query;
+  if (!redirect_uri) { res.status(400).send('redirect_uri required'); return; }
+  const code = randomUUID();
+  codes.set(code, { challenge: code_challenge, method: code_challenge_method, ts: Date.now() });
+  for (const [k, v] of codes) if (Date.now() - v.ts > 600_000) codes.delete(k);
+  const url = new URL(redirect_uri);
+  url.searchParams.set('code', code);
+  if (state) url.searchParams.set('state', state);
+  res.redirect(url.toString());
+});
+
+app.post('/token', (req, res) => {
+  const { code, grant_type, code_verifier } = req.body;
+  if (grant_type !== 'authorization_code') {
+    res.status(400).json({ error: 'unsupported_grant_type' }); return;
+  }
+  const stored = codes.get(code);
+  if (!stored) { res.status(400).json({ error: 'invalid_grant' }); return; }
+  if (stored.challenge && code_verifier) {
+    const expected = createHash('sha256').update(code_verifier).digest('base64url');
+    if (expected !== stored.challenge) {
+      res.status(400).json({ error: 'invalid_grant' }); return;
+    }
+  }
+  codes.delete(code);
+  res.json({ access_token: MCP_TOKEN, token_type: 'Bearer', expires_in: 31_536_000 });
+});
+
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || auth !== `Bearer ${MCP_TOKEN}`) {
+    res.status(401).json({ error: 'unauthorized' }); return;
+  }
+  next();
+}
+
+app.all('/mcp', requireAuth, async (req, res) => {
   try {
     const sessionId = req.headers['mcp-session-id'];
 
