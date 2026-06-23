@@ -16,9 +16,9 @@ const SB_KEY    = process.env.LEANFLOW_SB_KEY;
 const USER_ID   = process.env.LEANFLOW_USER_ID;
 const MCP_TOKEN = process.env.MCP_TOKEN;
 
-if (!SB_KEY)    { console.error('LEANFLOW_SB_KEY env var required'); process.exit(1); }
-if (!USER_ID)   { console.error('LEANFLOW_USER_ID env var required'); process.exit(1); }
-if (!MCP_TOKEN) { console.error('MCP_TOKEN env var required'); process.exit(1); }
+if (!SB_KEY)    console.warn('Warning: LEANFLOW_SB_KEY not set');
+if (!USER_ID)   console.warn('Warning: LEANFLOW_USER_ID not set');
+if (!MCP_TOKEN) console.warn('Warning: MCP_TOKEN not set — /mcp unprotected');
 
 const sb = createClient(SB_URL, SB_KEY, { auth: { persistSession: false } });
 
