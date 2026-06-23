@@ -1,0 +1,16 @@
+{
+  "name": "leanflow-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for LeanFlow — lets Claude read and write tasks, habits, goals, notes, and more",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server-remote.js",
+    "start:local": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "express": "^4.22.2"
+  }
+}
