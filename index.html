@@ -1295,7 +1295,7 @@ const safeColor = c => /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+$|^var\(--[\w-]+\)$/.test(
 function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]');}catch{return[];}}
 const toLbs=kg=>Math.round(kg*2.20462*10)/10;
 function loadObj(k,d={}){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch{return d;}}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v));sbPush(k,v);obsSync(k);}
+function save(k,v){const _old=localStorage.getItem(k);localStorage.setItem(k,JSON.stringify(v));sbPush(k,v,_old);obsSync(k);}
 
 function fmtDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
@@ -5886,9 +5886,40 @@ function obsFullSync(silent=false){
 const _SB_URL = 'https://eewyzqyxwwkdimonltjy.supabase.co';
 const _SB_KEY = 'sb_publishable_qgfJXOAlB33B2mDNqeWAUQ_nFpBv-bN';
 let _sb = null, _sbUser = null;
-const _signedUrlCache = new Map(); // path → {url, exp} — 50-min TTL, avoids re-fetching on every render
-const SYNC_KEYS = Object.values(K); // all ahq_* keys
-const _SYNC_TS_KEY = '_sb_last_sync'; // localStorage key storing last pull timestamp for delta sync
+const _signedUrlCache = new Map();
+const SYNC_KEYS = Object.values(K);
+const _SYNC_TS_KEY = '_sb_last_sync';
+const _SB_TABLE = 'leanhq_items'; // per-item table — one row per item, not per collection
+
+// ahq_tasks → 'tasks', ahq_habit_log → 'habit_log', etc.
+function _colName(k){ return k.replace(/^ahq_/,''); }
+function _colKey(col){ return 'ahq_'+col; }
+
+// Convert a collection's value to an array of {item_id, value} rows for Supabase
+function _toRows(col, v){
+  if(col==='habit_log'){
+    if(!v||typeof v!=='object'||Array.isArray(v)) return [];
+    return Object.entries(v).map(([date,ids])=>({item_id:date, value:ids}));
+  }
+  if(col==='note_cats'){
+    if(!Array.isArray(v)) return [];
+    return v.map(cat=>({item_id:cat, value:cat}));
+  }
+  if(!Array.isArray(v)) return [];
+  return v.filter(x=>x&&x.id).map(x=>({item_id:x.id, value:x}));
+}
+
+// Reconstruct a collection value from Supabase rows (value=null = tombstoned/deleted)
+function _fromRows(col, rows){
+  const live=rows.filter(r=>r.value!==null);
+  if(col==='habit_log'){
+    const obj={};
+    live.forEach(r=>{if(Array.isArray(r.value)) obj[r.item_id]=r.value;});
+    return obj;
+  }
+  if(col==='note_cats') return live.map(r=>r.item_id);
+  return live.map(r=>r.value);
+}
 
 function initSupabase(){
   if(typeof supabase !== 'undefined'){
@@ -5918,15 +5949,40 @@ async function sbCheckSession(){
   }
 }
 
+async function _sbMigrateIfNeeded(){
+  // If the new leanhq_items table has no rows for this user, seed it from local data
+  // and also pull in anything from the old leanhq_sync table
+  try{
+    const {count} = await _sb.from(_SB_TABLE).select('*',{count:'exact',head:true}).eq('user_id',_sbUser.id);
+    if(count===0){
+      console.log('First use of per-item sync — migrating local data…');
+      for(const k of Object.values(K)){
+        const raw=localStorage.getItem(k); if(!raw) continue;
+        try{ await sbPush(k, JSON.parse(raw)); }catch{}
+      }
+      // Also pull any data from the old leanhq_sync table so nothing is lost
+      try{
+        const {data} = await _sb.from('leanhq_sync').select('key,value').eq('user_id',_sbUser.id);
+        if(data&&data.length){
+          for(const r of data){
+            if(r.value!==null){ try{ await sbPush(r.key, r.value); }catch{} }
+          }
+        }
+      }catch{}
+    }
+  }catch(e){ console.warn('Migration check failed',e); }
+}
+
 async function sbPullAndStart(){
   setSyncStatus('syncing','Syncing…');
   const btn=document.getElementById('auth-btn');
   if(btn){btn.textContent='Syncing data…';btn.disabled=true;}
-  const pullTimeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sync timed out')),8000));
+  const pullTimeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sync timed out')),12000));
   try{
+    await _sbMigrateIfNeeded();
     await Promise.race([_sbDoPull(),pullTimeout]);
   }catch(e){ console.warn('Pull/flush error — starting with local data',e); }
-  const email = _sbUser.email||'Synced';
+  const email=_sbUser.email||'Synced';
   const _displayName=_sbUser.user_metadata?.full_name||email.split('@')[0];
   setSyncStatus('on', _displayName);
   document.getElementById('auth-screen').style.display='none';
@@ -5934,28 +5990,82 @@ async function sbPullAndStart(){
   init();
   setTimeout(()=>obsFullSync(true),2000);
 }
+
 async function _sbDoPull(){
-  const lastSync = localStorage.getItem(_SYNC_TS_KEY);
-  let q = _sb.from('leanhq_sync').select('key,value,updated_at').eq('user_id',_sbUser.id);
-  if(lastSync) q = q.gt('updated_at', lastSync);
-  const {data,error} = await q;
+  const lastSync=localStorage.getItem(_SYNC_TS_KEY);
+  let q=_sb.from(_SB_TABLE).select('collection,item_id,value,updated_at').eq('user_id',_sbUser.id);
+  if(lastSync) q=q.gt('updated_at',lastSync);
+  const {data,error}=await q;
   if(!error && data && data.length){
-    data.forEach(r=>{ if(r.value!==null) localStorage.setItem(r.key,JSON.stringify(r.value)); });
-    const maxTs = data.reduce((m,r)=>r.updated_at>m?r.updated_at:m,'');
-    if(maxTs) localStorage.setItem(_SYNC_TS_KEY, maxTs);
+    // Group rows by collection
+    const byCol={};
+    data.forEach(r=>{ (byCol[r.collection]||(byCol[r.collection]=[])).push(r); });
+
+    Object.entries(byCol).forEach(([col,rows])=>{
+      const k=_colKey(col);
+      let local; try{local=JSON.parse(localStorage.getItem(k)||'null');}catch{local=null;}
+      let merged;
+
+      if(col==='habit_log'){
+        const localObj=(local&&typeof local==='object'&&!Array.isArray(local))?local:{};
+        const cloudObj=_fromRows(col,rows);
+        merged={...localObj};
+        // Cloud wins per day, but union the ids so no check-off is lost
+        Object.entries(cloudObj).forEach(([day,ids])=>{
+          const loc=Array.isArray(localObj[day])?localObj[day]:[];
+          merged[day]=[...new Set([...ids,...loc])];
+        });
+      } else if(col==='note_cats'){
+        const localArr=Array.isArray(local)?local:[];
+        merged=[...new Set([..._fromRows(col,rows),...localArr])];
+      } else {
+        // Array of objects: start from local, apply each cloud row (upsert or tombstone)
+        const localArr=Array.isArray(local)?local:[];
+        const byId=new Map(localArr.map(x=>[x.id,x]));
+        rows.forEach(r=>{
+          if(r.value===null) byId.delete(r.item_id); // deleted on another device
+          else byId.set(r.item_id, r.value);          // added or edited on another device
+        });
+        merged=[...byId.values()];
+      }
+
+      localStorage.setItem(k,JSON.stringify(merged));
+    });
+
+    const maxTs=data.reduce((m,r)=>r.updated_at>m?r.updated_at:m,'');
+    if(maxTs) localStorage.setItem(_SYNC_TS_KEY,maxTs);
   } else if(!lastSync){
-    localStorage.setItem(_SYNC_TS_KEY, new Date().toISOString());
+    localStorage.setItem(_SYNC_TS_KEY,new Date().toISOString());
   }
   await sbFlushPending();
 }
 
-async function sbPush(k,v){
+async function sbPush(k, v, _oldRaw){
   if(!_sb||!_sbUser) return;
+  const col=_colName(k);
+  const ts=new Date().toISOString();
+  const rows=_toRows(col,v);
   try{
-    await _sb.from('leanhq_sync').upsert(
-      {user_id:_sbUser.id, key:k, value:v, updated_at:new Date().toISOString()},
-      {onConflict:'user_id,key'}
-    );
+    if(rows.length){
+      await _sb.from(_SB_TABLE).upsert(
+        rows.map(r=>({user_id:_sbUser.id, collection:col, item_id:r.item_id, value:r.value, updated_at:ts})),
+        {onConflict:'user_id,collection,item_id'}
+      );
+    }
+    // Tombstone items deleted from array collections
+    if(_oldRaw && col!=='habit_log' && col!=='note_cats'){
+      let oldArr; try{oldArr=JSON.parse(_oldRaw);}catch{oldArr=[];}
+      if(Array.isArray(oldArr)&&Array.isArray(v)){
+        const newIds=new Set(v.map(x=>x&&x.id));
+        const deleted=oldArr.filter(x=>x&&x.id&&!newIds.has(x.id));
+        if(deleted.length){
+          await _sb.from(_SB_TABLE).upsert(
+            deleted.map(x=>({user_id:_sbUser.id, collection:col, item_id:x.id, value:null, updated_at:ts})),
+            {onConflict:'user_id,collection,item_id'}
+          );
+        }
+      }
+    }
     _sbClearPending(k);
   }catch(e){ console.warn('Push error',e); _sbQueuePending(k,v); }
 }
@@ -5966,19 +6076,19 @@ function _sbQueuePending(k,v){
 function _sbClearPending(k){
   try{const p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');if(p[k]){delete p[k];localStorage.setItem('_sb_pending',JSON.stringify(p));}}catch{}
 }
+
 async function sbFlushPending(){
   if(!_sb||!_sbUser) return;
-  let p;try{p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');}catch{return;}
-  const keys=Object.keys(p);if(!keys.length) return;
+  let p; try{p=JSON.parse(localStorage.getItem('_sb_pending')||'{}');}catch{return;}
+  const keys=Object.keys(p); if(!keys.length) return;
   console.log(`Flushing ${keys.length} pending sync entries…`);
   for(const k of keys){
     try{
-      await _sb.from('leanhq_sync').upsert(
-        {user_id:_sbUser.id,key:k,value:p[k].v,updated_at:new Date().toISOString()},
-        {onConflict:'user_id,key'}
-      );
+      // Use current local state so we capture all changes made while offline
+      const raw=localStorage.getItem(k); if(raw===null){delete p[k];continue;}
+      await sbPush(k, JSON.parse(raw));
       delete p[k];
-    }catch(e){console.warn('Flush error',k,e);}
+    }catch(e){ console.warn('Flush error',k,e); }
   }
   localStorage.setItem('_sb_pending',JSON.stringify(p));
 }
@@ -5988,17 +6098,14 @@ async function sbFullPush(){
   showToast('Pushing all local data to cloud…','var(--yellow)');
   let ok=0,fail=0;
   for(const k of Object.values(K)){
-    const raw=localStorage.getItem(k);if(raw===null)continue;
+    const raw=localStorage.getItem(k); if(raw===null) continue;
     try{
-      let v;try{v=JSON.parse(raw);}catch{continue;}
-      await _sb.from('leanhq_sync').upsert(
-        {user_id:_sbUser.id,key:k,value:v,updated_at:new Date().toISOString()},
-        {onConflict:'user_id,key'}
-      );
+      let v; try{v=JSON.parse(raw);}catch{continue;}
+      await sbPush(k,v);
       ok++;
-    }catch(e){console.warn('Full push error',k,e);fail++;}
+    }catch(e){ console.warn('Full push error',k,e); fail++; }
   }
-  showToast(fail?`Pushed ${ok} keys, ${fail} failed`:`All data pushed to cloud (${ok} keys)`,'var(--green)');
+  showToast(fail?`Pushed ${ok} collections, ${fail} failed`:`All data synced to cloud (${ok} collections)`,'var(--green)');
 }
 
 async function sbFullPull(){
