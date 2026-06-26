@@ -5874,8 +5874,9 @@ async function testObsSync(){
   }catch(e){ showToast('Not reachable — visit https://localhost:'+OBS_PORT+' in browser first to accept the certificate','var(--red)'); }
 }
 
-function obsFullSync(silent=false){
+async function obsFullSync(silent=false){
   if(!localStorage.getItem('obs_api_key')) return;
+  if(_sb && _sbUser){ try{ await _sbDoPull(); }catch(e){ console.warn('Pre-sync pull failed',e); } }
   Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i).forEach(file=>{
     pushToObsidian(file,obsMarkdown(file),silent);
   });
