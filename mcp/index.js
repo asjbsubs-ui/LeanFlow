@@ -36,23 +36,48 @@ const K = {
 };
 
 // ── Supabase helpers ─────────────────────────────────────
+function colName(k) { return k.replace(/^ahq_/, ''); }
+
+function toRows(col, v) {
+  if (col === 'habit_log') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return [];
+    return Object.entries(v).map(([date, ids]) => ({ item_id: date, value: ids }));
+  }
+  if (!Array.isArray(v)) return [];
+  return v.filter(x => x && x.id).map(x => ({ item_id: x.id, value: x }));
+}
+
+function fromRows(col, rows) {
+  const live = rows.filter(r => r.value !== null);
+  if (col === 'habit_log') {
+    const obj = {};
+    live.forEach(r => { if (Array.isArray(r.value)) obj[r.item_id] = r.value; });
+    return obj;
+  }
+  return live.map(r => r.value);
+}
+
 async function getData(key) {
+  const col = colName(key);
   const { data, error } = await sb
-    .from('leanhq_sync')
-    .select('value')
+    .from('leanhq_items')
+    .select('item_id,value')
     .eq('user_id', USER_ID)
-    .eq('key', key)
-    .single();
-  if (error && error.code !== 'PGRST116') throw new Error(error.message);
-  return data?.value || [];
+    .eq('collection', col);
+  if (error) throw new Error(error.message);
+  return fromRows(col, data || []);
 }
 
 async function setData(key, value) {
+  const col = colName(key);
+  const ts = new Date().toISOString();
+  const rows = toRows(col, value);
+  if (!rows.length) return;
   const { error } = await sb
-    .from('leanhq_sync')
+    .from('leanhq_items')
     .upsert(
-      { user_id: USER_ID, key, value, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,key' }
+      rows.map(r => ({ user_id: USER_ID, collection: col, item_id: r.item_id, value: r.value, updated_at: ts })),
+      { onConflict: 'user_id,collection,item_id' }
     );
   if (error) throw new Error(error.message);
 }
@@ -325,7 +350,7 @@ async function handleTool(name, args) {
     case 'lf_get_habits': {
       const habits   = await getData(K.habits);
       const habitLog = await getData(K.habitLog);
-      const todayLog = (habitLog || []).filter(e => e.date === today()).map(e => e.habitId);
+      const todayLog = habitLog[today()] || [];
       const result = habits.map(h => ({
         id: h.id,
         name: h.name,
@@ -342,9 +367,10 @@ async function handleTool(name, args) {
       if (!target) return `Habit not found matching "${args.name}". Use lf_get_habits to list habits.`;
       const habitLog = await getData(K.habitLog);
       const date = args.date || today();
-      const alreadyLogged = habitLog.some(e => e.habitId === target.id && e.date === date);
+      const alreadyLogged = (habitLog[date] || []).includes(target.id);
       if (alreadyLogged) return `"${target.name}" already logged for ${date}.`;
-      habitLog.push({ id: uid(), habitId: target.id, date, ts: Date.now() });
+      if (!habitLog[date]) habitLog[date] = [];
+      habitLog[date].push(target.id);
       await setData(K.habitLog, habitLog);
       return `Logged "${target.name}" for ${date}.`;
     }
