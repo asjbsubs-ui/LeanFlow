@@ -2,7 +2,7 @@
   "name": "LeanFlow by StreamLean",
   "short_name": "LeanFlow",
   "description": "Personal OS — tasks, habits, meetings, goals, and more.",
-  "start_url": "/",
+  "start_url": "/LeanFlow/",
   "display": "standalone",
   "background_color": "#040d07",
   "theme_color": "#040d07",
