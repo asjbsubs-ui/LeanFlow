@@ -700,6 +700,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <input id="nameInput" type="text" class="input" style="display:none;flex:1;font-size:11px;padding:3px 8px;height:26px" placeholder="Your name" onkeydown="if(event.key==='Enter')doUpdateName();if(event.key==='Escape')toggleNameEdit(false)">
     <button id="nameEditBtn" onclick="toggleNameEdit(true)" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--text-muted);padding:0;flex-shrink:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'" title="Edit name">✏</button>
     <button id="nameSaveBtn" onclick="doUpdateName()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:12px;color:var(--green);padding:0;flex-shrink:0">✓</button>
+    <button onclick="sbFullPush()" id="syncPushBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'" title="Push this device's data to cloud">↑ Push</button>
     <button onclick="doSignOut()" id="syncLogoutBtn" style="display:none;background:transparent;border:none;cursor:pointer;font-size:11px;color:var(--text-muted);padding:0" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-muted)'">Sign out</button>
   </div>
   <div style="padding:0 16px 4px;display:flex;gap:6px">
@@ -5930,13 +5931,14 @@ function initSupabase(){
 }
 
 function setSyncStatus(state, label){
-  const dot=$('syncDot'), lbl=$('syncLabel'), btn=$('syncLogoutBtn'), editBtn=$('nameEditBtn');
+  const dot=$('syncDot'), lbl=$('syncLabel'), btn=$('syncLogoutBtn'), editBtn=$('nameEditBtn'), pushBtn=$('syncPushBtn');
   if(!dot) return;
   dot.className='sync-dot'+(state==='on'?'':state==='syncing'?' syncing':' off');
   lbl.textContent=label;
   const on=state==='on';
   if(btn) btn.style.display=on?'inline':'none';
   if(editBtn) editBtn.style.display=on?'inline':'none';
+  if(pushBtn) pushBtn.style.display=on?'inline':'none';
 }
 
 async function sbCheckSession(){
