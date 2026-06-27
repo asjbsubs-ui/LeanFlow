@@ -6001,6 +6001,7 @@ async function sbPullAndStart(){
   if(btn){btn.textContent='Sign In';btn.disabled=false;}
   init();
   setTimeout(()=>obsFullSync(true),2000);
+  startBgPoll();
 }
 
 async function _sbDoPull(){
@@ -6373,6 +6374,23 @@ if(!localStorage.getItem('obs_api_key')) localStorage.setItem('obs_api_key','bce
 const _obsLegacyPaths=['LeanHQ/Data','LeanLab/Data','LeanFlow/Data','3. Business/LeanFlow/data'];
 if(!localStorage.getItem('obs_vault_folder')||_obsLegacyPaths.includes(localStorage.getItem('obs_vault_folder'))){
   localStorage.setItem('obs_vault_folder','3. Business/LeanFlow/data');
+}
+
+// Background poll — pull new data from other devices every 60s
+let _bgPollTimer=null;
+function startBgPoll(){
+  if(_bgPollTimer) return;
+  _bgPollTimer=setInterval(async()=>{
+    if(!_sb||!_sbUser) return;
+    try{
+      await _sbDoPull();
+      // Re-render active tab so changes appear immediately
+      if(typeof renderHome==='function') renderHome();
+      if(activeTab&&typeof window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]==='function')
+        window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]();
+      await obsFullSync(true);
+    }catch(e){ console.warn('Background poll error',e); }
+  }, 60000);
 }
 
 // Boot — Supabase first, then render
