@@ -5723,10 +5723,10 @@ const OBS_KEY_MAP = {
 const _obsThrottle={};
 let _obsErrTs=0;
 
-async function pushToObsidian(file, md, silent=false){
+async function pushToObsidian(file, md){
   const key=localStorage.getItem('obs_api_key');
   const folder=(localStorage.getItem('obs_vault_folder')||'3. Business/LeanFlow/data').replace(/\/$/,'');
-  if(!key) return;
+  if(!key) return false;
   try{
     const r=await fetch(`https://localhost:${OBS_PORT}/vault/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`,{
       method:'PUT',
@@ -5734,15 +5734,9 @@ async function pushToObsidian(file, md, silent=false){
       body:md
     });
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    _obsErrTs=0;
-    const btn=$('obsFullSyncBtn');if(btn){btn.style.color='';btn.title='Sync all to Obsidian now';}
+    return true;
   }catch(e){
-    if(!silent && Date.now()-_obsErrTs>30000){
-      _obsErrTs=Date.now();
-      const isCert=e.message&&(e.message.includes('fetch')||e.message.includes('Failed'));
-      showToast('📓 Obsidian sync failed — '+(isCert?'visit https://localhost:27124 in browser to accept certificate':'check Obsidian is open'),'var(--red)');
-      const btn=$('obsFullSyncBtn');if(btn){btn.style.color='var(--red)';btn.title='Obsidian sync failed — click to retry';}
-    }
+    return false;
   }
 }
 
@@ -5750,7 +5744,11 @@ function obsSync(k){
   const file=OBS_KEY_MAP[k];
   if(!file||!localStorage.getItem('obs_api_key')) return;
   clearTimeout(_obsThrottle[file]);
-  _obsThrottle[file]=setTimeout(()=>pushToObsidian(file,obsMarkdown(file)),1500);
+  _obsThrottle[file]=setTimeout(async()=>{
+    const ok=await pushToObsidian(file,obsMarkdown(file));
+    const btn=$('obsFullSyncBtn');
+    if(btn){btn.style.color=ok?'':'var(--red)';btn.title=ok?'Sync all to Obsidian now':'Obsidian sync failed — click to retry';}
+  },1500);
 }
 
 function obsMarkdown(file){
@@ -5851,6 +5849,7 @@ function openObsSettings(){
   $('modalFoot').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn" onclick="testObsSync()" style="background:var(--bg-alt);color:var(--text-secondary)">Test</button>
+    <button class="btn" onclick="closeModal();sbRescueLegacy()" style="background:var(--bg-alt);color:var(--text-muted)" title="Rescue orphaned data from old sync table">Rescue Legacy</button>
     <button class="btn btn-primary" style="background:var(--green);color:#000" onclick="saveObsSettings()">Save</button>`;
   $('modalOverlay').classList.add('open');
 }
@@ -5877,10 +5876,12 @@ async function testObsSync(){
 async function obsFullSync(silent=false){
   if(!localStorage.getItem('obs_api_key')) return;
   if(_sb && _sbUser){ try{ await _sbDoPull(); }catch(e){ console.warn('Pre-sync pull failed',e); } }
-  Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i).forEach(file=>{
-    pushToObsidian(file,obsMarkdown(file),silent);
-  });
-  if(!silent) showToast('📓 Synced to Obsidian','var(--green)');
+  const files=Object.values(OBS_KEY_MAP).filter((v,i,a)=>a.indexOf(v)===i);
+  const results=await Promise.all(files.map(file=>pushToObsidian(file,obsMarkdown(file))));
+  const ok=results.every(r=>r);
+  const btn=$('obsFullSyncBtn');
+  if(btn){btn.style.color=ok?'':'var(--red)';btn.title=ok?'Sync all to Obsidian now':'Obsidian sync failed — click to retry';}
+  if(!silent) showToast(ok?'📓 Synced to Obsidian':'📓 Obsidian sync failed — is Obsidian open? Visit https://localhost:27124 to accept the certificate',ok?'var(--green)':'var(--red)');
 }
 
 // ── Supabase Cloud Sync ────────────────────────────────
@@ -6113,6 +6114,47 @@ async function sbFullPull(){
   if(!_sb||!_sbUser){showToast('Sign in to use cloud sync','var(--red)');return;}
   localStorage.removeItem(_SYNC_TS_KEY);
   await sbPullAndStart();
+}
+
+async function sbRescueLegacy(){
+  if(!_sb||!_sbUser){showToast('Sign in first','var(--red)');return;}
+  showToast('Checking legacy sync table…','var(--text-muted)');
+  try{
+    const {data,error}=await _sb.from('leanhq_sync').select('key,value').eq('user_id',_sbUser.id);
+    if(error) throw error;
+    if(!data||!data.length){showToast('No legacy data found','var(--text-muted)');return;}
+    let merged=0;
+    for(const row of data){
+      const k=row.key; if(!k||row.value===null) continue;
+      const col=_colName(k);
+      if(col==='habit_log'){
+        const legacyLog=(typeof row.value==='object'&&!Array.isArray(row.value))?row.value:{};
+        const localLog=JSON.parse(localStorage.getItem(k)||'{}');
+        const mergedLog={...localLog};
+        Object.entries(legacyLog).forEach(([day,ids])=>{
+          if(Array.isArray(ids)){
+            const loc=Array.isArray(localLog[day])?localLog[day]:[];
+            mergedLog[day]=[...new Set([...ids,...loc])];
+          }
+        });
+        localStorage.setItem(k,JSON.stringify(mergedLog));
+        await sbPush(k,mergedLog);
+      } else if(Array.isArray(row.value)){
+        const local=JSON.parse(localStorage.getItem(k)||'[]');
+        const localIds=new Set(Array.isArray(local)?local.map(x=>x&&x.id).filter(Boolean):[]);
+        const newItems=row.value.filter(x=>x&&x.id&&!localIds.has(x.id));
+        if(newItems.length){
+          const combined=[...local,...newItems];
+          localStorage.setItem(k,JSON.stringify(combined));
+          await sbPush(k,combined);
+          merged+=newItems.length;
+        }
+      }
+    }
+    showToast(`Rescued ${merged} orphaned item${merged!==1?'s':''} — syncing to Obsidian…`,'var(--green)');
+    init();
+    await obsFullSync();
+  }catch(e){ showToast('Rescue failed: '+e.message,'var(--red)'); }
 }
 
 function skipAuth(){
