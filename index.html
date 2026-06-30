@@ -563,7 +563,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   .db-search{width:100%!important}
   .db-table{font-size:11px}
   .db-table td,.db-table th{padding:7px 8px;white-space:nowrap}
-  .db-table td:nth-child(5),.db-table td:nth-child(6){display:none}.db-table th:nth-child(5),.db-table th:nth-child(6){display:none}
+  .logs-content{overflow-x:auto}
   .meet-cal-day{min-height:52px;padding:5px 4px}
   .meet-cal-event{font-size:8px}
   .home-hero{padding:18px}
@@ -4910,9 +4910,9 @@ function renderLogsF(q){
   const wRows=[...workouts].sort(dateSortFn('fitness','date')).map(w=>dbRow([
     `<input type="checkbox" ${_fitSel.has(w.id)?'checked':''} onchange="toggleFitSelect('${w.id}',this.checked)" style="cursor:pointer;accent-color:var(--t-fitness)">`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(w.date)}</span>`,
+    `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     esc(w.name||'—'),
     `<span style="max-width:220px;display:block">${esc(w.notes||'—')}</span>`,
-    `${ICONS[w.type]||'💪'} ${esc(w.type)}`,
     `<button onclick="editWorkout('${w.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px 7px;border-radius:3px" onmouseover="this.style.color='var(--t-fitness)'" onmouseout="this.style.color='var(--text-muted)'">✏️</button>`+dbDelBtn('deleteWorkout',w.id)
   ]));
   const mRows=[...metrics].sort(dateSortFn('fitness','date')).map(m=>dbRow([
@@ -4923,7 +4923,7 @@ function renderLogsF(q){
   ]));
   logsHtml(
     selBar+
-    dbTable([chkHdr,sortHdr('fitness','Date'),'Focus','Notes','Type',''],wRows)+
+    dbTable([chkHdr,sortHdr('fitness','Date'),'Type','Focus','Notes',''],wRows)+
     renderTrashSection('workouts')+
     `<div style="padding:16px 0 6px"><span class="db-section-label">⚖️ Body Metrics</span></div>`+
     dbTable([sortHdr('fitness','Date'),'Weight','Notes',''],mRows)+
