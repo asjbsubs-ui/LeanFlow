@@ -977,6 +977,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <button class="btn btn-ghost" onclick="openModal('metric')">Log Weight</button>
       <button class="btn btn-primary" style="background:var(--t-fitness);color:#000" onclick="openModal('workout')">+ Workout</button>
       <button class="btn btn-ghost" onclick="openLogs('fitness')">📋 Logs</button>
+      <button class="btn btn-ghost" onclick="forceSyncFitness()" title="Force push all local fitness data to cloud">↑ Sync</button>
     </div>
   </div>
   <div class="grid-4" id="fitnessStats" style="margin-bottom:16px"></div>
@@ -1332,6 +1333,21 @@ function migrateWorkoutIds(){
   const patchedM=metrics.map(m=>{if(!m.id){changed=true;return{...m,id:uid()};}return m;});
   if(changed) save(K.metrics,patchedM);
   localStorage.setItem('_mig_wo_ids','1');
+}
+async function forceSyncFitness(){
+  if(!_sb||!_sbUser){showToast('Not signed in','var(--red)');return;}
+  let workouts=load(K.workouts),metrics=load(K.metrics);
+  let wFixed=0,mFixed=0;
+  workouts=workouts.map(w=>{if(!w.id){wFixed++;return{...w,id:uid()};}return w;});
+  metrics=metrics.map(m=>{if(!m.id){mFixed++;return{...m,id:uid()};}return m;});
+  if(wFixed){localStorage.setItem(K.workouts,JSON.stringify(workouts));}
+  if(mFixed){localStorage.setItem(K.metrics,JSON.stringify(metrics));}
+  showToast('Syncing fitness data…','var(--t-fitness)');
+  await sbPush(K.workouts,workouts,null);
+  await sbPush(K.metrics,metrics,null);
+  const parts=[`${workouts.filter(w=>w.id).length} workouts`,`${metrics.filter(m=>m.id).length} weight logs`];
+  if(wFixed||mFixed) parts.push(`${wFixed+mFixed} IDs patched`);
+  showToast('↑ Synced: '+parts.join(' · '),'var(--t-fitness)');
 }
 function migrateKnowledge(){
   if(localStorage.getItem('ahq_km_done')) return;
