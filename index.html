@@ -1315,6 +1315,13 @@ function migrateReviewsToSunday(){
   });
   if(changed) save(K.reviews,reviews);
 }
+function migrateWoCats(){
+  if(localStorage.getItem('_mig_wo_cats_v1')) return;
+  const cats=loadWoCats();
+  _WO_CATS_DEFAULT.forEach(c=>{if(!cats.includes(c))cats.push(c);});
+  save(K.woCats,cats); // seed Supabase for the first time + ensure Shoulders is included
+  localStorage.setItem('_mig_wo_cats_v1','1');
+}
 function migrateWorkoutIds(){
   if(localStorage.getItem('_mig_wo_ids')) return;
   let changed=false;
@@ -6352,6 +6359,7 @@ function init(){
   seedIfEmpty();
   migrateReviewsToSunday();
   migrateKnowledge();
+  migrateWoCats();
   migrateWorkoutIds();
   // Set time of day greeting
   const h=new Date().getHours();
