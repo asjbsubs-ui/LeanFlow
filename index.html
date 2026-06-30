@@ -4634,7 +4634,7 @@ function renderLogsT(q){
     `<span class="lbl ${t.type==='personal'?'lbl-p':'lbl-b'}">${t.type==='personal'?'Personal':'Work'}</span>`,
     t.business?`<span style="font-size:11px;color:var(--green)">🏢 ${esc(t.business)}</span>`:'—',
     t.dept?`<span style="font-size:11px;color:#60a5fa">◈ ${esc(t.dept)}</span>`:'—',
-    t.due?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(t.due)}</span>`:'—',
+    t.due?`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(t.due)}</div>`:'—',
     t.done
       ?`<button onclick="restoreTask('${t.id}')" style="display:inline-flex;align-items:center;gap:4px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:#60a5fa;border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(96,165,250,.2)'" onmouseout="this.style.background='rgba(96,165,250,.1)'">↩ Restore</button>`
       :'<span class="lbl lbl-a">Open</span>',
@@ -4679,8 +4679,8 @@ function renderLogsM(q){
     const logContacts=load(K.directory);
     const logTagNames=(m.contactIds||[]).map(id=>logContacts.find(c=>c.id===id)?.name).filter(Boolean);
     return dbRow([
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(m.date)||'—'}</span>`,
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${m.time||'—'}</span>`,
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(m.date)||'—'}</div>`,
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:70px">${m.time||'—'}</div>`,
       `<strong style="color:var(--text-primary)${m.done?';text-decoration:line-through;opacity:.6':''}">${esc(m.title)}</strong>`,
       m.business?`<span style="font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(74,222,128,.1);color:var(--green);font-weight:600">🏢 ${esc(m.business)}</span>`:'—',
       esc(m.attendees||'—'),
@@ -4733,7 +4733,7 @@ function renderLogsG(q){
       </div>
       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${safeColor(g.color)||'var(--t-goals)'};font-weight:700">${g.progress}%</span>
     </div>`,
-    g.deadline?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(g.deadline)}</span>`:'—',
+    g.deadline?`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(g.deadline)}</div>`:'—',
     g.milestones&&g.milestones.length?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${g.milestones.filter(m=>m.done).length}/${g.milestones.length}</span>`:'—',
     dbDelBtn('deleteGoal',g.id)
   ]));
@@ -4766,7 +4766,7 @@ function renderLogsJ(q){
   const all=load(K.journal).filter(e=>!q_||(e.dump||'').toLowerCase().includes(q_)||(e.grat||'').toLowerCase().includes(q_)||(e.intent||'').toLowerCase().includes(q_));
   logsCount(all.length+' entries');
   const rows=[...all].sort(dateSortFn('journal','date')).map(e=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${fmtDate(e.date)}</span>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(e.date)}</div>`,
     `<span style="font-size:18px">${moods[e.mood]||'—'}</span>`,
     `<span style="max-width:220px;display:block;color:var(--text-secondary)">${esc((e.dump||'').slice(0,100))}${(e.dump||'').length>100?'…':''}</span>`,
     `<span style="max-width:180px;display:block;color:var(--text-secondary)">${esc((e.grat||'').slice(0,70))}${(e.grat||'').length>70?'…':''}</span>`,
@@ -4884,7 +4884,7 @@ function renderLogsR(q){
 
   const scoreCol=(n)=>n>=8?'var(--green)':n>=5?'var(--yellow)':'var(--red)';
   const rows=[...all].sort(dateSortFn('review','week')).map(r=>dbRow([
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">Week of ${fmtDate(r.week)}</span>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:140px">Week of ${fmtDate(r.week)}</div>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${scoreCol(r.overall)}">${r.overall}<span style="font-size:10px;color:var(--text-muted)">/10</span></span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.energy)}">${r.energy}</span>`,
     `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:${scoreCol(r.focus)}">${r.focus}</span>`,
@@ -5310,7 +5310,7 @@ function renderLogsDir(q){
     `<strong style="color:var(--text-primary)">${esc(c.name)}</strong>`,
     c.category?`<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:color-mix(in srgb,${DIR_CAT_COLORS[c.category]||'rgba(255,255,255,.2)'} 14%,transparent);color:${DIR_CAT_COLORS[c.category]||'var(--text-muted)'};border:1px solid color-mix(in srgb,${DIR_CAT_COLORS[c.category]||'rgba(255,255,255,.2)'} 25%,transparent)">${esc(c.category)}</span>`:'—',
     esc(c.company||'—'),
-    c.email?`<span style="font-size:11px">${esc(c.email)}</span>`:'—',
+    c.email?`<span style="font-size:11px;white-space:nowrap">${esc(c.email)}</span>`:'—',
     esc(c.phone||'—'),
     c.tags?`<span style="font-size:11px;color:var(--text-muted)">${esc(c.tags)}</span>`:'—',
     `<span style="max-width:200px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--text-muted)">${esc(c.notes||'—')}</span>`,
@@ -6331,7 +6331,7 @@ async function renderLogsN(q){
     `<strong style="color:var(--text-primary)">${esc(m.title||'Memo')}</strong>`,
     `<span style="font-size:10px;padding:1px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;font-weight:600">${m.kind==='audio'?'Voice':'Video'}</span>`,
     '—',
-    `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(m.date)}</span>`,
+    `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(m.date)}</div>`,
     m.storagePath?`<span style="font-size:10px;color:var(--green)">☁ synced</span>`:`<span style="font-size:10px;color:var(--text-muted)">local</span>`,
     dbDelBtn('deleteVideoMemo',m.id)
   ]));
@@ -6343,7 +6343,7 @@ async function renderLogsN(q){
       `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
       n.category?`<span class="note-cat">${esc(n.category)}</span>`:'—',
       statusBadge,
-      `<span style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtDate(n.created)}</span>`,
+      `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap;min-width:100px">${fmtDate(n.created)}</div>`,
       n.source?`<a href="${esc(n.source)}" target="_blank" rel="noopener" style="font-size:11px;color:#60a5fa" onclick="event.stopPropagation()">🔗</a>`:'—',
       `<span onclick="event.stopPropagation()">${dbDelBtn('deleteNote',n.id)}</span>`
     ],`viewNote('${n.id}')`);
