@@ -640,15 +640,18 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <!-- ── Mobile Header ── -->
 <header class="mob-header">
   <button class="mob-hamburger" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
-  <div class="mob-title" id="mobTitle">Lean<span>Lab</span></div>
+  <div class="mob-title" id="mobTitle">Lean<span>Flow</span></div>
   <button class="btn btn-primary btn-sm" id="mobActionBtn" style="background:var(--green);color:#000;padding:6px 14px;flex-shrink:0" onclick="openModal('task','work')">+ Task</button>
 </header>
 
 <!-- ── Sidebar ── -->
 <nav class="sidebar">
   <div class="sb-head">
-    <div class="sb-logo">Lean<span>Flow</span></div>
-    <div class="sb-sub">by StreamLean</div>
+    <div style="display:flex;align-items:baseline;gap:6px">
+      <div class="sb-logo">Lean<span>Flow</span></div>
+      <div class="sb-sub" style="margin-bottom:1px">by StreamLean</div>
+    </div>
+    <div class="sb-sub">Personal OS</div>
     <div class="sb-date" id="sbDate"></div>
   </div>
   <div class="sb-nav">
