@@ -170,6 +170,17 @@ const TOOLS = [
     },
   },
   {
+    name: 'lf_complete_note',
+    description: 'Mark a capture note as done. Use note id or an exact text match.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id:   { type: 'string' },
+        text: { type: 'string' },
+      },
+    },
+  },
+  {
     name: 'lf_add_lesson',
     description: 'Add a lesson to Growth → Lessons in LeanFlow.',
     inputSchema: {
@@ -333,6 +344,14 @@ async function handleTool(name, args) {
       notes.unshift(note);
       await setData(K.notes, notes);
       return `Note added.`;
+    }
+    case 'lf_complete_note': {
+      const notes = await getData(K.notes);
+      const target = notes.find(n => n.id === args.id) || (args.text ? notes.find(n => n.text === args.text) : undefined);
+      if (!target) return 'Note not found. Use lf_get_notes to list notes.';
+      target.status = 'done'; target.completedAt = today();
+      await setData(K.notes, notes);
+      return `Marked done: "${target.text.slice(0,60)}…"`;
     }
     case 'lf_add_lesson':
     case 'lf_add_skill':
