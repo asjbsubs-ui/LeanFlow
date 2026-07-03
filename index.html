@@ -154,6 +154,36 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .modal-body{padding:20px 22px;overflow-y:auto;flex:1}
 .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
 
+/* ── Capture inbox — per-card exits ── */
+.note-card.leaving{opacity:0;transform:translateX(28px);transition:opacity .28s,transform .28s}
+.exits-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.exits-row button{font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:7px 0;border-radius:var(--r-xs);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);transition:all .12s;font-family:'Outfit',sans-serif}
+.exits-row button.exit-t:hover,.exits-row button.exit-t.on{background:rgba(134,239,172,.12);color:var(--t-tasks);border-color:transparent}
+.exits-row button.exit-r:hover,.exits-row button.exit-r.on{background:rgba(34,211,238,.12);color:var(--t-selfdev);border-color:transparent}
+.exits-row button.exit-b:hover{background:rgba(251,191,36,.12);color:var(--yellow);border-color:transparent}
+.exits-row button.exit-x:hover{background:rgba(248,113,113,.12);color:var(--red);border-color:transparent}
+.exit-panel{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.exit-panel.open{display:block;animation:exitPanelReveal .18s ease-out}
+@keyframes exitPanelReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1}}
+.exit-panel-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.exit-chip{font:inherit;font-size:11px;font-weight:600;cursor:pointer;padding:5px 9px;border-radius:var(--r-xs);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);font-family:'Outfit',sans-serif}
+.exit-chip.sel-t{background:rgba(134,239,172,.15);color:var(--t-tasks);border-color:transparent}
+.exit-chip.sel-r{background:rgba(34,211,238,.15);color:var(--t-selfdev);border-color:transparent}
+.exit-panel input[type=date]{font:inherit;font-size:12px;padding:6px 9px;border-radius:var(--r-xs);border:1px solid var(--border-md);background:var(--bg-input);color:var(--text-primary)}
+.exit-panel input[type=text]{flex:1;min-width:180px;font:inherit;font-size:12px;padding:6px 10px;border-radius:var(--r-xs);border:1px solid var(--border-md);background:var(--bg-input);color:var(--text-primary);outline:none}
+.exit-panel input[type=text]:focus{border-color:var(--t-selfdev)}
+.exit-panel input.invalid{border-color:var(--red)!important;background:rgba(248,113,113,.08)}
+.exit-confirm{font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:6px 14px;border-radius:var(--r-xs);border:none;color:#000}
+.exit-confirm.t{background:var(--t-tasks)}
+.exit-confirm.r{background:var(--t-selfdev)}
+.exit-panel-hint{font-size:10.5px;color:var(--text-muted);margin-top:6px}
+.triage-ledger{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.triage-tally{font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--r-xs);font-family:'Outfit',sans-serif}
+.triage-tally.t{background:rgba(134,239,172,.12);color:var(--t-tasks)}
+.triage-tally.r{background:rgba(34,211,238,.12);color:var(--t-selfdev)}
+.triage-tally.b{background:rgba(251,191,36,.12);color:var(--yellow)}
+.triage-tally.x{background:rgba(248,113,113,.12);color:var(--red)}
+
 /* ── Triage mode ── */
 .triage-overlay{position:fixed;inset:0;background:var(--bg);z-index:600;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s}
 .triage-overlay.open{opacity:1;pointer-events:all}
@@ -1116,6 +1146,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="notes-filter"></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="notes-status-filter"></div>
   <div id="notesFeed"><div class="empty"><span class="empty-icon">💡</span><span class="empty-text">No notes yet. Start capturing ideas above.</span></div></div>
+  <div class="triage-ledger" id="notes-triage-ledger"></div>
 </div>
 
 <!-- DIRECTORY -->
@@ -3459,10 +3490,8 @@ async function renderNotes(){
   let filteredByStatus=_noteStatusFilter===''?all:all.filter(n=>n.status===_noteStatusFilter);
   const filteredNotes=(_noteCatFilter?filteredByStatus.filter(n=>n.category===_noteCatFilter):filteredByStatus).map(n=>({...n,_kind:'note'}));
   const filteredMedia=(_noteCatFilter||_noteStatusFilter!=='')?[]:allMedia;
-  // Open-notes view is oldest-first by design (the decaying ones confront you); every other view is newest-first.
-  const merged=_noteStatusFilter==='open'
-    ?[...filteredNotes].sort(TriageRules.oldestFirst)
-    :[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  // Capture inbox is newest-first (latest capture on top); full-screen Triage mode still sweeps oldest-first.
+  const merged=[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const el=$('notesFeed');
   if(!el) return;
   if(!merged.length){
@@ -3508,7 +3537,7 @@ async function renderNotes(){
     const ageCol=TriageRules.bucketColorVar(bucket);
     const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':'';
     const expiring=item.status==='scheduled'&&TriageRules.isBacklogExpiring(item);
-    return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}">
+    return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}" id="notecard-${item.id}">
       <div class="note-text">${esc(item.text)}</div>
       <div class="note-footer">
         <span class="note-status-btn" style="background:${ns.bg};color:${ns.col};border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);cursor:default">${exitIcon?exitIcon+' ':''}${ns.l}${expiring?' · expiring':''}</span>
@@ -3516,11 +3545,50 @@ async function renderNotes(){
         ${item.source?`<a href="${esc(item.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(item.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
         ${isOpen?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:${ageCol};margin-left:auto">${ageDays}d</span>`:`<span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}${item.edited?' ✎':''}</span>`}
         <button class="delete-btn" title="Edit" onclick="editNote('${item.id}')" style="font-size:13px">✏️</button>
-        ${isOpen?`<button onclick="openTriage('${item.id}')" title="Triage this note" style="background:transparent;border:1px solid var(--t-selfdev);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--t-selfdev);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap">Triage</button>`:''}
         <button class="delete-btn" onclick="deleteNote('${item.id}')">✕</button>
       </div>
+      ${isOpen?`
+      <div class="exits-row">
+        <button class="exit-t" onclick="inlineOpenPanel('${item.id}','t',this)">Task</button>
+        <button class="exit-r" onclick="inlineOpenPanel('${item.id}','r',this)">Reference</button>
+        <button class="exit-b" onclick="inlineExit('${item.id}','b')">Backlog</button>
+        <button class="exit-x" onclick="inlineExit('${item.id}','x')">Reject</button>
+      </div>
+      <div class="exit-panel" id="exitpanel-${item.id}-t">
+        <div class="exit-panel-row">
+          <input type="date" id="exitfield-${item.id}-due">
+          <div style="display:flex;gap:4px">
+            <button type="button" class="exit-chip" data-q="q1" onclick="inlineSelQuad(this)">Q1 do</button>
+            <button type="button" class="exit-chip sel-t" data-q="q2" onclick="inlineSelQuad(this)">Q2 schedule</button>
+            <button type="button" class="exit-chip" data-q="q3" onclick="inlineSelQuad(this)">Q3 delegate</button>
+            <button type="button" class="exit-chip" data-q="q4" onclick="inlineSelQuad(this)">Q4 drop</button>
+          </div>
+          <button class="exit-confirm t" onclick="inlineExit('${item.id}','t')">Create task</button>
+        </div>
+        <div class="exit-panel-hint">Reuses the existing note → task flow · keeps sourceNoteId link</div>
+      </div>
+      <div class="exit-panel" id="exitpanel-${item.id}-r">
+        <div class="exit-panel-row">
+          <div style="display:flex;gap:4px">
+            <button type="button" class="exit-chip sel-r" data-kind="lessons" onclick="inlineSelKind(this)">Lesson</button>
+            <button type="button" class="exit-chip" data-kind="systems" onclick="inlineSelKind(this)">System</button>
+          </div>
+          <input type="text" id="exitfield-${item.id}-why" placeholder="Why I saved this — required, one line" maxlength="120">
+          <button class="exit-confirm r" onclick="inlineExit('${item.id}','r')">File it</button>
+        </div>
+        <div class="exit-panel-hint">No why, no filing. A bare link is a bookmark, not reference.</div>
+      </div>`:''}
     </div>`;
   }).join('');
+  const ledgerEl=$('notes-triage-ledger');
+  if(ledgerEl){
+    const s=_inlineTally;
+    ledgerEl.innerHTML=(s.t+s.r+s.b+s.x)>0?`
+      <span class="triage-tally t">${s.t} task${s.t===1?'':'s'}</span>
+      <span class="triage-tally r">${s.r} reference</span>
+      <span class="triage-tally b">${s.b} backlog</span>
+      <span class="triage-tally x">${s.x} rejected</span>`:'';
+  }
 }
 
 // ── Lean Triage — exits engine + Triage Mode ───────────
@@ -3638,6 +3706,86 @@ function triageShowTaskForm(){ _triageFormMode='task'; renderTriage(); }
 function triageShowReferenceForm(){ _triageFormMode='reference'; renderTriage(); }
 function triageCancelForm(){ _triageFormMode=null; renderTriage(); }
 
+// ── Shared exit mutations — used by both Triage mode and per-card inline exits ──
+function exitNoteAsTask(note,{due,quadrant,goalId}){
+  const q=quadrant||TriageRules.DEFAULT_TASK_QUADRANT;
+  const {urgency,importance}=TriageRules.quadrantToFields(q);
+  const tasks=load(K.tasks);
+  tasks.unshift({id:uid(),title:note.text.trim(),type:'work',due:due||'',recur:null,recurDays:null,recurWeekDays:null,business:'',dept:'',urgency,importance,goalId:goalId||null,done:false,created:today(),sourceNoteId:note.id});
+  save(K.tasks,tasks);
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='done'; notes[i].exit_type='task'; save(K.notes,notes); }
+  if(activeTab==='tasks') renderTasks();
+  if(activeTab==='home') renderHome();
+}
+// Returns false (does nothing) if why is blank — reference exit requires a reason.
+function exitNoteAsReference(note,{why,target}){
+  const trimmed=(why||'').trim();
+  if(!trimmed) return false;
+  const items=load(K.knowledge);
+  items.push({id:uid(),title:note.text.trim(),category:target==='systems'?'systems':'lessons',type:'Other',skill:'Other',source:'',link:note.source||'',notes:trimmed,date:today()});
+  save(K.knowledge,items);
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='done'; notes[i].exit_type='reference'; save(K.notes,notes); }
+  if(activeTab==='selfdev') renderSelfDev();
+  return true;
+}
+function exitNoteAsBacklog(note){
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='scheduled'; notes[i].backlog_at=Date.now(); save(K.notes,notes); }
+}
+function exitNoteAsReject(note){
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='rejected'; save(K.notes,notes); }
+}
+
+// ── Per-card inline exits (Capture inbox) — session-local tally, resets on reload ──
+let _inlineTally={t:0,r:0,b:0,x:0};
+
+function inlineOpenPanel(noteId,kind,btn){
+  const card=$('notecard-'+noteId);if(!card)return;
+  const panel=$('exitpanel-'+noteId+'-'+kind);
+  const wasOpen=panel.classList.contains('open');
+  card.querySelectorAll('.exit-panel').forEach(p=>p.classList.remove('open'));
+  card.querySelectorAll('.exits-row button').forEach(b=>b.classList.remove('on'));
+  if(!wasOpen){ panel.classList.add('open'); btn.classList.add('on'); const inp=panel.querySelector('input[type=text],input[type=date]'); if(inp) inp.focus(); }
+}
+function inlineSelQuad(btn){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('sel-t')); btn.classList.add('sel-t'); }
+function inlineSelKind(btn){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('sel-r')); btn.classList.add('sel-r'); }
+
+function inlineExit(noteId,kind){
+  const note=load(K.notes).find(n=>n.id===noteId); if(!note) return;
+  if(kind==='t'){
+    const card=$('notecard-'+noteId);
+    const due=($('exitfield-'+noteId+'-due')||{value:''}).value;
+    const qBtn=card&&card.querySelector('.exit-chip.sel-t');
+    const quadrant=qBtn?qBtn.dataset.q:TriageRules.DEFAULT_TASK_QUADRANT;
+    exitNoteAsTask(note,{due,quadrant});
+    _inlineTally.t++;
+  } else if(kind==='r'){
+    const whyEl=$('exitfield-'+noteId+'-why');
+    const card=$('notecard-'+noteId);
+    const kBtn=card&&card.querySelector('.exit-chip.sel-r');
+    const target=kBtn?kBtn.dataset.kind:'lessons';
+    const ok=exitNoteAsReference(note,{why:whyEl&&whyEl.value,target});
+    if(!ok){ if(whyEl){whyEl.classList.add('invalid');whyEl.placeholder="Can't file without a why — that's the rule";whyEl.focus();} return; }
+    _inlineTally.r++;
+  } else if(kind==='b'){
+    exitNoteAsBacklog(note);
+    _inlineTally.b++;
+  } else if(kind==='x'){
+    exitNoteAsReject(note);
+    _inlineTally.x++;
+  }
+  const card=$('notecard-'+noteId);
+  if(card){
+    card.classList.add('leaving');
+    setTimeout(()=>{ renderNotes(); updateNotesPill(); },280);
+  } else {
+    renderNotes(); updateNotesPill();
+  }
+}
+
 function triageAdvance(){
   _triageIndex++;
   _triageFormMode=null;
@@ -3647,49 +3795,34 @@ function triageAdvance(){
 
 function triageConfirmTask(){
   const note=_triageCurrentNote(); if(!note) return;
-  const due=($('triage-task-due')||{value:''}).value||'';
-  const quadrant=($('triage-task-quadrant')||{value:TriageRules.DEFAULT_TASK_QUADRANT}).value;
-  const goalId=($('triage-task-goal')||{value:''}).value||null;
-  const {urgency,importance}=TriageRules.quadrantToFields(quadrant);
-  const tasks=load(K.tasks);
-  tasks.unshift({id:uid(),title:note.text.trim(),type:'work',due,recur:null,recurDays:null,recurWeekDays:null,business:'',dept:'',urgency,importance,goalId,done:false,created:today(),sourceNoteId:note.id});
-  save(K.tasks,tasks);
-  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
-  if(i>=0){ notes[i].status='done'; notes[i].exit_type='task'; save(K.notes,notes); }
+  exitNoteAsTask(note,{
+    due:($('triage-task-due')||{value:''}).value,
+    quadrant:($('triage-task-quadrant')||{value:TriageRules.DEFAULT_TASK_QUADRANT}).value,
+    goalId:($('triage-task-goal')||{value:''}).value,
+  });
   _triageSession.task++;
-  if(activeTab==='tasks') renderTasks();
-  if(activeTab==='home') renderHome();
   triageAdvance();
 }
 
 function triageConfirmReference(){
   const note=_triageCurrentNote(); if(!note) return;
   const whyEl=$('triage-ref-why');
-  const why=(whyEl&&whyEl.value||'').trim();
-  if(!why){ if(whyEl){whyEl.focus();whyEl.style.borderColor='var(--red)';} return; }
-  const target=($('triage-ref-target')||{value:'lessons'}).value;
-  const items=load(K.knowledge);
-  items.push({id:uid(),title:note.text.trim(),category:target,type:'Other',skill:'Other',source:'',link:note.source||'',notes:why,date:today()});
-  save(K.knowledge,items);
-  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
-  if(i>=0){ notes[i].status='done'; notes[i].exit_type='reference'; save(K.notes,notes); }
+  const ok=exitNoteAsReference(note,{why:whyEl&&whyEl.value,target:($('triage-ref-target')||{value:'lessons'}).value});
+  if(!ok){ if(whyEl){whyEl.focus();whyEl.style.borderColor='var(--red)';} return; }
   _triageSession.reference++;
-  if(activeTab==='selfdev') renderSelfDev();
   triageAdvance();
 }
 
 function triageBacklog(){
   const note=_triageCurrentNote(); if(!note) return;
-  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
-  if(i>=0){ notes[i].status='scheduled'; notes[i].backlog_at=Date.now(); save(K.notes,notes); }
+  exitNoteAsBacklog(note);
   _triageSession.backlog++;
   triageAdvance();
 }
 
 function triageReject(){
   const note=_triageCurrentNote(); if(!note) return;
-  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
-  if(i>=0){ notes[i].status='rejected'; save(K.notes,notes); }
+  exitNoteAsReject(note);
   _triageSession.rejected++;
   triageAdvance();
 }
