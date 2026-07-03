@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="triage-rules.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -152,6 +153,25 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
 .modal-body{padding:20px 22px;overflow-y:auto;flex:1}
 .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* ── Triage mode ── */
+.triage-overlay{position:fixed;inset:0;background:var(--bg);z-index:600;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s}
+.triage-overlay.open{opacity:1;pointer-events:all}
+.triage-depletion{height:4px;background:rgba(255,255,255,.06);flex-shrink:0}
+.triage-depletion-fill{height:100%;background:linear-gradient(90deg,var(--t-selfdev),var(--green));transition:width .3s ease}
+.triage-head{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;flex-shrink:0}
+.triage-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:20px 20px 60px}
+.triage-card{width:100%;max-width:560px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);padding:28px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.triage-card-text{font-size:20px;line-height:1.5;color:var(--text-bright);margin-bottom:18px;white-space:pre-wrap}
+.triage-exit-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}
+.triage-exit-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border-radius:var(--r-md);border:1px solid var(--border-md);background:transparent;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s}
+.triage-exit-btn:hover{border-color:var(--text-primary);background:var(--bg-hover)}
+.triage-exit-key{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+.triage-exit-label{font-size:12px;font-weight:600;color:var(--text-secondary)}
+.triage-stack{width:100%;max-width:560px;margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.triage-stack-item{padding:8px 14px;border-radius:var(--r-sm);background:rgba(255,255,255,.03);color:var(--text-muted);font-size:12px;opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.triage-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;text-align:center}
+.triage-empty-num{font-family:'Orbitron',monospace;font-size:64px;font-weight:900;color:var(--green)}
 
 /* ── Badges ── */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;border:1px solid;font-family:'Outfit',sans-serif}
@@ -661,6 +681,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </button>
     <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
       <span class="nav-emoji">💡</span>Capture
+      <span class="nav-pill" id="pill-notes" style="background:rgba(167,139,250,.15);color:#a78bfa">0</span>
     </button>
     <button class="nav-btn" data-tab="goals" style="--tab-color:var(--t-goals)" onclick="switchTab('goals',this)">
       <span class="nav-emoji">🎯</span>Goals
@@ -1063,29 +1084,31 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div class="ph-left">
       <div class="ph-eyebrow" style="color:#a78bfa">Capture</div>
       <div class="ph-title" style="color:#a78bfa">Capture</div>
-      <div class="ph-sub">Capture ideas before they disappear.</div>
+      <div class="ph-sub" id="notes-inbox-sub">Capture ideas before they disappear.</div>
     </div>
     <div class="ph-actions">
       <button class="btn btn-ghost" onclick="openVoiceRecorder()">🎙️ Voice</button>
       <button class="btn btn-ghost" onclick="openVideoRecorder()">📹 Video</button>
       <button class="btn btn-ghost" onclick="openLogs('notes')">📋 Logs</button>
+      <button class="btn btn-primary" id="notes-triage-nudge" style="background:var(--yellow);color:#000;display:none" onclick="openTriage()">⚡ Triage now</button>
     </div>
   </div>
   <!-- Quick capture -->
   <div class="card" style="margin-bottom:18px">
     <div class="card-body">
-      <textarea class="textarea" id="note-input" style="min-height:96px;font-size:14px;resize:none;border:none;background:transparent;padding:0;margin-bottom:14px" placeholder="What's on your mind? Type and save… (Cmd+Enter to save)" onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();saveNote();}"></textarea>
-      <div style="margin-bottom:10px">
+      <input class="input" id="note-input" style="font-size:14px;border:none;background:transparent;padding:0 0 12px;margin-bottom:2px;border-bottom:1px solid var(--border)" placeholder="What's on your mind? Enter to save…" autocomplete="off" onpaste="setTimeout(noteInputAutoSource,0)" onkeydown="if(event.key==='Enter'){event.preventDefault();saveNote();}">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input class="input" id="note-source" type="url" inputmode="url" placeholder="🔗 Source URL (auto-filled from pasted links)" style="flex:1;font-size:12px" autocapitalize="none">
+        <button type="button" onclick="showNoteCatSection()" style="font-size:11px;padding:6px 10px;border-radius:var(--r-xs);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap">+ category</button>
+        <button class="btn btn-primary" style="background:#a78bfa;color:#000;padding:9px 20px;flex-shrink:0" onclick="saveNote()">Save</button>
+      </div>
+      <div id="note-cat-section" style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)">Category</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)">Category (optional)</span>
           <button type="button" id="note-cat-edit-btn" onclick="toggleNoteCatEdit()" style="font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-weight:500;transition:all .15s">✏️ Edit</button>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="note-cat-chips"></div>
         <input class="input" id="note-cat-custom" placeholder="Or type a custom category…" oninput="noteCatCustomInput(this)" style="font-size:12px" autocomplete="off">
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <input class="input" id="note-source" type="url" inputmode="url" placeholder="🔗 Source URL (YouTube, Instagram, article…)" style="flex:1;font-size:12px" autocapitalize="none">
-        <button class="btn btn-primary" style="background:#a78bfa;color:#000;padding:9px 20px;flex-shrink:0" onclick="saveNote()">Save</button>
       </div>
     </div>
   </div>
@@ -1268,6 +1291,14 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 <div id="ytFlowOverlay" onclick="if(event.target===this)ytFlowClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);z-index:610;align-items:center;justify-content:center;padding:20px">
   <div id="ytFlowInner" style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px;position:relative"></div>
 </div>
+<div class="triage-overlay" id="triageOverlay">
+  <div class="triage-depletion"><div class="triage-depletion-fill" id="triage-depletion-fill" style="width:0%"></div></div>
+  <div class="triage-head">
+    <div style="font-family:'Orbitron',monospace;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--t-selfdev);text-transform:uppercase" id="triage-progress">Triage</div>
+    <button class="modal-close" onclick="closeTriage()">✕</button>
+  </div>
+  <div class="triage-body" id="triage-body"></div>
+</div>
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal" id="modal">
     <div class="modal-head">
@@ -1319,6 +1350,17 @@ function migrateReviewsToSunday(){
     if(d.getDay()!==0){d.setDate(d.getDate()-d.getDay());r.week=d.toLocaleDateString('sv');changed=true;}
   });
   if(changed) save(K.reviews,reviews);
+}
+function migrateNoteStatuses(){
+  if(localStorage.getItem('_mig_note_status_v1')) return;
+  const notes=load(K.notes);
+  let changed=false;
+  notes.forEach(n=>{
+    if(n.status===null||n.status===undefined){ n.status='open'; changed=true; }
+    else if(n.status==='in-progress'){ n.status='done'; n.exit_type=n.exit_type||'task'; changed=true; }
+  });
+  if(changed) save(K.notes,notes);
+  localStorage.setItem('_mig_note_status_v1','1');
 }
 function migrateWoCats(){
   if(localStorage.getItem('_mig_wo_cats_v1')) return;
@@ -2850,7 +2892,7 @@ function _ytApproveIdea(){
   const idea=($('ytf-idea')?.value||'').trim();
   if(idea){
     const notes=load(K.notes);
-    notes.unshift({id:uid(),text:idea,category:'Idea',source:_ytFlow.ytUrl||'',status:null,created:today(),ts:Date.now()});
+    notes.unshift({id:uid(),text:idea,category:'Idea',source:_ytFlow.ytUrl||'',status:'open',created:today(),ts:Date.now()});
     save(K.notes,notes);
     showToast('Idea saved to Capture','var(--green)');
   }
@@ -3058,9 +3100,38 @@ function renderReview(){
           ${load(K.goals).slice(0,3).map((g,i)=>`<div class="review-item"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:22px;flex-shrink:0">0${i+1}</span><div style="flex:1;color:var(--text-secondary)">${esc(g.title)}</div><span class="lbl ${g.progress>=70?'lbl-g':g.progress>=40?'lbl-a':'lbl-r'}">${g.progress}%</span></div>`).join('')}
           ${!load(K.goals).length?'<div style="font-size:12px;color:var(--text-muted)">Add goals in the Goals tab to see them here.</div>':''}
         </div></div>
-      </div>`;
+      </div>
+      ${renderBacklogReviewCard()}`;
   }
   renderWeeklyReport();
+}
+
+// Backlog notes untouched 30+ days since backlog_at — surfaced here for a keep/kill decision.
+function renderBacklogReviewCard(){
+  const expiring=load(K.notes).filter(n=>n.status==='scheduled'&&TriageRules.isBacklogExpiring(n));
+  if(!expiring.length) return '';
+  return `<div class="card" style="margin-top:16px">
+    <div class="card-header"><span class="card-title">🗂️ Backlog — Needs a Decision</span><span class="lbl lbl-a">${expiring.length} EXPIRING</span></div>
+    <div class="card-body">
+      ${expiring.map(n=>`<div class="review-item" style="align-items:center">
+        <div class="review-dot" style="background:var(--yellow)"></div>
+        <div style="flex:1;color:var(--text-secondary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.text)}</div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);flex-shrink:0;margin-right:8px">${TriageRules.backlogAgeDays(n)}d in backlog</span>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="backlogKeep('${n.id}')">Keep</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0;margin-left:6px" onclick="backlogKill('${n.id}')">Kill</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function backlogKeep(id){
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===id);
+  if(i>=0){ notes[i].backlog_at=Date.now(); save(K.notes,notes); }
+  renderReview();
+}
+function backlogKill(id){
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===id);
+  if(i>=0){ notes[i].status='rejected'; save(K.notes,notes); }
+  renderReview();
 }
 
 function renderWeeklyReport(){
@@ -3209,20 +3280,22 @@ function showReviewHistory(){}
 
 // ── MODAL ─────────────────────────────────────────────
 // ── Notes ─────────────────────────────────────────────
-let _noteChip='', _noteCatFilter='', _noteStatusFilter='', _editingNoteId=null;
+let _noteChip='', _noteCatFilter='', _noteStatusFilter='open', _editingNoteId=null;
 
 const NOTE_STATUSES=[
-  {v:null,          l:'Open',        col:'var(--text-muted)',  bg:'rgba(255,255,255,.07)'},
-  {v:'in-progress', l:'Scheduled',   col:'var(--yellow)',      bg:'rgba(251,191,36,.12)'},
-  {v:'done',        l:'Done',        col:'var(--green)',       bg:'rgba(74,222,128,.12)'},
-  {v:'rejected',    l:'Rejected',    col:'var(--red)',         bg:'rgba(248,113,113,.12)'},
+  {v:'open',      l:'Open',     col:'var(--text-muted)', bg:'rgba(255,255,255,.07)'},
+  {v:'scheduled', l:'Backlog',  col:'var(--yellow)',     bg:'rgba(251,191,36,.12)'},
+  {v:'done',      l:'Done',     col:'var(--green)',      bg:'rgba(74,222,128,.12)'},
+  {v:'rejected',  l:'Rejected', col:'var(--red)',        bg:'rgba(248,113,113,.12)'},
 ];
+// exit_type on a done note: 'task' | 'reference'. null for legacy/other completions.
 
 const _DEFAULT_NOTE_CATS=['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought','🛒 Grocery','🐛 Bug','💻 App Development'];
 function getNoteCats(){const s=localStorage.getItem(K.noteCats);return s?JSON.parse(s):[..._DEFAULT_NOTE_CATS];}
 function saveNoteCats(cats){localStorage.setItem(K.noteCats,JSON.stringify(cats));}
 let _noteCatEditMode=false;
 function toggleNoteCatEdit(){_noteCatEditMode=!_noteCatEditMode;renderNoteCatChips();}
+function showNoteCatSection(){const sec=$('note-cat-section');if(sec)sec.style.display='block';renderNoteCatChips();}
 function renderNoteCatChips(){
   const cats=getNoteCats();
   const el=$('note-cat-chips');if(!el)return;
@@ -3290,31 +3363,35 @@ function noteCatCustomInput(input){
   _noteChip=input.value.trim();
 }
 
+const _URL_RE=/https?:\/\/[^\s]+/i;
+// Extracts a bare URL pasted/typed into the capture input into the source field automatically.
+function noteInputAutoSource(){
+  const input=$('note-input');const src=$('note-source');
+  if(!input||!src||src.value.trim())return;
+  const m=(input.value||'').match(_URL_RE);
+  if(m) src.value=m[0];
+}
+
 function saveNote(){
-  const text=($('note-input').value||'').trim();
-  if(!text){ $('note-input').focus(); return; }
+  const input=$('note-input');
+  const text=(input.value||'').trim();
+  if(!text){ input.focus(); return; }
   const custom=$('note-cat-custom');
   const cat=custom&&custom.value.trim()?custom.value.trim():_noteChip;
+  const srcEl=$('note-source');
+  let source=(srcEl&&srcEl.value||'').trim();
+  if(!source){ const m=text.match(_URL_RE); if(m) source=m[0]; }
   const notes=load(K.notes);
-  notes.unshift({id:uid(),text,category:cat,source:($('note-source').value||'').trim(),status:null,created:today(),ts:Date.now()});
+  notes.unshift({id:uid(),text,category:cat,source,status:'open',created:today(),ts:Date.now()});
   save(K.notes,notes);
-  $('note-input').value='';
-  $('note-source').value='';
+  input.value='';
+  if(srcEl)srcEl.value='';
   if(custom)custom.value='';
   document.querySelectorAll('#note-cat-chips button').forEach(b=>b.classList.remove('on'));
   _noteChip='';
-  $('note-input').focus();
+  input.focus();
   renderNotes();
   showToast('💡 Note saved','#a78bfa');
-}
-
-function cycleNoteStatus(id){
-  const notes=load(K.notes);
-  const n=notes.find(x=>x.id===id);if(!n)return;
-  const idx=NOTE_STATUSES.findIndex(s=>s.v===n.status);
-  n.status=NOTE_STATUSES[(idx+1)%NOTE_STATUSES.length].v;
-  save(K.notes,notes);
-  renderNotes();
 }
 
 function editNote(id){
@@ -3330,19 +3407,6 @@ function _noteEditCatChip(btn,cat){
   btn.style.borderColor='#a78bfa';btn.style.background='rgba(167,139,250,.15)';btn.style.color='#a78bfa';
   if($('m-note-cat'))$('m-note-cat').value=cat;
   if($('m-note-cat-input'))$('m-note-cat-input').value='';
-}
-
-function noteToTask(id){
-  const n=load(K.notes).find(x=>x.id===id);if(!n)return;
-  const title=n.text.trim();
-  _taskTypeDefault='work';
-  _editingTaskId=null;
-  _noteToTaskSourceId=id;
-  openModal('task','work');
-  setTimeout(()=>{
-    if($('m-task-title')) $('m-task-title').value=title;
-    if($('modalTitle')) $('modalTitle').textContent='Convert Note → Task';
-  },60);
 }
 
 function deleteNote(id){
@@ -3372,30 +3436,39 @@ async function renderNotes(){
   const cats=[...new Set(all.map(n=>n.category).filter(Boolean))];
   const filterEl=$('notes-filter');
   if(filterEl) filterEl.innerHTML=[{v:'',l:'All'},...cats.map(c=>({v:c,l:c}))].map(({v,l})=>`<button onclick="setNoteCatFilter('${v.replace(/'/g,"\\'")}') " style="padding:4px 12px;border-radius:99px;border:1px solid ${_noteCatFilter===v?'#a78bfa':'var(--border-md)'};background:${_noteCatFilter===v?'rgba(167,139,250,.15)':'transparent'};color:${_noteCatFilter===v?'#a78bfa':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:500;transition:all .15s">${l}</button>`).join('');
-  // Status filter chips — '' = all, '__open__' = status null, else literal status value
+  // Status filter chips — '' = all, else literal status value ('open'/'scheduled'/'done'/'rejected')
   const sfEl=$('notes-status-filter');
   if(sfEl){
-    const sfChips=[{key:'',l:'All statuses',col:'var(--text-muted)',bg:'transparent',border:'var(--border-md)'},...NOTE_STATUSES.map(s=>({key:s.v===null?'__open__':s.v,l:s.l,col:s.col,bg:s.bg,border:`color-mix(in srgb,${s.col} 40%,transparent)`}))];
+    const sfChips=[{key:'',l:'All statuses',col:'var(--text-muted)',bg:'transparent',border:'var(--border-md)'},...NOTE_STATUSES.map(s=>({key:s.v,l:s.l,col:s.col,bg:s.bg,border:`color-mix(in srgb,${s.col} 40%,transparent)`}))];
     sfEl.innerHTML=sfChips.map(c=>{
       const on=_noteStatusFilter===c.key;
-      const matchStatus=c.key==='__open__'?null:c.key||null;
-      const cnt=c.key===''?all.length:all.filter(n=>(n.status||null)===matchStatus).length;
+      const cnt=c.key===''?all.length:all.filter(n=>n.status===c.key).length;
       if(cnt===0&&c.key!=='') return '';
       return `<button onclick="_noteStatusFilter='${c.key}';renderNotes()" style="padding:4px 12px;border-radius:99px;border:1px solid ${on?c.border:'var(--border-md)'};background:${on?c.bg:'transparent'};color:${on?c.col:'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;transition:all .15s">${c.l}<span style="opacity:.65;font-size:9px;margin-left:3px">${cnt}</span></button>`;
     }).join('');
   }
-  let filteredByStatus=all;
-  if(_noteStatusFilter!==''){
-    const target=_noteStatusFilter==='__open__'?null:_noteStatusFilter;
-    filteredByStatus=all.filter(n=>(n.status||null)===target);
-  }
+  // Inbox header stats — open count + oldest age + triage nudge (independent of the active filter)
+  const openNotes=all.filter(n=>n.status==='open');
+  const stats=TriageRules.inboxStats(openNotes);
+  const subEl=$('notes-inbox-sub');
+  if(subEl) subEl.textContent=stats.count?`${stats.count} open${stats.count===1?'':'s'} · oldest ${stats.oldestAgeDays}d`:'Inbox clean. Capture ideas before they disappear.';
+  const nudgeEl=$('notes-triage-nudge');
+  if(nudgeEl) nudgeEl.style.display=(stats.count&&stats.oldestAgeDays>=TriageRules.AMBER_DAYS)?'':'none';
+  const pillEl=$('pill-notes');
+  if(pillEl) pillEl.textContent=stats.count?`${stats.count} · ${stats.oldestAgeDays}d`:'0';
+  let filteredByStatus=_noteStatusFilter===''?all:all.filter(n=>n.status===_noteStatusFilter);
   const filteredNotes=(_noteCatFilter?filteredByStatus.filter(n=>n.category===_noteCatFilter):filteredByStatus).map(n=>({...n,_kind:'note'}));
-  const filteredMedia=_noteCatFilter?[]:allMedia;
-  const merged=[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const filteredMedia=(_noteCatFilter||_noteStatusFilter!=='')?[]:allMedia;
+  // Open-notes view is oldest-first by design (the decaying ones confront you); every other view is newest-first.
+  const merged=_noteStatusFilter==='open'
+    ?[...filteredNotes].sort(TriageRules.oldestFirst)
+    :[...filteredNotes,...filteredMedia].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const el=$('notesFeed');
   if(!el) return;
   if(!merged.length){
-    el.innerHTML=`<div class="empty"><span class="empty-icon">💡</span><span class="empty-text">${_noteCatFilter?'No notes in this category.':'No captures yet. Write a note, record a voice or video memo above.'}</span></div>`;
+    el.innerHTML=_noteStatusFilter==='open'
+      ?`<div class="empty"><span class="empty-icon">✅</span><span class="empty-text">Inbox clean. Go build something.</span></div>`
+      :`<div class="empty"><span class="empty-icon">💡</span><span class="empty-text">${_noteCatFilter?'No notes in this category.':'No captures yet. Write a note, record a voice or video memo above.'}</span></div>`;
     return;
   }
   el.innerHTML=merged.map(item=>{
@@ -3429,19 +3502,211 @@ async function renderNotes(){
       </div>`;
     }
     const ns=NOTE_STATUSES.find(s=>s.v===item.status)||NOTE_STATUSES[0];
+    const isOpen=item.status==='open';
+    const bucket=isOpen?TriageRules.ageBucket(item.created):'normal';
+    const ageDays=isOpen?TriageRules.ageDays(item.created):0;
+    const ageCol=TriageRules.bucketColorVar(bucket);
+    const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':'';
+    const expiring=item.status==='scheduled'&&TriageRules.isBacklogExpiring(item);
     return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}">
       <div class="note-text">${esc(item.text)}</div>
       <div class="note-footer">
-        <button class="note-status-btn" onclick="cycleNoteStatus('${item.id}')" style="background:${ns.bg};color:${ns.col};border:1px solid color-mix(in srgb,${ns.col} 30%,transparent)">${ns.l}</button>
+        <span class="note-status-btn" style="background:${ns.bg};color:${ns.col};border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);cursor:default">${exitIcon?exitIcon+' ':''}${ns.l}${expiring?' · expiring':''}</span>
         ${item.category?`<span class="note-cat">${esc(item.category)}</span>`:''}
         ${item.source?`<a href="${esc(item.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(item.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
-        <span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}${item.edited?' ✎':''}</span>
+        ${isOpen?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:${ageCol};margin-left:auto">${ageDays}d</span>`:`<span class="note-date" style="margin-left:auto">${fmtDateShort(item.created)}${item.edited?' ✎':''}</span>`}
         <button class="delete-btn" title="Edit" onclick="editNote('${item.id}')" style="font-size:13px">✏️</button>
-        <button onclick="noteToTask('${item.id}')" title="Convert to task" style="background:transparent;border:1px solid var(--border-md);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--text-muted);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap" onmouseover="this.style.borderColor='var(--t-tasks)';this.style.color='var(--t-tasks)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">→ Task</button>
+        ${isOpen?`<button onclick="openTriage('${item.id}')" title="Triage this note" style="background:transparent;border:1px solid var(--t-selfdev);border-radius:var(--r-xs);cursor:pointer;font-size:10px;font-weight:600;color:var(--t-selfdev);padding:2px 8px;font-family:'Outfit',sans-serif;transition:all .15s;white-space:nowrap">Triage</button>`:''}
         <button class="delete-btn" onclick="deleteNote('${item.id}')">✕</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Lean Triage — exits engine + Triage Mode ───────────
+let _triageStack=[], _triageIndex=0, _triageSession={task:0,reference:0,backlog:0,rejected:0}, _triageFormMode=null;
+
+function openTriage(focusNoteId){
+  const open=load(K.notes).filter(n=>n.status==='open').sort(TriageRules.oldestFirst);
+  if(focusNoteId){
+    const fi=open.findIndex(n=>n.id===focusNoteId);
+    if(fi>0){ const [n]=open.splice(fi,1); open.unshift(n); }
+  }
+  _triageStack=open.map(n=>n.id);
+  _triageIndex=0;
+  _triageSession={task:0,reference:0,backlog:0,rejected:0};
+  _triageFormMode=null;
+  $('triageOverlay').classList.add('open');
+  document.addEventListener('keydown',triageKeyHandler);
+  renderTriage();
+}
+function closeTriage(){
+  $('triageOverlay').classList.remove('open');
+  document.removeEventListener('keydown',triageKeyHandler);
+  renderNotes();
+}
+
+function _triageCurrentNote(){
+  while(_triageIndex<_triageStack.length){
+    const n=load(K.notes).find(x=>x.id===_triageStack[_triageIndex]);
+    if(n&&n.status==='open') return n;
+    _triageIndex++; // skip notes already exited elsewhere mid-session (edited/deleted/synced)
+  }
+  return null;
+}
+
+function renderTriage(){
+  const total=_triageStack.length, done=_triageIndex;
+  const fill=$('triage-depletion-fill'); if(fill) fill.style.width=(total?Math.round(done/total*100):100)+'%';
+  const prog=$('triage-progress'); if(prog) prog.textContent=total?`Triage · ${done}/${total}`:'Triage';
+  const body=$('triage-body'); if(!body) return;
+
+  const note=_triageCurrentNote();
+  if(!note){
+    const s=_triageSession, n=s.task+s.reference+s.backlog+s.rejected;
+    body.innerHTML=`<div class="triage-empty">
+      <div class="triage-empty-num">0</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text-primary)">Inbox clean. Go build something.</div>
+      ${n>0?`<div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${s.task} task · ${s.reference} reference · ${s.backlog} backlog · ${s.rejected} rejected</div>`:''}
+      <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000;margin-top:8px" onclick="closeTriage()">Done</button>
+    </div>`;
+    return;
+  }
+
+  const rest=_triageStack.slice(_triageIndex+1,_triageIndex+6).map(id=>load(K.notes).find(n=>n.id===id)).filter(Boolean);
+  const ageDays=TriageRules.ageDays(note.created);
+  const ageCol=TriageRules.bucketColorVar(TriageRules.ageBucket(note.created));
+
+  let formHtml='';
+  if(_triageFormMode==='task'){
+    const goals=load(K.goals);
+    formHtml=`<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
+      <div class="field-row">
+        <div class="field"><label>Due date</label><input class="input" id="triage-task-due" type="date" onkeydown="if(event.key==='Enter'){event.preventDefault();triageConfirmTask();}"></div>
+        <div class="field"><label>Quadrant</label><select class="select" id="triage-task-quadrant">
+          <option value="q1">Q1 · Do first</option>
+          <option value="q2" selected>Q2 · Schedule</option>
+          <option value="q3">Q3 · Delegate</option>
+          <option value="q4">Q4 · Eliminate</option>
+        </select></div>
+      </div>
+      <div class="field"><label>Goal (optional)</label><select class="select" id="triage-task-goal">
+        <option value="">No goal</option>
+        ${goals.map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')}
+      </select></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary" style="background:var(--t-tasks);color:#000" onclick="triageConfirmTask()">Create task →</button>
+        <button class="btn btn-ghost" onclick="triageCancelForm()">Cancel</button>
+      </div>
+    </div>`;
+  } else if(_triageFormMode==='reference'){
+    formHtml=`<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
+      <div class="field"><label>File as</label><select class="select" id="triage-ref-target">
+        <option value="lessons">📖 Lesson</option>
+        <option value="systems">⚙️ System</option>
+      </select></div>
+      <div class="field"><label>Why I saved this *</label><input class="input" id="triage-ref-why" placeholder="One line — why does this matter?" onkeydown="if(event.key==='Enter'){event.preventDefault();triageConfirmReference();}"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="triageConfirmReference()">Save to Growth →</button>
+        <button class="btn btn-ghost" onclick="triageCancelForm()">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  body.innerHTML=`
+    <div class="triage-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        ${note.category?`<span class="note-cat">${esc(note.category)}</span>`:''}
+        ${note.source?`<a href="${esc(note.source)}" target="_blank" rel="noopener" class="note-source">🔗 ${esc(note.source.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${ageCol}">${ageDays}d old</span>
+      </div>
+      <div class="triage-card-text">${esc(note.text)}</div>
+      ${!_triageFormMode?`<div class="triage-exit-row">
+        <button class="triage-exit-btn" onclick="triageShowTaskForm()"><span class="triage-exit-key">1</span><span style="font-size:20px">📋</span><span class="triage-exit-label">Task</span></button>
+        <button class="triage-exit-btn" onclick="triageShowReferenceForm()"><span class="triage-exit-key">2</span><span style="font-size:20px">📚</span><span class="triage-exit-label">Reference</span></button>
+        <button class="triage-exit-btn" onclick="triageBacklog()"><span class="triage-exit-key">3</span><span style="font-size:20px">🗂️</span><span class="triage-exit-label">Backlog</span></button>
+        <button class="triage-exit-btn" onclick="triageReject()"><span class="triage-exit-key">4</span><span style="font-size:20px">✕</span><span class="triage-exit-label">Reject</span></button>
+      </div>`:formHtml}
+    </div>
+    ${rest.length?`<div class="triage-stack">${rest.map(n=>`<div class="triage-stack-item">${esc(n.text)}</div>`).join('')}</div>`:''}
+  `;
+  if(_triageFormMode==='task'){ const d=$('triage-task-due'); if(d) d.focus(); }
+  if(_triageFormMode==='reference'){ const w=$('triage-ref-why'); if(w) w.focus(); }
+}
+
+function triageShowTaskForm(){ _triageFormMode='task'; renderTriage(); }
+function triageShowReferenceForm(){ _triageFormMode='reference'; renderTriage(); }
+function triageCancelForm(){ _triageFormMode=null; renderTriage(); }
+
+function triageAdvance(){
+  _triageIndex++;
+  _triageFormMode=null;
+  renderTriage();
+  updateNotesPill();
+}
+
+function triageConfirmTask(){
+  const note=_triageCurrentNote(); if(!note) return;
+  const due=($('triage-task-due')||{value:''}).value||'';
+  const quadrant=($('triage-task-quadrant')||{value:TriageRules.DEFAULT_TASK_QUADRANT}).value;
+  const goalId=($('triage-task-goal')||{value:''}).value||null;
+  const {urgency,importance}=TriageRules.quadrantToFields(quadrant);
+  const tasks=load(K.tasks);
+  tasks.unshift({id:uid(),title:note.text.trim(),type:'work',due,recur:null,recurDays:null,recurWeekDays:null,business:'',dept:'',urgency,importance,goalId,done:false,created:today(),sourceNoteId:note.id});
+  save(K.tasks,tasks);
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='done'; notes[i].exit_type='task'; save(K.notes,notes); }
+  _triageSession.task++;
+  if(activeTab==='tasks') renderTasks();
+  if(activeTab==='home') renderHome();
+  triageAdvance();
+}
+
+function triageConfirmReference(){
+  const note=_triageCurrentNote(); if(!note) return;
+  const whyEl=$('triage-ref-why');
+  const why=(whyEl&&whyEl.value||'').trim();
+  if(!why){ if(whyEl){whyEl.focus();whyEl.style.borderColor='var(--red)';} return; }
+  const target=($('triage-ref-target')||{value:'lessons'}).value;
+  const items=load(K.knowledge);
+  items.push({id:uid(),title:note.text.trim(),category:target,type:'Other',skill:'Other',source:'',link:note.source||'',notes:why,date:today()});
+  save(K.knowledge,items);
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='done'; notes[i].exit_type='reference'; save(K.notes,notes); }
+  _triageSession.reference++;
+  if(activeTab==='selfdev') renderSelfDev();
+  triageAdvance();
+}
+
+function triageBacklog(){
+  const note=_triageCurrentNote(); if(!note) return;
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='scheduled'; notes[i].backlog_at=Date.now(); save(K.notes,notes); }
+  _triageSession.backlog++;
+  triageAdvance();
+}
+
+function triageReject(){
+  const note=_triageCurrentNote(); if(!note) return;
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='rejected'; save(K.notes,notes); }
+  _triageSession.rejected++;
+  triageAdvance();
+}
+
+function triageKeyHandler(e){
+  const active=document.activeElement;
+  const typing=active&&['INPUT','TEXTAREA','SELECT'].includes(active.tagName);
+  if(e.key==='Escape'){
+    e.preventDefault();
+    if(_triageFormMode) triageCancelForm(); else closeTriage();
+    return;
+  }
+  if(_triageFormMode||typing) return;
+  if(e.key==='1'){ e.preventDefault(); triageShowTaskForm(); }
+  else if(e.key==='2'){ e.preventDefault(); triageShowReferenceForm(); }
+  else if(e.key==='3'){ e.preventDefault(); triageBacklog(); }
+  else if(e.key==='4'){ e.preventDefault(); triageReject(); }
 }
 
 // ── Eisenhower Matrix ─────────────────────────────────
@@ -3681,7 +3946,7 @@ const MODAL_FORMS = {
         tasks.unshift({id:uid(),...fields,done:false,created:today(),...(_noteToTaskSourceId?{sourceNoteId:_noteToTaskSourceId}:{})});
       }
       save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
-      if(_noteToTaskSourceId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===_noteToTaskSourceId);if(_ni>=0){_ns[_ni].status='in-progress';save(K.notes,_ns);renderNotes();}_noteToTaskSourceId=null;}
+      if(_noteToTaskSourceId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===_noteToTaskSourceId);if(_ni>=0){_ns[_ni].status='done';_ns[_ni].exit_type='task';save(K.notes,_ns);renderNotes();}_noteToTaskSourceId=null;}
     }},
   habit:{title:'New Habit',html:`
     <div class="field-row">
@@ -6340,7 +6605,7 @@ async function renderLogsN(q){
   ]));
   const noteRows=textNotes.sort(dateSortFn('notes','created')).map(n=>{
     const ns=NOTE_STATUSES.find(s=>s.v===n.status)||NOTE_STATUSES[0];
-    const statusBadge=`<span onclick="event.stopPropagation();cycleNoteStatus('${n.id}');renderCurrentLogs(document.getElementById('logs-search').value)" style="font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;cursor:pointer;border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);background:${ns.bg};color:${ns.col};font-family:'Outfit',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">${ns.l}</span>`;
+    const statusBadge=`<span style="font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);background:${ns.bg};color:${ns.col};font-family:'Outfit',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">${ns.l}</span>`;
     return dbRow([
       `<span style="font-size:15px">💡</span>`,
       `<span style="max-width:240px;display:block;color:var(--text-primary)">${esc(n.text.slice(0,100))}${n.text.length>100?'…':''}</span>`,
@@ -6378,6 +6643,7 @@ function clearWorkoutChips(){
 function init(){
   seedIfEmpty();
   migrateReviewsToSunday();
+  migrateNoteStatuses();
   migrateKnowledge();
   migrateWoCats();
   migrateWorkoutIds();
@@ -6407,6 +6673,13 @@ function init(){
   // Update task pill
   const active=load(K.tasks).filter(t=>!t.done).length;
   $('pill-tasks').textContent=active;
+  updateNotesPill();
+}
+
+function updateNotesPill(){
+  const pillEl=$('pill-notes');if(!pillEl)return;
+  const stats=TriageRules.inboxStats(load(K.notes).filter(n=>n.status==='open'));
+  pillEl.textContent=stats.count?`${stats.count} · ${stats.oldestAgeDays}d`:'0';
 }
 
 // Set Obsidian API key on first run (stored in localStorage only, never sent externally)
@@ -6427,6 +6700,7 @@ function startBgPoll(){
       await _sbDoPull();
       // Re-render active tab so changes appear immediately
       if(typeof renderHome==='function') renderHome();
+      updateNotesPill();
       if(activeTab&&typeof window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]==='function')
         window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]();
       await obsFullSync(true);
