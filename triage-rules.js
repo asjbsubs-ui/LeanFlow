@@ -67,6 +67,17 @@
     return (a.ts || 0) - (b.ts || 0);
   }
 
+  // URL detection for the Extract triage exit — a note only offers Extract
+  // when its text matches this.
+  const URL_RE = /https?:\/\/\S+/;
+  function hasUrl(text){
+    return URL_RE.test(text || '');
+  }
+  function extractUrl(text){
+    const m = (text || '').match(URL_RE);
+    return m ? m[0] : '';
+  }
+
   const TriageRules = {
     AMBER_DAYS, RED_DAYS, BACKLOG_EXPIRE_DAYS,
     QUADRANT_MAP, DEFAULT_TASK_QUADRANT,
@@ -74,6 +85,7 @@
     inboxStats, quadrantToFields,
     isBacklogExpiring, backlogAgeDays,
     oldestFirst,
+    hasUrl, extractUrl,
   };
 
   if(typeof module !== 'undefined' && module.exports) module.exports = TriageRules;

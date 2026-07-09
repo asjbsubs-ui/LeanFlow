@@ -160,6 +160,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .exits-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .exits-row button{font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;padding:7px 0;border-radius:var(--r-xs);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);transition:all .12s;font-family:'Outfit',sans-serif}
 .exits-row button.exit-t:hover,.exits-row button.exit-t.on{background:rgba(134,239,172,.12);color:var(--t-tasks);border-color:transparent}
+.exits-row button.exit-e:hover{background:rgba(129,140,248,.12);color:var(--t-library);border-color:transparent}
 .exits-row button.exit-r:hover,.exits-row button.exit-r.on{background:rgba(34,211,238,.12);color:var(--t-selfdev);border-color:transparent}
 .exits-row button.exit-b:hover{background:rgba(251,191,36,.12);color:var(--yellow);border-color:transparent}
 .exits-row button.exit-x:hover{background:rgba(248,113,113,.12);color:var(--red);border-color:transparent}
@@ -181,6 +182,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .triage-ledger{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .triage-tally{font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--r-xs);font-family:'Outfit',sans-serif}
 .triage-tally.t{background:rgba(134,239,172,.12);color:var(--t-tasks)}
+.triage-tally.e{background:rgba(129,140,248,.12);color:var(--t-library)}
 .triage-tally.r{background:rgba(34,211,238,.12);color:var(--t-selfdev)}
 .triage-tally.b{background:rgba(251,191,36,.12);color:var(--yellow)}
 .triage-tally.x{background:rgba(248,113,113,.12);color:var(--red)}
@@ -3466,7 +3468,7 @@ const NOTE_STATUSES=[
   {v:'done',      l:'Done',     col:'var(--green)',      bg:'rgba(74,222,128,.12)'},
   {v:'rejected',  l:'Rejected', col:'var(--red)',        bg:'rgba(248,113,113,.12)'},
 ];
-// exit_type on a done note: 'task' | 'reference'. null for legacy/other completions.
+// exit_type on a done note: 'task' | 'extract' | 'reference'. null for legacy/other completions.
 
 const _DEFAULT_NOTE_CATS=['💡 Business Idea','🎬 Content Idea','💬 Quote','📋 Strategy','🔗 Resource','🧠 Thought','🎯 Goal Idea','⚡ Quick Thought','🛒 Grocery','🐛 Bug','💻 App Development'];
 function getNoteCats(){const s=localStorage.getItem(K.noteCats);return s?JSON.parse(s):[..._DEFAULT_NOTE_CATS];}
@@ -3684,8 +3686,10 @@ async function renderNotes(){
     const ageCol=TriageRules.bucketColorVar(bucket);
     const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':'';
     const expiring=item.status==='scheduled'&&TriageRules.isBacklogExpiring(item);
+    const hasUrl=TriageRules.hasUrl(item.text);
     return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}" id="notecard-${item.id}">
       <div class="note-text">${esc(item.text)}</div>
+      ${item.feedback?`<div style="margin:8px 0 0;padding:8px 10px;border-left:2px solid var(--t-library);background:color-mix(in srgb,var(--t-library) 6%,transparent);border-radius:0 var(--r-xs) var(--r-xs) 0;font-size:12px;color:var(--text-secondary);line-height:1.5"><span style="font-weight:700;color:var(--t-library);font-size:10px;text-transform:uppercase;letter-spacing:.05em">↩ Reply</span><br>${esc(item.feedback)}</div>`:''}
       <div class="note-footer">
         <span class="note-status-btn" style="background:${ns.bg};color:${ns.col};border:1px solid color-mix(in srgb,${ns.col} 30%,transparent);cursor:default">${exitIcon?exitIcon+' ':''}${ns.l}${expiring?' · expiring':''}</span>
         ${item.category?`<span class="note-cat">${esc(item.category)}</span>`:''}
@@ -3695,8 +3699,9 @@ async function renderNotes(){
         <button class="delete-btn" onclick="deleteNote('${item.id}')">✕</button>
       </div>
       ${isOpen?`
-      <div class="exits-row">
+      <div class="exits-row" style="grid-template-columns:repeat(${hasUrl?5:4},1fr)">
         <button class="exit-t" onclick="inlineOpenPanel('${item.id}','t',this)">Task</button>
+        ${hasUrl?`<button class="exit-e" onclick="inlineExit('${item.id}','e')">Extract</button>`:''}
         <button class="exit-r" onclick="inlineOpenPanel('${item.id}','r',this)">Reference</button>
         <button class="exit-b" onclick="inlineExit('${item.id}','b')">Backlog</button>
         <button class="exit-x" onclick="inlineExit('${item.id}','x')">Reject</button>
@@ -3716,22 +3721,21 @@ async function renderNotes(){
       </div>
       <div class="exit-panel" id="exitpanel-${item.id}-r">
         <div class="exit-panel-row">
-          <div style="display:flex;gap:4px">
-            <button type="button" class="exit-chip sel-r" data-kind="lessons" onclick="inlineSelKind(this)">Lesson</button>
-            <button type="button" class="exit-chip" data-kind="systems" onclick="inlineSelKind(this)">System</button>
-          </div>
-          <input type="text" id="exitfield-${item.id}-why" placeholder="Why I saved this — required, one line" maxlength="120">
-          <button class="exit-confirm r" onclick="inlineExit('${item.id}','r')">File it</button>
+          <select class="select" id="exitfield-${item.id}-cat" style="flex:1">
+            ${LIB_CATS.map(c=>`<option value="${c}"${c==='General'?' selected':''}>${c==='Systems'?'⭐ ':''}${c}</option>`).join('')}
+          </select>
+          <button class="exit-confirm r" onclick="inlineExit('${item.id}','r')">File to Library</button>
         </div>
-        <div class="exit-panel-hint">No why, no filing. A bare link is a bookmark, not reference.</div>
+        <div class="exit-panel-hint">Files straight into the Library with the picked category.</div>
       </div>`:''}
     </div>`;
   }).join('');
   const ledgerEl=$('notes-triage-ledger');
   if(ledgerEl){
     const s=_inlineTally;
-    ledgerEl.innerHTML=(s.t+s.r+s.b+s.x)>0?`
+    ledgerEl.innerHTML=(s.t+s.e+s.r+s.b+s.x)>0?`
       <span class="triage-tally t">${s.t} task${s.t===1?'':'s'}</span>
+      <span class="triage-tally e">${s.e} extract${s.e===1?'':'ed'}</span>
       <span class="triage-tally r">${s.r} reference</span>
       <span class="triage-tally b">${s.b} backlog</span>
       <span class="triage-tally x">${s.x} rejected</span>`:'';
@@ -3739,7 +3743,7 @@ async function renderNotes(){
 }
 
 // ── Lean Triage — exits engine + Triage Mode ───────────
-let _triageStack=[], _triageIndex=0, _triageSession={task:0,reference:0,backlog:0,rejected:0}, _triageFormMode=null;
+let _triageStack=[], _triageIndex=0, _triageSession={task:0,extract:0,reference:0,backlog:0,rejected:0}, _triageFormMode=null;
 
 function openTriage(focusNoteId){
   const open=load(K.notes).filter(n=>n.status==='open').sort(TriageRules.oldestFirst);
@@ -3749,7 +3753,7 @@ function openTriage(focusNoteId){
   }
   _triageStack=open.map(n=>n.id);
   _triageIndex=0;
-  _triageSession={task:0,reference:0,backlog:0,rejected:0};
+  _triageSession={task:0,extract:0,reference:0,backlog:0,rejected:0};
   _triageFormMode=null;
   $('triageOverlay').classList.add('open');
   document.addEventListener('keydown',triageKeyHandler);
@@ -3778,11 +3782,11 @@ function renderTriage(){
 
   const note=_triageCurrentNote();
   if(!note){
-    const s=_triageSession, n=s.task+s.reference+s.backlog+s.rejected;
+    const s=_triageSession, n=s.task+s.extract+s.reference+s.backlog+s.rejected;
     body.innerHTML=`<div class="triage-empty">
       <div class="triage-empty-num">0</div>
       <div style="font-size:16px;font-weight:700;color:var(--text-primary)">Inbox clean. Go build something.</div>
-      ${n>0?`<div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${s.task} task · ${s.reference} reference · ${s.backlog} backlog · ${s.rejected} rejected</div>`:''}
+      ${n>0?`<div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${s.task} task · ${s.extract} extract · ${s.reference} reference · ${s.backlog} backlog · ${s.rejected} rejected</div>`:''}
       <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000;margin-top:8px" onclick="closeTriage()">Done</button>
     </div>`;
     return;
@@ -3791,6 +3795,7 @@ function renderTriage(){
   const rest=_triageStack.slice(_triageIndex+1,_triageIndex+6).map(id=>load(K.notes).find(n=>n.id===id)).filter(Boolean);
   const ageDays=TriageRules.ageDays(note.created);
   const ageCol=TriageRules.bucketColorVar(TriageRules.ageBucket(note.created));
+  const hasUrl=TriageRules.hasUrl(note.text);
 
   let formHtml='';
   if(_triageFormMode==='task'){
@@ -3816,13 +3821,11 @@ function renderTriage(){
     </div>`;
   } else if(_triageFormMode==='reference'){
     formHtml=`<div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
-      <div class="field"><label>File as</label><select class="select" id="triage-ref-target">
-        <option value="lessons">📖 Lesson</option>
-        <option value="systems">⚙️ System</option>
+      <div class="field"><label>File to Library</label><select class="select" id="triage-ref-cat">
+        ${LIB_CATS.map(c=>`<option value="${c}"${c==='General'?' selected':''}>${c==='Systems'?'⭐ ':''}${c}</option>`).join('')}
       </select></div>
-      <div class="field"><label>Why I saved this *</label><input class="input" id="triage-ref-why" placeholder="One line — why does this matter?" onkeydown="if(event.key==='Enter'){event.preventDefault();triageConfirmReference();}"></div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="triageConfirmReference()">Save to Growth →</button>
+        <button class="btn btn-primary" style="background:var(--t-library);color:#000" onclick="triageConfirmReference()">Save to Library →</button>
         <button class="btn btn-ghost" onclick="triageCancelForm()">Cancel</button>
       </div>
     </div>`;
@@ -3836,17 +3839,18 @@ function renderTriage(){
         <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${ageCol}">${ageDays}d old</span>
       </div>
       <div class="triage-card-text">${esc(note.text)}</div>
-      ${!_triageFormMode?`<div class="triage-exit-row">
+      ${!_triageFormMode?`<div class="triage-exit-row" style="grid-template-columns:repeat(${hasUrl?5:4},1fr)">
         <button class="triage-exit-btn" onclick="triageShowTaskForm()"><span class="triage-exit-key">1</span><span style="font-size:20px">📋</span><span class="triage-exit-label">Task</span></button>
-        <button class="triage-exit-btn" onclick="triageShowReferenceForm()"><span class="triage-exit-key">2</span><span style="font-size:20px">📚</span><span class="triage-exit-label">Reference</span></button>
-        <button class="triage-exit-btn" onclick="triageBacklog()"><span class="triage-exit-key">3</span><span style="font-size:20px">🗂️</span><span class="triage-exit-label">Backlog</span></button>
-        <button class="triage-exit-btn" onclick="triageReject()"><span class="triage-exit-key">4</span><span style="font-size:20px">✕</span><span class="triage-exit-label">Reject</span></button>
+        ${hasUrl?`<button class="triage-exit-btn" onclick="triageExtract()"><span class="triage-exit-key">2</span><span style="font-size:20px">📥</span><span class="triage-exit-label">Extract</span></button>`:''}
+        <button class="triage-exit-btn" onclick="triageShowReferenceForm()"><span class="triage-exit-key">3</span><span style="font-size:20px">📚</span><span class="triage-exit-label">Reference</span></button>
+        <button class="triage-exit-btn" onclick="triageBacklog()"><span class="triage-exit-key">4</span><span style="font-size:20px">🗂️</span><span class="triage-exit-label">Backlog</span></button>
+        <button class="triage-exit-btn" onclick="triageReject()"><span class="triage-exit-key">5</span><span style="font-size:20px">✕</span><span class="triage-exit-label">Reject</span></button>
       </div>`:formHtml}
     </div>
     ${rest.length?`<div class="triage-stack">${rest.map(n=>`<div class="triage-stack-item">${esc(n.text)}</div>`).join('')}</div>`:''}
   `;
   if(_triageFormMode==='task'){ const d=$('triage-task-due'); if(d) d.focus(); }
-  if(_triageFormMode==='reference'){ const w=$('triage-ref-why'); if(w) w.focus(); }
+  if(_triageFormMode==='reference'){ const c=$('triage-ref-cat'); if(c) c.focus(); }
 }
 
 function triageShowTaskForm(){ _triageFormMode='task'; renderTriage(); }
@@ -3865,16 +3869,24 @@ function exitNoteAsTask(note,{due,quadrant,goalId}){
   if(activeTab==='tasks') renderTasks();
   if(activeTab==='home') renderHome();
 }
-// Returns false (does nothing) if why is blank — reference exit requires a reason.
-function exitNoteAsReference(note,{why,target}){
-  const trimmed=(why||'').trim();
-  if(!trimmed) return false;
-  const items=load(K.knowledge);
-  items.push({id:uid(),title:note.text.trim(),category:target==='systems'?'systems':'lessons',type:'Other',skill:'Other',source:'',link:note.source||'',notes:trimmed,date:today()});
-  save(K.knowledge,items);
+// Files straight into the Library — no reason required, category defaults to General.
+function exitNoteAsReference(note,{category}){
+  const items=load(K.library);
+  items.push({id:uid(),title:note.text.trim(),url:note.source||'',content:'',summary:'',category:LIB_CATS.includes(category)?category:'General',sourceId:null,createdAt:today()});
+  save(K.library,items);
   const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
   if(i>=0){ notes[i].status='done'; notes[i].exit_type='reference'; save(K.notes,notes); }
-  if(activeTab==='selfdev') renderSelfDev();
+  if(activeTab==='library') renderLibrary();
+}
+// Returns false (does nothing) if the note text has no URL — extract requires one.
+function exitNoteAsExtract(note){
+  const url=TriageRules.extractUrl(note.text);
+  if(!url) return false;
+  const q=load(K.toLearn);
+  q.push({id:uid(),url,title:note.text.replace(url,'').trim()||url,status:'queued',queuePosition:q.length,addedAt:Date.now()});
+  save(K.toLearn,q);
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
+  if(i>=0){ notes[i].status='done'; notes[i].exit_type='extract'; save(K.notes,notes); }
   return true;
 }
 function exitNoteAsBacklog(note){
@@ -3887,7 +3899,7 @@ function exitNoteAsReject(note){
 }
 
 // ── Per-card inline exits (Capture inbox) — session-local tally, resets on reload ──
-let _inlineTally={t:0,r:0,b:0,x:0};
+let _inlineTally={t:0,e:0,r:0,b:0,x:0};
 
 function inlineOpenPanel(noteId,kind,btn){
   const card=$('notecard-'+noteId);if(!card)return;
@@ -3909,13 +3921,14 @@ function inlineExit(noteId,kind){
     const quadrant=qBtn?qBtn.dataset.q:TriageRules.DEFAULT_TASK_QUADRANT;
     exitNoteAsTask(note,{due,quadrant});
     _inlineTally.t++;
+  } else if(kind==='e'){
+    const ok=exitNoteAsExtract(note);
+    if(!ok) return;
+    _inlineTally.e++;
   } else if(kind==='r'){
-    const whyEl=$('exitfield-'+noteId+'-why');
     const card=$('notecard-'+noteId);
-    const kBtn=card&&card.querySelector('.exit-chip.sel-r');
-    const target=kBtn?kBtn.dataset.kind:'lessons';
-    const ok=exitNoteAsReference(note,{why:whyEl&&whyEl.value,target});
-    if(!ok){ if(whyEl){whyEl.classList.add('invalid');whyEl.placeholder="Can't file without a why — that's the rule";whyEl.focus();} return; }
+    const catEl=card&&card.querySelector('#exitfield-'+noteId+'-cat');
+    exitNoteAsReference(note,{category:catEl?catEl.value:'General'});
     _inlineTally.r++;
   } else if(kind==='b'){
     exitNoteAsBacklog(note);
@@ -3953,10 +3966,16 @@ function triageConfirmTask(){
 
 function triageConfirmReference(){
   const note=_triageCurrentNote(); if(!note) return;
-  const whyEl=$('triage-ref-why');
-  const ok=exitNoteAsReference(note,{why:whyEl&&whyEl.value,target:($('triage-ref-target')||{value:'lessons'}).value});
-  if(!ok){ if(whyEl){whyEl.focus();whyEl.style.borderColor='var(--red)';} return; }
+  exitNoteAsReference(note,{category:($('triage-ref-cat')||{value:'General'}).value});
   _triageSession.reference++;
+  triageAdvance();
+}
+
+function triageExtract(){
+  const note=_triageCurrentNote(); if(!note) return;
+  const ok=exitNoteAsExtract(note);
+  if(!ok) return;
+  _triageSession.extract++;
   triageAdvance();
 }
 
@@ -3984,9 +4003,10 @@ function triageKeyHandler(e){
   }
   if(_triageFormMode||typing) return;
   if(e.key==='1'){ e.preventDefault(); triageShowTaskForm(); }
-  else if(e.key==='2'){ e.preventDefault(); triageShowReferenceForm(); }
-  else if(e.key==='3'){ e.preventDefault(); triageBacklog(); }
-  else if(e.key==='4'){ e.preventDefault(); triageReject(); }
+  else if(e.key==='2'){ e.preventDefault(); triageExtract(); }
+  else if(e.key==='3'){ e.preventDefault(); triageShowReferenceForm(); }
+  else if(e.key==='4'){ e.preventDefault(); triageBacklog(); }
+  else if(e.key==='5'){ e.preventDefault(); triageReject(); }
 }
 
 // ── Eisenhower Matrix ─────────────────────────────────
