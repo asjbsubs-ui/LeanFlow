@@ -28,6 +28,7 @@
   --t-home:#4ade80;--t-tasks:#86efac;--t-meetings:#34d399;--t-habits:#a3e635;
   --t-goals:#6ee7b7;--t-journal:#d1fae5;--t-selfdev:#22d3ee;--t-fitness:#4ade80;--t-review:#86efac;--t-calendar:#34d399;
   --t-directory:#f472b6;
+  --t-library:#818cf8;
 }
 html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:14px;line-height:1.5;overflow:hidden}
 /* ── Scrollbar ── */
@@ -732,6 +733,10 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
       <span class="nav-emoji">📚</span>Growth
     </button>
+    <button class="nav-btn" data-tab="library" style="--tab-color:var(--t-library)" onclick="switchTab('library',this)">
+      <span class="nav-emoji">🏛️</span>Library
+      <span class="nav-pill" id="pill-library" style="background:color-mix(in srgb,var(--t-library) 15%,transparent);color:var(--t-library)"></span>
+    </button>
     <button class="nav-btn" data-tab="journal" style="--tab-color:var(--t-journal)" onclick="switchTab('journal',this)">
       <span class="nav-emoji">📔</span>Journal
     </button>
@@ -1188,6 +1193,24 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
 </div>
 
+<div id="tab-library" class="tab-panel">
+  <div class="ph">
+    <div class="ph-left">
+      <div class="ph-eyebrow" style="color:var(--t-library)">Knowledge</div>
+      <div class="ph-title" style="color:var(--t-library)">Library</div>
+      <div class="ph-sub">Systems, principles, tutorials, and quotes worth keeping.</div>
+    </div>
+    <div class="ph-actions">
+      <button class="btn btn-primary" style="background:var(--t-library);color:#000" onclick="_editingLibraryId=null;openModal('library')">+ Add</button>
+    </div>
+  </div>
+  <div style="position:relative;margin-bottom:12px">
+    <input class="input" id="libSearch" placeholder="Search title, content, summary…" oninput="renderLibrary()" style="font-size:13px">
+  </div>
+  <div id="libCategoryChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
+  <div id="libraryList"></div>
+</div>
+
 <!-- LOGS PAGE -->
 <div id="logs-page" style="display:none;height:100%;flex-direction:column">
   <div class="logs-bar">
@@ -1370,7 +1393,12 @@ function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return 
 function fmtWeekRange(sunStr){const sun=new Date(sunStr+'T12:00:00');const sat=new Date(sun);sat.setDate(sun.getDate()+6);const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];return sun.getMonth()===sat.getMonth()?`${mn[sun.getMonth()]} ${sun.getDate()}-${sat.getDate()}`:`${mn[sun.getMonth()]} ${sun.getDate()} – ${mn[sat.getMonth()]} ${sat.getDate()}`;}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn'};
+
+// ── Schema versioning ──────────────────────────────────
+const SCHEMA_VERSION=1;
+function getSchemaVersion(){return parseInt(localStorage.getItem('ahq_schemaVersion')||'0',10);}
+function setSchemaVersion(v){localStorage.setItem('ahq_schemaVersion',String(v));}
 
 function migrateReviewsToSunday(){
   const reviews=load(K.reviews);
@@ -1410,6 +1438,36 @@ function migrateWorkoutIds(){
   const patchedM=metrics.map(m=>{if(!m.id){changed=true;return{...m,id:uid()};}return m;});
   if(changed) save(K.metrics,patchedM);
   localStorage.setItem('_mig_wo_ids','1');
+}
+// One-time move: K.knowledge systems + all K.quotes → K.library. Originals are
+// flagged migratedToLibrary (never deleted) so Growth's old Systems/Quotes views
+// can filter them out without losing data.
+function migrateToLibraryV1(){
+  if(getSchemaVersion()>=1) return;
+  const lib=load(K.library);
+
+  const knowledge=load(K.knowledge);
+  let kChanged=false;
+  knowledge.forEach(k=>{
+    if(k.category==='systems'&&!k.migratedToLibrary){
+      lib.push({id:uid(),title:k.title||'Untitled',url:k.link||'',content:k.notes||'',summary:'',category:'Systems',sourceId:k.id,createdAt:k.date||today()});
+      k.migratedToLibrary=true;kChanged=true;
+    }
+  });
+  if(kChanged) save(K.knowledge,knowledge);
+
+  const quotes=load(K.quotes);
+  let qChanged=false;
+  quotes.forEach(q=>{
+    if(!q.migratedToLibrary){
+      lib.push({id:uid(),title:q.author||'Unknown',url:q.source||'',content:q.text||'',summary:q.category||'',category:'Quotes',sourceId:q.id,createdAt:q.date||today()});
+      q.migratedToLibrary=true;qChanged=true;
+    }
+  });
+  if(qChanged) save(K.quotes,quotes);
+
+  save(K.library,lib);
+  setSchemaVersion(1);
 }
 async function forceSyncFitness(){
   if(!_sb||!_sbUser){showToast('Not signed in','var(--red)');return;}
@@ -1460,9 +1518,9 @@ function seedIfEmpty(){
 
 // ── Tab switching ─────────────────────────────────────
 let activeTab = 'home';
-const TAB_COLORS = {home:'--t-home',tasks:'--t-tasks',meetings:'--t-meetings',habits:'--t-habits',goals:'--t-goals',journal:'--t-journal',selfdev:'--t-selfdev',fitness:'--t-fitness',review:'--t-review',directory:'--t-directory'};
+const TAB_COLORS = {home:'--t-home',tasks:'--t-tasks',meetings:'--t-meetings',habits:'--t-habits',goals:'--t-goals',journal:'--t-journal',selfdev:'--t-selfdev',fitness:'--t-fitness',review:'--t-review',directory:'--t-directory',library:'--t-library'};
 
-const TAB_NAMES = {home:'LeanFlow',notes:'Capture',goals:'Goals',tasks:'Tasks',meetings:'Meetings',habits:'Habits',fitness:'Fitness',selfdev:'Growth',journal:'Journal',review:'Weekly Review',directory:'Directory'};
+const TAB_NAMES = {home:'LeanFlow',notes:'Capture',goals:'Goals',tasks:'Tasks',meetings:'Meetings',habits:'Habits',fitness:'Fitness',selfdev:'Growth',journal:'Journal',review:'Weekly Review',directory:'Directory',library:'Library'};
 
 const MOB_BTN = {
   home:     {label:'+ Task',     color:'var(--t-tasks)',     fn:"openModal('task','work')"},
@@ -1473,6 +1531,7 @@ const MOB_BTN = {
   selfdev:  {label:'+ Add',      color:'var(--t-selfdev)',   fn:"sdAdd()"},
   fitness:  {label:'+ Workout',  color:'var(--t-fitness)',   fn:"openModal('workout')"},
   directory:{label:'+ Contact',  color:'var(--t-directory)', fn:"openModal('contact')"},
+  library:  {label:'+ Add',      color:'var(--t-library)',   fn:"_editingLibraryId=null;openModal('library')"},
 };
 
 function switchTab(id, btn){
@@ -1494,7 +1553,7 @@ function switchTab(id, btn){
     else mb.style.display='none';
   }
   if(window.innerWidth<=768) closeMobSidebar();
-  const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview,notes:renderNotes,directory:renderDirectory};
+  const renders = {home:renderHome,tasks:renderTasks,meetings:renderMeetings,habits:renderHabits,goals:renderGoals,journal:renderJournal,selfdev:renderSelfDev,fitness:renderFitness,review:renderReview,notes:renderNotes,directory:renderDirectory,library:renderLibrary};
   if(renders[id]) renders[id]();
   // Auto-resync GCal when navigating to Meetings
   if(id==='meetings') gcalAutoSync();
@@ -2380,7 +2439,7 @@ function renderSelfDev(){
   const el=$(elId);
   if(!el) return;
 
-  const items=all.filter(i=>i.category===_sdTab);
+  const items=all.filter(i=>i.category===_sdTab&&!i.migratedToLibrary);
   if(!items.length){
     el.innerHTML=`<div class="empty"><span class="empty-icon">${CAT_ICON[_sdTab]||'📚'}</span><span class="empty-text">No ${_sdTab} logged yet. Add your first entry.</span></div>`;
     return;
@@ -2467,7 +2526,7 @@ function sdAdd(){
 const QUOTE_CATS=['Mindset','Business','Leadership','Philosophy','Motivation','Life','Science','Spirituality','Other'];
 let _editingQuoteId=null;
 function renderQuotes(){
-  const quotes=load(K.quotes);
+  const quotes=load(K.quotes).filter(q=>!q.migratedToLibrary);
   const el=$('quotesList');if(!el)return;
   if(!quotes.length){el.innerHTML='<div class="empty"><span class="empty-icon">💬</span><span class="empty-text">No quotes yet. Add your first.</span></div>';return;}
   el.innerHTML=[...quotes].sort((a,b)=>b.date.localeCompare(a.date)).map(q=>`
@@ -2489,6 +2548,94 @@ function editQuote(id){_editingQuoteId=id;openModal('quote');}
 function deleteQuote(id){
   const qq=load(K.quotes);const qi=qq.find(q=>q.id===id);if(qi)trashItem('quotes',qi);
   save(K.quotes,qq.filter(q=>q.id!==id));renderQuotes();
+}
+
+// ── Library ─────────────────────────────────────────────
+const LIB_CATS=['Systems','Principles','Tutorials','Quotes','General'];
+let _libCatFilter='';
+let _editingLibraryId=null;
+function libCard(i){
+  const isSys=i.category==='Systems';
+  return `<div class="card" style="margin-bottom:10px${isSys?';border-color:color-mix(in srgb,var(--t-library) 35%,var(--border-md))':''}">
+    <div class="card-accent" style="background:var(--t-library)"></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="card-title" style="color:var(--t-library)">${esc(i.title||'Untitled')}</span>
+        <span class="lbl lbl-c" style="background:color-mix(in srgb,var(--t-library) 12%,transparent);color:var(--t-library)">${isSys?'⭐ ':''}${esc(i.category)}</span>
+        ${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text-muted)">🔗 ${esc(i.url.replace(/^https?:\/\//,'').split('/')[0])}</a>`:''}
+        <span style="margin-left:auto;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${fmtDateShort(i.createdAt)}</span>
+      </div>
+      ${i.content?`<div style="font-size:13px;color:var(--text-secondary);line-height:1.6;white-space:pre-wrap">${esc(i.content.slice(0,400))}${i.content.length>400?'…':''}</div>`:''}
+      ${i.summary?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${esc(i.summary)}</div>`:''}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        ${isSys
+          ?`<button class="btn btn-ghost btn-sm" onclick="libDemote('${i.id}')">↓ Demote</button>`
+          :`<button class="btn btn-ghost btn-sm" onclick="libPromote('${i.id}')">⭐ Move to Systems</button>`}
+        ${i.url?`<button class="btn btn-ghost btn-sm" onclick="libExtract('${i.id}')">📥 Extract</button>`:''}
+        <button class="delete-btn" style="color:var(--text-muted)" onclick="editLibrary('${i.id}')">✏️</button>
+        <button class="delete-btn" onclick="deleteLibrary('${i.id}')">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderLibrary(){
+  const q=(($('libSearch')||{}).value||'').toLowerCase();
+  const all=load(K.library);
+
+  const chipEl=$('libCategoryChips');
+  if(chipEl) chipEl.innerHTML=[
+    `<button class="dir-filter-chip${!_libCatFilter?' on':''}" style="${!_libCatFilter?'border-color:var(--t-library);background:color-mix(in srgb,var(--t-library) 12%,transparent);color:var(--t-library)':''}" onclick="_libCatFilter='';renderLibrary()">All <span style="font-family:'JetBrains Mono',monospace;font-size:9px;opacity:.7">${all.length}</span></button>`,
+    ...LIB_CATS.map(c=>{
+      const n=all.filter(i=>i.category===c).length;
+      const on=_libCatFilter===c;
+      return `<button class="dir-filter-chip${on?' on':''}" style="${on?'border-color:var(--t-library);background:color-mix(in srgb,var(--t-library) 12%,transparent);color:var(--t-library)':''}" onclick="_libCatFilter='${c}';renderLibrary()">${c==='Systems'?'⭐ ':''}${c} <span style="font-family:'JetBrains Mono',monospace;font-size:9px;opacity:.7">${n}</span></button>`;
+    })
+  ].join('');
+
+  const pill=$('pill-library');
+  if(pill) pill.textContent=all.length||'';
+
+  let filtered=all;
+  if(_libCatFilter) filtered=filtered.filter(i=>i.category===_libCatFilter);
+  if(q) filtered=filtered.filter(i=>
+    (i.title||'').toLowerCase().includes(q)||
+    (i.content||'').toLowerCase().includes(q)||
+    (i.summary||'').toLowerCase().includes(q)
+  );
+
+  const el=$('libraryList');if(!el)return;
+  if(!filtered.length){
+    el.innerHTML=all.length
+      ?'<div class="empty"><span class="empty-icon">🔍</span><span class="empty-text">Nothing matches.</span></div>'
+      :'<div class="empty"><span class="empty-icon">🏛️</span><span class="empty-text">Library is empty. Add a system, principle, or reference.</span></div>';
+    return;
+  }
+
+  const byNew=(a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'');
+  if(!_libCatFilter){
+    const sysItems=filtered.filter(i=>i.category==='Systems').sort(byNew);
+    const rest=filtered.filter(i=>i.category!=='Systems').sort(byNew);
+    let html='';
+    if(sysItems.length) html+=`<div style="margin-bottom:6px;font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t-library)">⭐ Systems · ${sysItems.length}</div>`+sysItems.map(libCard).join('')+`<div style="height:18px"></div>`;
+    html+=rest.map(libCard).join('');
+    el.innerHTML=html;
+  } else {
+    el.innerHTML=filtered.sort(byNew).map(libCard).join('');
+  }
+}
+function libPromote(id){const items=load(K.library);const i=items.find(x=>x.id===id);if(i){i.category='Systems';save(K.library,items);renderLibrary();}}
+function libDemote(id){const items=load(K.library);const i=items.find(x=>x.id===id);if(i){i.category='General';save(K.library,items);renderLibrary();}}
+function libExtract(id){
+  const items=load(K.library);const i=items.find(x=>x.id===id);if(!i||!i.url)return;
+  const q=load(K.toLearn);
+  q.push({id:uid(),url:i.url,title:i.title||'',status:'queued',queuePosition:q.length,addedAt:Date.now()});
+  save(K.toLearn,q);
+  showToast('Sent to To Learn queue','var(--t-library)');
+}
+function editLibrary(id){_editingLibraryId=id;openModal('library');}
+function deleteLibrary(id){
+  const items=load(K.library);const it=items.find(x=>x.id===id);if(it)trashItem('library',it);
+  save(K.library,items.filter(x=>x.id!==id));renderLibrary();
 }
 
 // ── Vocabulary ────────────────────────────────────────
@@ -4322,6 +4469,24 @@ const MODAL_FORMS = {
     else quotes.push({id:uid(),...entry});
     save(K.quotes,quotes);closeModal();renderQuotes();
   }},
+  library:{title:()=>_editingLibraryId?'Edit Library Item':'Add to Library',html:()=>{
+    const it=_editingLibraryId?load(K.library).find(x=>x.id===_editingLibraryId):null;
+    return `
+    <div class="field"><label>Title *</label><input class="input" id="m-lib-title" placeholder="What is this?" value="${esc(it?.title||'')}"></div>
+    <div class="field"><label>Category</label><select class="select" id="m-lib-cat">
+      ${LIB_CATS.map(c=>`<option value="${c}"${it&&it.category===c?' selected':''}>${c==='Systems'?'⭐ ':''}${c}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>URL</label><input class="input" id="m-lib-url" type="url" placeholder="https://…" value="${esc(it?.url||'')}"></div>
+    <div class="field"><label>Content</label><textarea class="textarea" id="m-lib-content" placeholder="The core content, notes, or full text…" style="min-height:160px">${esc(it?.content||'')}</textarea></div>
+    <div class="field"><label>Summary</label><input class="input" id="m-lib-summary" placeholder="One-line summary (optional)" value="${esc(it?.summary||'')}"></div>`;
+  },save:()=>{
+    const title=$('m-lib-title').value.trim();if(!title)return alert('Title required');
+    const entry={title,category:$('m-lib-cat').value||'General',url:$('m-lib-url').value.trim(),content:$('m-lib-content').value.trim(),summary:$('m-lib-summary').value.trim()};
+    const items=load(K.library);
+    if(_editingLibraryId){const i=items.findIndex(x=>x.id===_editingLibraryId);if(i>=0)items[i]={...items[i],...entry};_editingLibraryId=null;}
+    else items.push({id:uid(),...entry,createdAt:today()});
+    save(K.library,items);closeModal();renderLibrary();
+  }},
   vocab:{title:()=>_editingVocabId?'Edit Word':'Add Word',html:()=>{
     const v=_editingVocabId?load(K.vocab).find(x=>x.id===_editingVocabId):null;
     return `
@@ -4426,7 +4591,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_mtgSelectedContacts=[];resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -4935,6 +5100,7 @@ function _trashSummary(type,item){
   if(type==='notes') return esc((item.text||'').slice(0,80));
   if(type==='directory') return esc(item.name||'Untitled');
   if(type==='review') return `Week of ${item.week||'?'} · ${item.overall||'?'}/10`;
+  if(type==='library') return `${esc(item.title||'Untitled')} · ${esc(item.category||'')}`;
   return '—';
 }
 function _updateTrashBtn(){
@@ -4959,7 +5125,7 @@ function renderTrashSection(type){
     +dbTable(['Item','Deleted','',''],rows);
 }
 function openTrashView(){
-  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory'};
+  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library'};
   const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const el=document.getElementById('logs-content');
   if(!el) return;
@@ -4991,7 +5157,7 @@ function emptyTrash(){
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const entry=trash.find(t=>t.id===trashId);if(!entry)return;
-  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab};
+  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library};
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
@@ -6156,7 +6322,8 @@ const OBS_KEY_MAP = {
   [K.notes]:'Notes.md',
   [K.directory]:'Directory.md',
   [K.quotes]:'Quotes.md',
-  [K.vocab]:'Vocabulary.md'
+  [K.vocab]:'Vocabulary.md',
+  [K.library]:'Library.md'
 };
 const _obsThrottle={};
 let _obsErrTs=0;
@@ -6229,7 +6396,7 @@ function obsMarkdown(file){
     return `---\nupdated: ${now}\nsource: LeanFlow\n---\n# 🧠 Journal\n\n${rows||'_No entries_'}\n`;
   }
   if(file==='Knowledge.md'){
-    const items=load(K.knowledge);
+    const items=load(K.knowledge).filter(i=>!i.migratedToLibrary);
     const groups={};
     items.forEach(i=>{const s=i.skill||'Other';if(!groups[s])groups[s]=[];groups[s].push(i);});
     const rows=Object.entries(groups).map(([skill,list])=>`## ${skill}\n${list.map(i=>`- ${i.type==='Book'?'📖':i.type==='Course'?'🎓':'📌'} **${i.title}**${i.source?' · '+i.source:''} · ${i.status==='done'?'✅ Done':i.progress+'%'}${i.link?'\n  🔗 '+i.link:''}`).join('\n')}`).join('\n\n');
@@ -6260,9 +6427,17 @@ function obsMarkdown(file){
     return `---\nupdated: ${now}\nsource: LeanFlow\n---\n# 👥 Directory\n\n${rows||'_No contacts_'}\n`;
   }
   if(file==='Quotes.md'){
-    const quotes=load(K.quotes).sort((a,b)=>(a.author||'').localeCompare(b.author||''));
+    const quotes=load(K.quotes).filter(q=>!q.migratedToLibrary).sort((a,b)=>(a.author||'').localeCompare(b.author||''));
     const rows=quotes.map(q=>`> ${q.text}\n\n— **${q.author||'Unknown'}**${q.source?' · _'+q.source+'_':''}${q.category?' · '+q.category:''}`).join('\n\n---\n\n');
     return `---\nupdated: ${now}\nsource: LeanFlow\n---\n# 💬 Quotes\n\n${rows||'_No quotes_'}\n`;
+  }
+  if(file==='Library.md'){
+    const items=load(K.library);
+    const groups={};
+    items.forEach(i=>{const c=i.category||'General';if(!groups[c])groups[c]=[];groups[c].push(i);});
+    const order=['Systems','Principles','Tutorials','Quotes','General'];
+    const rows=order.filter(c=>groups[c]).map(c=>`## ${c}\n${groups[c].map(i=>`### ${i.title||'Untitled'}\n${i.url?'🔗 '+i.url+'\n':''}${i.content?i.content+'\n':''}${i.summary?'_'+i.summary+'_\n':''}`).join('\n')}`).join('\n');
+    return `---\nupdated: ${now}\nsource: LeanFlow\n---\n# 🏛️ Library\n\n${rows||'_Library is empty_'}\n`;
   }
   if(file==='Vocabulary.md'){
     const words=load(K.vocab).sort((a,b)=>(a.word||'').localeCompare(b.word||''));
@@ -6780,6 +6955,7 @@ function init(){
   migrateKnowledge();
   migrateWoCats();
   migrateWorkoutIds();
+  migrateToLibraryV1();
   // Set time of day greeting
   const h=new Date().getHours();
   $('timeOfDay').textContent=h<12?'morning':h<17?'afternoon':'evening';
