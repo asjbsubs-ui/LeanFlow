@@ -802,7 +802,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   </div>
   <div style="padding:0 16px 10px">
     <button onclick="openClaudeSettings()" style="width:100%;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--t-selfdev)';this.style.color='var(--t-selfdev)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
-      <span style="font-size:14px">🤖</span> AI Settings
+      <span style="font-size:14px">🌱</span> Growth Settings
     </button>
   </div>
 </nav>
@@ -1411,9 +1411,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 </div>
 
 <div id="reviewReadOverlay" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:20px"></div>
-<div id="ytFlowOverlay" onclick="if(event.target===this)ytFlowClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);z-index:610;align-items:center;justify-content:center;padding:20px">
-  <div id="ytFlowInner" style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px;position:relative"></div>
-</div>
 <div class="triage-overlay" id="triageOverlay">
   <div class="triage-depletion"><div class="triage-depletion-fill" id="triage-depletion-fill" style="width:0%"></div></div>
   <div class="triage-head">
@@ -3029,8 +3026,7 @@ function renderToLearnQueue(){
         <div class="book-author" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.url)}</div>
       </div>
       <span style="font-size:10px;font-weight:700;color:${t.status==='extracting'?'var(--yellow)':'var(--text-muted)'};margin-right:8px;flex-shrink:0">${t.status==='extracting'?'Extracting…':'Queued'}</span>
-      ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>
-      <button class="btn btn-primary btn-sm" style="background:var(--t-selfdev);color:#000" onclick="toLearnProcess('${t.id}')">▶ Process</button>`:''}
+      ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>`:''}
       <button class="delete-btn" onclick="toLearnRemove('${t.id}')">✕</button>
     </div>`).join('');
 }
@@ -3378,147 +3374,13 @@ function viewKnowledge(id){
 }
 function viewKnowledgeNotes(id){viewKnowledge(id);}  // backward compat
 
-// ── YouTube → Knowledge Flow ──────────────────────────
-// Entered only via toLearnProcess() — a queued To Learn item is always the trigger now.
-let _ytFlow={state:'idle',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,pendingLesson:'',toLearnId:null,_loadMsg:''};
-
-function ytFlowClose(){
-  $('ytFlowOverlay').style.display='none';
-  // Closed mid-flight — put the queue item back to 'queued' rather than leaving it stuck 'extracting'.
-  if(_ytFlow.toLearnId){
-    const q=load(K.toLearn);
-    const item=q.find(x=>x.id===_ytFlow.toLearnId);
-    if(item&&item.status==='extracting'){ item.status='queued'; save(K.toLearn,q); if(activeTab==='selfdev') renderSelfDev(); }
-  }
-  _ytFlow.state='idle';
-}
-
-function _ytRender(){
-  const el=$('ytFlowInner');if(!el)return;
-  const s=_ytFlow.state;
-  if(s==='loading'||s==='loading2')el.innerHTML=_ytHtmlLoading(_ytFlow._loadMsg||'Working…');
-  else if(s==='manual')el.innerHTML=_ytHtmlManual();
-  else if(s==='review1')el.innerHTML=_ytHtmlReview1();
-  else if(s==='review2')el.innerHTML=_ytHtmlReview2();
-}
-
-function _ytX(){return `<button onclick="ytFlowClose()" style="position:absolute;top:16px;right:16px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1">✕</button>`;}
-
-function _ytHtmlLoading(msg){
-  return `<div style="text-align:center;padding:48px 0">
-  <div style="width:36px;height:36px;border:3px solid var(--border-md);border-top-color:var(--t-selfdev);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px"></div>
-  <div style="font-size:14px;color:var(--text-secondary)">${esc(msg)}</div></div>`;
-}
-
-function _ytHtmlManual(){
-  return `${_ytX()}
-  <div style="font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:4px">Paste Transcript</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Couldn't auto-fetch the transcript. Paste it below, then hit Extract.</div>
-  <div style="display:flex;gap:10px;margin-bottom:10px">
-    <input id="ytf-m-title" class="input" placeholder="Video title" value="${esc(_ytFlow.meta?.title||'')}" style="flex:1">
-    <input id="ytf-m-author" class="input" placeholder="Channel / creator" value="${esc(_ytFlow.meta?.author||'')}" style="flex:1">
-  </div>
-  <textarea id="ytf-m-transcript" class="textarea" placeholder="Paste the full transcript here…" style="min-height:180px;margin-bottom:14px"></textarea>
-  <div style="display:flex;gap:10px;justify-content:flex-end">
-    <button onclick="ytFlowClose()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Cancel</button>
-    <button onclick="_ytExtractFromManual()" style="padding:8px 20px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Extract</button>
-  </div>`;
-}
-
-function _ytHtmlReview1(){
-  const d=_ytFlow.draft||{};
-  const qc=d.quote_candidates||[];
-  const vc=d.vocab_candidates||[];
-  const chk=(id)=>`<input type="checkbox" id="${id}" checked style="margin-top:3px;flex-shrink:0;accent-color:var(--t-selfdev)">`;
-  return `${_ytX()}
-  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:4px">Review · Gate 1 of 2</div>
-  <div style="font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:2px">${esc(_ytFlow.meta?.title||'YouTube Video')}</div>
-  ${_ytFlow.meta?.author?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">${esc(_ytFlow.meta.author)}</div>`:'<div style="margin-bottom:18px"></div>'}
-
-  <div style="margin-bottom:18px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:7px">📌 Core Lesson</div>
-    <textarea id="ytf-lesson" class="textarea" placeholder="No lesson extracted — write your own takeaway here…" style="min-height:80px;font-size:13px">${esc(d.lesson?.summary||'')}</textarea>
-  </div>
-
-  ${qc.length?`<div style="margin-bottom:18px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px">💬 Quotes <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(uncheck to skip)</span></div>
-    ${qc.map((q,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--bg-alt);margin-bottom:6px;cursor:pointer">
-      ${chk('ytf-q-'+i)}
-      <div><div style="font-size:13px;color:var(--text-primary);font-style:italic">"${esc(q.text)}"</div>${q.context?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px">${esc(q.context)}</div>`:''}</div>
-    </label>`).join('')}
-  </div>`:''}
-
-  ${vc.length?`<div style="margin-bottom:18px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px">📖 Vocab <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">(uncheck to skip)</span></div>
-    ${vc.map((v,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--bg-alt);margin-bottom:6px;cursor:pointer">
-      ${chk('ytf-v-'+i)}
-      <div><div style="font-size:13px;color:var(--t-selfdev);font-weight:700">${esc(v.term)}</div><div style="font-size:12px;color:var(--text-primary);margin-top:2px">${esc(v.definition)}</div>${v.context?`<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(v.context)}</div>`:''}</div>
-    </label>`).join('')}
-  </div>`:''}
-
-  <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px">
-    <button onclick="ytFlowClose()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Cancel</button>
-    <button onclick="_ytApproveExtraction()" style="padding:8px 22px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Save & Generate Idea →</button>
-  </div>`;
-}
-
-function _ytHtmlReview2(){
-  return `${_ytX()}
-  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:8px">Executional Idea · Gate 2 of 2</div>
-  <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Based on your lesson — what could you actually do with it? Edit or approve to save to Ideas.</div>
-  <textarea id="ytf-idea" class="textarea" style="min-height:110px;font-size:13px;margin-bottom:18px">${esc(_ytFlow.idea||'')}</textarea>
-  <div style="display:flex;gap:10px;justify-content:flex-end">
-    <button onclick="_ytSkipIdea()" style="padding:8px 16px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px">Skip</button>
-    <button onclick="_ytApproveIdea()" style="padding:8px 22px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer">Save to Ideas</button>
-  </div>`;
-}
-
 function _ytExtractVideoId(url){
   const m=url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
   return m?m[1]:null;
 }
 
-async function _ytFetchAll(videoId){
-  const ytUrl='https://www.youtube.com/watch?v='+videoId;
-  let meta={title:'YouTube Video',author:''};
-  try{
-    const o=await fetch('https://www.youtube.com/oembed?url='+encodeURIComponent(ytUrl)+'&format=json').then(r=>r.json());
-    meta={title:o.title||'YouTube Video',author:o.author_name||''};
-  }catch{}
-  try{
-    const key=localStorage.getItem('supadata_api_key')||'';
-    const headers=key?{'x-api-key':key}:{};
-    const r=await fetch('https://api.supadata.ai/v1/youtube/transcript?url='+encodeURIComponent(ytUrl)+'&text=true',{headers});
-    if(r.ok){
-      const d=await r.json();
-      const transcript=typeof d.content==='string'?d.content:null;
-      return {meta,transcript};
-    }
-  }catch{}
-  return {meta,transcript:null};
-}
-
-async function _ytCallClaude(system,user){
-  const key=localStorage.getItem('gemini_api_key');
-  if(!key) throw new Error('NO_KEY');
-  const models=['gemini-1.5-flash-8b','gemini-1.5-flash-latest','gemini-1.5-flash','gemini-1.5-pro-latest','gemini-1.5-pro'];
-  let lastErr='No available Gemini model';
-  for(const model of models){
-    const body={system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:1024}};
-    try{
-      const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
-        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
-      });
-      if(r.status===404||r.status===429||r.status===400){const e=await r.json().catch(()=>({}));lastErr=e.error?.message||'Model unavailable';continue;}
-      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'API error '+r.status);}
-      return (await r.json()).candidates[0].content.parts[0].text;
-    }catch(e){if(/not found|NOT_FOUND|quota|RESOURCE_EXHAUSTED|not supported/i.test(e.message)){lastErr=e.message;continue;}throw e;}
-  }
-  throw new Error('QUOTA_ALL');
-}
-
-// Add-to-queue only — no AI call. Processing (fetch + extract) happens later,
-// on demand, via toLearnProcess() from the To Learn section.
+// Add-to-queue only — no AI call. Nothing in-app processes a queued item further;
+// an external process is expected to write the result into K.learned directly.
 function _ytQuickFromInput(){
   const url=($('yt-quick-url')?.value||'').trim();
   if(!url){ return; }
@@ -3531,160 +3393,16 @@ function _ytQuickFromInput(){
   showToast('Added to queue','var(--t-selfdev)');
 }
 
-// Opens the existing extraction pipeline (same fetch/Gemini calls as before) for one
-// specific queued item. On completion the result is saved as a K.learned source and
-// this queue item flips to 'ready' — see _ytFinalizeLearned.
-function toLearnProcess(id){
-  const q=load(K.toLearn);
-  const item=q.find(x=>x.id===id); if(!item) return;
-  item.status='extracting'; save(K.toLearn,q);
-  if(activeTab==='selfdev') renderSelfDev();
-  const videoId=_ytExtractVideoId(item.url);
-  _ytFlow={state:'loading',videoId,ytUrl:item.url,meta:{title:item.title||'',author:''},transcript:null,draft:null,approved:null,idea:null,pendingLesson:'',toLearnId:id,_loadMsg:'Fetching transcript…'};
-  $('ytFlowOverlay').style.display='flex';_ytRender();
-  (async()=>{
-    try{
-      if(!videoId) throw new Error('not-youtube');
-      const res=await _ytFetchAll(videoId);
-      _ytFlow.meta=res.meta;
-      if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
-      _ytFlow.transcript=res.transcript;
-      _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
-      await _ytRunExtraction();
-    }catch{_ytFlow.meta=_ytFlow.meta||{title:item.title||'Source',author:''};_ytFlow.state='manual';_ytRender();}
-  })();
-}
-
-function _ytShowManual(){
-  _ytFlow.state='manual';_ytRender();
-  setTimeout(()=>$('ytf-m-transcript')?.focus(),60);
-}
-
-async function _ytExtractFromManual(){
-  const transcript=($('ytf-m-transcript')?.value||'').trim();
-  if(!transcript){showToast('Paste the transcript first','var(--red)');return;}
-  _ytFlow.meta={title:($('ytf-m-title')?.value||'').trim()||'YouTube Video',author:($('ytf-m-author')?.value||'').trim()};
-  _ytFlow.transcript=transcript;
-  _ytFlow.state='loading';_ytFlow._loadMsg='Extracting knowledge…';_ytRender();
-  await _ytRunExtraction();
-}
-
-async function _ytRunExtraction(){
-  const system=`You extract structured knowledge from video transcripts. Return ONLY valid JSON — no markdown, no explanation:
-{"lesson":{"summary":"one clear personal takeaway","confidence":"high|medium|low"},"quote_candidates":[{"text":"exact quotable phrase","context":"brief context"}],"vocab_candidates":[{"term":"word or phrase","definition":"clear definition","context":"how it was used"}]}
-STRICT RULES: lesson=null if no real takeaway. quote_candidates=[] if nothing genuinely quotable — never pad. vocab_candidates=[] if no meaningful terms — never pad. Pure JSON only.`;
-  const user=`Video: "${_ytFlow.meta?.title||''}"${_ytFlow.meta?.author?' by '+_ytFlow.meta.author:''}\n\nTranscript:\n${(_ytFlow.transcript||'').slice(0,12000)}`;
-  try{
-    const raw=await _ytCallClaude(system,user);
-    const cleaned=raw.replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
-    _ytFlow.draft=JSON.parse(cleaned);
-    _ytFlow.state='review1';_ytRender();
-  }catch(e){
-    if(e.message==='NO_KEY'){
-      showToast('Set your Gemini API key first','var(--red)');
-      ytFlowClose();
-      setTimeout(openClaudeSettings,300);
-    }else if(e.message==='QUOTA_ALL'){
-      showToast('Gemini quota hit — try again in a minute, or paste the transcript below','var(--orange)');
-      _ytFlow.state='manual';_ytRender();
-    }else{
-      showToast('Extraction failed — '+e.message,'var(--red)');
-      _ytFlow.state='manual';_ytRender();
-    }
-  }
-}
-
-function _ytApproveExtraction(){
-  const lesson=($('ytf-lesson')?.value||'').trim();
-  const d=_ytFlow.draft||{};
-  const qc=d.quote_candidates||[];
-  const vc=d.vocab_candidates||[];
-  const keptQuotes=qc.filter((_,i)=>document.getElementById('ytf-q-'+i)?.checked);
-  const keptVocab=vc.filter((_,i)=>document.getElementById('ytf-v-'+i)?.checked);
-
-  // Quotes now live in the Library (Phase 1); vocab is unchanged. Lesson is held
-  // pending — it's finalized into a K.learned source once the idea gate resolves.
-  if(keptQuotes.length){
-    const lib=load(K.library);
-    keptQuotes.forEach(q=>lib.push({id:uid(),title:_ytFlow.meta?.author||'Unknown',url:_ytFlow.ytUrl||'',content:q.text,summary:_ytFlow.meta?.title||'',category:'Quotes',sourceId:null,createdAt:today()}));
-    save(K.library,lib);
-  }
-  if(keptVocab.length){
-    const vocab=load(K.vocab);
-    keptVocab.forEach(v=>vocab.push({id:uid(),word:v.term,definition:v.definition,date:today()}));
-    save(K.vocab,vocab);
-  }
-  _ytFlow.pendingLesson=lesson;
-  _ytFlow.approved={lesson,quotes:keptQuotes,vocab:keptVocab};
-
-  if(!lesson){ _ytFinalizeLearned(null); return; }
-  _ytFlow.state='loading2';_ytFlow._loadMsg='Generating idea…';_ytRender();
-  _ytGenerateIdea(lesson);
-}
-
-async function _ytGenerateIdea(lesson){
-  const system=`Given a lesson extracted from a video, draft ONE concrete executional idea — something specific and immediately actionable the person could actually do, build, test, or try. Return ONLY valid JSON: {"idea":"..."} — or the literal word null (not in quotes) if there is genuinely no clear action. No markdown.`;
-  try{
-    const raw=await _ytCallClaude(system,`Lesson: ${lesson}`);
-    const cleaned=raw.replace(/^```json?\s*/,'').replace(/\s*```$/,'').trim();
-    if(cleaned==='null'){_ytFlow.idea=null;}
-    else{const j=JSON.parse(cleaned);_ytFlow.idea=j?.idea||null;}
-  }catch{_ytFlow.idea=null;}
-  if(!_ytFlow.idea){ _ytFinalizeLearned(null); return; }
-  _ytFlow.state='review2';_ytRender();
-}
-
-function _ytApproveIdea(){
-  const idea=($('ytf-idea')?.value||'').trim();
-  _ytFinalizeLearned(idea||null);
-}
-function _ytSkipIdea(){ _ytFinalizeLearned(null); }
-
-// Writes the accumulated lesson (Gate 1) + idea (Gate 2, or null if skipped/none)
-// as one K.learned source, and flips the linked To Learn queue item to 'ready'.
-function _ytFinalizeLearned(ideaText){
-  const learned=load(K.learned);
-  const source={
-    id:uid(),
-    sourceName:_ytFlow.meta?.title||_ytFlow.ytUrl||'Untitled source',
-    url:_ytFlow.ytUrl||'',
-    summary:_ytFlow.meta?.author||'',
-    lessons:_ytFlow.pendingLesson?[{id:uid(),text:_ytFlow.pendingLesson,status:'undecided'}]:[],
-    ideas:ideaText?[{id:uid(),text:ideaText,status:'undecided'}]:[],
-    extractedAt:Date.now(),
-  };
-  learned.push(source);
-  save(K.learned,learned);
-
-  if(_ytFlow.toLearnId){
-    const q=load(K.toLearn);
-    const item=q.find(x=>x.id===_ytFlow.toLearnId);
-    if(item){ item.status='ready'; item.learnedId=source.id; save(K.toLearn,q); }
-  }
-  if(activeTab==='selfdev') renderSelfDev();
-  showToast('Saved to Learned','var(--green)');
-  $('ytFlowOverlay').style.display='none';
-  _ytFlow.state='idle';
-}
-
 function openClaudeSettings(){
-  const gKey=localStorage.getItem('gemini_api_key')||'';
-  const sKey=localStorage.getItem('supadata_api_key')||'';
-  $('modalTitle').textContent='AI Settings';
+  $('modalTitle').textContent='Growth Settings';
   $('modalBody').innerHTML=`
-    <div class="field"><label>Google Gemini API Key</label><input class="input" id="gemini-key" value="${esc(gKey)}" placeholder="AIza…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free at <strong style="color:var(--text-secondary)">aistudio.google.com/apikey</strong> · Text-only extraction — low quota usage</div></div>
-    <div class="field" style="margin-top:12px"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Optional — free at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">500 transcripts/month free · without a key you get fewer auto-fetches</div></div>
-    <div class="field" style="margin-top:12px"><label>Daily Learning Serving</label><input class="input" id="daily-serving" type="number" min="1" max="20" value="${getDailyServing()}" style="font-family:'JetBrains Mono',monospace;font-size:12px"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">How many Learned sources Today's Learning serves up front each day</div></div>`;
+    <div class="field"><label>Daily Learning Serving</label><input class="input" id="daily-serving" type="number" min="1" max="20" value="${getDailyServing()}" style="font-family:'JetBrains Mono',monospace;font-size:12px"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">How many Learned sources Today's Learning serves up front each day</div></div>`;
   $('modalFoot').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
   $('modalOverlay').classList.add('open');
 }
 function saveClaudeSettings(){
-  const gKey=$('gemini-key').value.trim();
-  const sKey=$('supadata-key').value.trim();
-  if(gKey) localStorage.setItem('gemini_api_key',gKey); else localStorage.removeItem('gemini_api_key');
-  if(sKey) localStorage.setItem('supadata_api_key',sKey); else localStorage.removeItem('supadata_api_key');
   const servingEl=$('daily-serving');
   const serving=servingEl?parseInt(servingEl.value):NaN;
   localStorage.setItem('ahq_daily_serving',String(!isNaN(serving)&&serving>0?serving:3));
