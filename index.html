@@ -3684,7 +3684,7 @@ async function renderNotes(){
     const bucket=isOpen?TriageRules.ageBucket(item.created):'normal';
     const ageDays=isOpen?TriageRules.ageDays(item.created):0;
     const ageCol=TriageRules.bucketColorVar(bucket);
-    const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':'';
+    const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':item.exit_type==='extract'?'📥':'';
     const expiring=item.status==='scheduled'&&TriageRules.isBacklogExpiring(item);
     const hasUrl=noteHasUrl(item);
     return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}" id="notecard-${item.id}">
