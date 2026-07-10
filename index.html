@@ -2218,6 +2218,31 @@ function editHabit(id){
     if($('modalTitle'))$('modalTitle').textContent='Edit Habit';
   },60);
 }
+// Combines source's logged days into target, transfers autoLog if target lacks one,
+// then removes source (kept in trash, same as deleteHabit).
+function mergeHabitInto(targetId){
+  const sel=$('m-habit-merge-target');
+  const sourceId=sel?sel.value:'';
+  if(!sourceId) return alert('Pick a habit to merge in first');
+  const habits=load(K.habits);
+  const target=habits.find(h=>h.id===targetId);
+  const source=habits.find(h=>h.id===sourceId);
+  if(!target||!source) return;
+  if(!confirm(`Merge "${source.name}" into "${target.name}"? This can't be undone.`)) return;
+  const log=loadObj(K.habitLog,{});
+  Object.keys(log).forEach(date=>{
+    if(log[date].includes(source.id)&&!log[date].includes(target.id)) log[date].push(target.id);
+    log[date]=log[date].filter(id=>id!==source.id);
+  });
+  save(K.habitLog,log);
+  if(source.autoLog&&!target.autoLog) target.autoLog=source.autoLog;
+  trashItem('habits',source);
+  save(K.habits,habits.filter(h=>h.id!==source.id));
+  closeModal();
+  renderHabits();
+  if(activeTab==='home')renderHomeHabits();
+  showToast(`Merged into "${target.name}"`,'var(--t-habits)');
+}
 
 let _habitDragId=null;
 function habitDragStart(e,id){
@@ -4541,11 +4566,27 @@ const MODAL_FORMS = {
       save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();updateTasksPill();
       if(_noteToTaskSourceId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===_noteToTaskSourceId);if(_ni>=0){_ns[_ni].status='done';_ns[_ni].exit_type='task';save(K.notes,_ns);renderNotes();}_noteToTaskSourceId=null;}
     }},
-  habit:{title:'New Habit',html:`
+  habit:{title:'New Habit',html:()=>{
+    const editing=_editingHabitId;
+    const others=editing?load(K.habits).filter(h=>h.id!==editing):[];
+    return `
     <div class="field-row">
       <div class="field"><label>Habit Name *</label><input class="input" id="m-habit-name" placeholder="Morning workout, Read, Meditate…"></div>
       <div class="field"><label>Icon (emoji)</label><input class="input" id="m-habit-icon" placeholder="💪" maxlength="2"></div>
-    </div>`,
+    </div>
+    ${editing&&others.length?`
+    <div class="field" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <label>Merge another habit into this one</label>
+      <div style="display:flex;gap:8px">
+        <select class="select" id="m-habit-merge-target" style="flex:1">
+          <option value="">Choose a habit…</option>
+          ${others.map(h=>`<option value="${h.id}">${h.icon||'⭐'} ${esc(h.name)}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-ghost" onclick="mergeHabitInto('${editing}')">Merge</button>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Combines both habits' logged days into this one, then removes the other (kept in trash).</div>
+    </div>`:''}`;
+  },
     save:()=>{
       const name=$('m-habit-name').value.trim();if(!name)return alert('Name required');
       const icon=$('m-habit-icon').value||'⭐';
