@@ -734,6 +734,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     </button>
     <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
       <span class="nav-emoji">📚</span>Growth
+      <span class="nav-pill" id="pill-selfdev" style="background:color-mix(in srgb,var(--t-selfdev) 15%,transparent);color:var(--t-selfdev)"></span>
     </button>
     <button class="nav-btn" data-tab="library" style="--tab-color:var(--t-library)" onclick="switchTab('library',this)">
       <span class="nav-emoji">🏛️</span>Library
@@ -986,36 +987,51 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div class="ph-left">
       <div class="ph-eyebrow" style="color:var(--t-selfdev)">Growth</div>
       <div class="ph-title" style="color:var(--t-selfdev)">Growth</div>
-      <div class="ph-sub" id="sd-sub">Lessons, skills, systems, quotes, and vocabulary.</div>
+      <div class="ph-sub" id="sd-sub">Your daily learning ritual.</div>
     </div>
-    <div class="ph-actions">
-      <button class="btn btn-ghost" onclick="sdExport()">📤 Export</button>
-      <button class="btn btn-ghost" onclick="sdImport()">📥 Import</button>
+    <div class="ph-actions" id="sd-header-actions" style="display:none">
+      <button class="btn btn-ghost" id="sd-export-btn" onclick="sdExport()">📤 Export</button>
+      <button class="btn btn-ghost" id="sd-import-btn" onclick="sdImport()">📥 Import</button>
       <button class="btn btn-primary" id="sd-add-btn" style="background:var(--t-selfdev);color:#000" onclick="sdAdd()">+ Knowledge</button>
       <button class="btn btn-ghost" onclick="openLogs('selfdev')">📋 Logs</button>
     </div>
   </div>
   <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
-    <button id="sdtab-lessons" onclick="switchSdTab('lessons')" style="padding:8px 18px;border:none;border-bottom:2px solid var(--t-selfdev);background:transparent;color:var(--t-selfdev);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;transition:all .15s">💡 Lessons</button>
+    <button id="sdtab-learn" onclick="switchSdTab('learn')" style="padding:8px 18px;border:none;border-bottom:2px solid var(--t-selfdev);background:transparent;color:var(--t-selfdev);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;transition:all .15s">🌱 Learn</button>
     <button id="sdtab-skills" onclick="switchSdTab('skills')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">🛠️ Skills</button>
-    <button id="sdtab-systems" onclick="switchSdTab('systems')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">⚙️ Systems</button>
-    <button id="sdtab-quotes" onclick="switchSdTab('quotes')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">💬 Quotes</button>
     <button id="sdtab-vocab" onclick="switchSdTab('vocab')" style="padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;transition:all .15s">📖 Vocabulary</button>
   </div>
-  <div id="sd-lessons">
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <input id="yt-quick-url" class="input" placeholder="Paste a YouTube URL to extract a lesson…" style="flex:1" onkeydown="if(event.key==='Enter')_ytQuickFromInput()">
-      <button onclick="_ytQuickFromInput()" style="padding:0 16px;height:40px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Extract</button>
+  <div id="sd-learn">
+    <div style="margin-bottom:28px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="font-family:'Orbitron',monospace;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--t-selfdev)">⭐ Today's Learning</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="todays-learning-counter" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace"></span>
+          <button class="btn btn-ghost btn-sm" onclick="todaysLearningServeNext()">Serve next →</button>
+        </div>
+      </div>
+      <div id="todays-learning-list"></div>
     </div>
-    <div id="lessonsList"><div class="empty"><span class="empty-icon">💡</span><span class="empty-text">No lessons logged yet.</span></div></div>
+    <div style="margin-bottom:28px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'Orbitron',monospace;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">📥 To Learn</div>
+        <span id="to-learn-count" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace"></span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <input id="yt-quick-url" class="input" placeholder="Paste a link to add to the queue…" style="flex:1" onkeydown="if(event.key==='Enter')_ytQuickFromInput()">
+        <button onclick="_ytQuickFromInput()" style="padding:0 16px;height:40px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Add to queue</button>
+      </div>
+      <div id="to-learn-list"></div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">📚 Learned</div>
+      <div id="learned-archive-list"></div>
+    </div>
+    <div id="loop-stats" style="display:flex;gap:16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace"></div>
   </div>
   <div id="sd-skills" style="display:none">
     <div id="skillsList"><div class="empty"><span class="empty-icon">🛠️</span><span class="empty-text">No skills logged yet.</span></div></div>
   </div>
-  <div id="sd-systems" style="display:none">
-    <div id="systemsList"><div class="empty"><span class="empty-icon">⚙️</span><span class="empty-text">No systems logged yet.</span></div></div>
-  </div>
-  <div id="sd-quotes" style="display:none"><div id="quotesList"><div class="empty"><span class="empty-icon">💬</span><span class="empty-text">No quotes yet.</span></div></div></div>
   <div id="sd-vocab" style="display:none">
     <div style="display:flex;gap:10px;margin-bottom:20px">
       <input id="vocab-word-input" class="input" placeholder="Drop a word..." style="flex:1;font-size:15px" onkeydown="if(event.key==='Enter')lookupWord()">
@@ -1395,7 +1411,40 @@ function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return 
 function fmtWeekRange(sunStr){const sun=new Date(sunStr+'T12:00:00');const sat=new Date(sun);sat.setDate(sun.getDate()+6);const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];return sun.getMonth()===sat.getMonth()?`${mn[sun.getMonth()]} ${sun.getDate()}-${sat.getDate()}`:`${mn[sun.getMonth()]} ${sun.getDate()} – ${mn[sat.getMonth()]} ${sat.getDate()}`;}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn',learned:'ahq_learned'};
+
+// ── Growth / Learned model helpers ─────────────────────
+function getDailyServing(){ return parseInt(localStorage.getItem('ahq_daily_serving')||'3',10)||3; }
+// A source is decided once every lesson and idea on it has been dispositioned (kept/discarded/acted).
+function sourceDecided(src){ return [...(src.lessons||[]),...(src.ideas||[])].every(x=>x.status!=='undecided'); }
+// "Served today" is local UI state (which sources ended up in Today's Learning), not synced data.
+function _loadServedToday(){
+  let s; try{ s=JSON.parse(localStorage.getItem('ahq_served_today')||'null'); }catch{ s=null; }
+  if(!s||s.date!==today()) s={date:today(),ids:[]};
+  return s;
+}
+function _saveServedToday(s){ localStorage.setItem('ahq_served_today',JSON.stringify(s)); }
+function _ensureServedSeed(){
+  const s=_loadServedToday();
+  const ready=load(K.learned).filter(src=>!sourceDecided(src));
+  const cap=getDailyServing();
+  let changed=false;
+  while(s.ids.length<cap){
+    const next=ready.find(src=>!s.ids.includes(src.id));
+    if(!next) break;
+    s.ids.push(next.id); changed=true;
+  }
+  if(changed) _saveServedToday(s);
+  return s;
+}
+function todaysLearningServeNext(){
+  const s=_loadServedToday();
+  const ready=load(K.learned).filter(src=>!sourceDecided(src));
+  const next=ready.find(src=>!s.ids.includes(src.id));
+  if(!next){ showToast('Nothing more ready to learn right now','var(--amber)'); return; }
+  s.ids.push(next.id); _saveServedToday(s);
+  renderSelfDev();
+}
 
 // ── Schema versioning ──────────────────────────────────
 const SCHEMA_VERSION=1;
@@ -2419,8 +2468,15 @@ const TYPE_ICONS  = {'Book':'📖','Course':'🎓','Video':'🎥','Podcast':'�
 const STATUS_MAP  = {active:'In Progress',reading:'In Progress',todo:'To Start',done:'Completed'};
 
 function renderSelfDev(){
-  if(_sdTab==='quotes'){renderQuotes();return;}
   if(_sdTab==='vocab'){renderVocab();return;}
+  updateGrowthPill();
+  if(_sdTab==='learn'){
+    renderTodaysLearning();
+    renderToLearnQueue();
+    renderLearnedArchive();
+    renderLoopStats();
+    return;
+  }
   migrateKnowledge();
   if(!localStorage.getItem('ahq_km_dates')){
     const items=load(K.knowledge);
@@ -2435,15 +2491,13 @@ function renderSelfDev(){
   all.forEach(i=>{if(!i.category){i.category='skills';migrated=true;}});
   if(migrated) save(K.knowledge,all);
 
-  const CAT_EL={lessons:'lessonsList',skills:'skillsList',systems:'systemsList'};
-  const CAT_ICON={lessons:'💡',skills:'🛠️',systems:'⚙️'};
-  const elId=CAT_EL[_sdTab]||'lessonsList';
+  const elId='skillsList';
   const el=$(elId);
   if(!el) return;
 
   const items=all.filter(i=>i.category===_sdTab&&!i.migratedToLibrary);
   if(!items.length){
-    el.innerHTML=`<div class="empty"><span class="empty-icon">${CAT_ICON[_sdTab]||'📚'}</span><span class="empty-text">No ${_sdTab} logged yet. Add your first entry.</span></div>`;
+    el.innerHTML=`<div class="empty"><span class="empty-icon">🛠️</span><span class="empty-text">No ${_sdTab} logged yet. Add your first entry.</span></div>`;
     return;
   }
   const showProgress=(_sdTab==='skills');
@@ -2497,10 +2551,10 @@ function deleteKnowledge(id){
 }
 
 // ── Growth tab switching ───────────────────────────────
-let _sdTab='lessons';
+let _sdTab='learn';
 function switchSdTab(tab){
   _sdTab=tab;
-  ['lessons','skills','systems','quotes','vocab'].forEach(t=>{
+  ['learn','skills','vocab'].forEach(t=>{
     const panel=document.getElementById('sd-'+t);
     if(panel) panel.style.display=t===tab?'':'none';
     const btn=document.getElementById('sdtab-'+t);
@@ -2510,18 +2564,221 @@ function switchSdTab(tab){
       btn.style.fontWeight=t===tab?'600':'500';
     }
   });
-  const addBtn=document.getElementById('sd-add-btn');
-  if(addBtn){
-    const cfg={lessons:'+ Lesson',skills:'+ Skill',systems:'+ System',quotes:'+ Quote',vocab:'+ Word'};
-    addBtn.textContent=cfg[tab]||'+ Add';
-  }
-  if(tab==='quotes') renderQuotes();
-  else if(tab==='vocab') renderVocab();
+  // Learn has its own dedicated add-to-queue input — the generic header actions don't apply.
+  const hdr=document.getElementById('sd-header-actions');
+  if(hdr) hdr.style.display=tab==='learn'?'none':'';
+  if(tab==='vocab') renderVocab();
   else renderSelfDev();
 }
 function sdAdd(){
-  const m={lessons:'knowledge',skills:'knowledge',systems:'knowledge',quotes:'quote',vocab:'vocab'};
+  const m={skills:'knowledge',vocab:'vocab'};
   openModal(m[_sdTab]||'knowledge');
+}
+
+// ── Growth badge ────────────────────────────────────────
+function updateGrowthPill(){
+  const pill=$('pill-selfdev'); if(!pill) return;
+  const undecided=load(K.learned).reduce((n,s)=>n+[...(s.lessons||[]),...(s.ideas||[])].filter(x=>x.status==='undecided').length,0);
+  pill.textContent=undecided||'';
+}
+
+// ── Today's Learning ────────────────────────────────────
+function renderTodaysLearning(){
+  const seed=_ensureServedSeed();
+  const learned=load(K.learned);
+  const served=seed.ids.map(id=>learned.find(s=>s.id===id)).filter(Boolean);
+  const active=served.filter(s=>!sourceDecided(s));
+  const decidedCount=served.filter(sourceDecided).length;
+  const el=$('todays-learning-list'); if(!el) return;
+  el.innerHTML=active.length
+    ? active.map(learnedSourceCard).join('')
+    : `<div class="empty"><span class="empty-icon">✅</span><span class="empty-text">${served.length?'All served sources decided. Serve next, or check back tomorrow.':'Nothing ready yet — process a queued item in To Learn below.'}</span></div>`;
+  const counterEl=$('todays-learning-counter');
+  if(counterEl) counterEl.textContent=served.length?`${decidedCount} of ${served.length} decided today`:'';
+}
+
+// ── Shared per-source card (lessons + ideas disposition) ──
+let _learnedKeepOpen=null;
+function learnedShowKeepPicker(sourceId,lessonId){ _learnedKeepOpen=sourceId+':'+lessonId; renderSelfDev(); }
+function learnedCancelKeepPicker(){ _learnedKeepOpen=null; renderSelfDev(); }
+function learnedSourceCard(src){
+  const lessonRows=(src.lessons||[]).map(l=>{
+    const pickerOpen=_learnedKeepOpen===(src.id+':'+l.id);
+    return `<div class="book-row" style="align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px">💡 Lesson</div>
+        <div style="font-size:13px;color:var(--text-primary);line-height:1.5">${esc(l.text)}</div>
+        ${pickerOpen?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <select class="select" id="learned-keep-cat-${src.id}-${l.id}" style="font-size:12px;flex:1;min-width:120px">
+            ${LIB_CATS.map(c=>`<option value="${c}"${c==='General'?' selected':''}>${c==='Systems'?'⭐ ':''}${c}</option>`).join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" style="background:var(--t-library);color:#000" onclick="learnedConfirmKeep('${src.id}','${l.id}')">Save</button>
+          <button class="btn btn-ghost btn-sm" onclick="learnedCancelKeepPicker()">Cancel</button>
+        </div>`:''}
+      </div>
+      ${l.status==='undecided'&&!pickerOpen?`<div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="learnedShowKeepPicker('${src.id}','${l.id}')">Keep → Library</button>
+        <button class="delete-btn" onclick="learnedDiscardLesson('${src.id}','${l.id}')">✕</button>
+      </div>`:''}
+      ${l.status!=='undecided'?`<span style="font-size:10px;font-weight:700;color:${l.status==='kept'?'var(--green)':'var(--text-muted)'};flex-shrink:0">${l.status==='kept'?'✓ Kept':'✕ Discarded'}</span>`:''}
+    </div>`;
+  }).join('');
+  const ideaRows=(src.ideas||[]).map(i=>`
+    <div class="book-row" style="align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px">⚡ Idea</div>
+        <div style="font-size:13px;color:var(--text-primary);line-height:1.5">${esc(i.text)}</div>
+      </div>
+      ${i.status==='undecided'?`<div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="learnedActIdea('${src.id}','${i.id}')">Act</button>
+        <button class="delete-btn" onclick="learnedDiscardIdea('${src.id}','${i.id}')">✕</button>
+      </div>`:''}
+      ${i.status!=='undecided'?`<span style="font-size:10px;font-weight:700;color:${i.status==='acted'?'var(--green)':'var(--text-muted)'};flex-shrink:0">${i.status==='acted'?'✓ Acted':'✕ Discarded'}</span>`:''}
+    </div>`).join('');
+  return `<div class="card" style="margin-bottom:14px">
+    <div class="card-accent" style="background:var(--t-selfdev)"></div>
+    <div class="card-header">
+      <span class="card-title" style="color:var(--t-selfdev)">${esc(src.sourceName||'Untitled source')}</span>
+      ${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text-muted)">🔗 Open</a>`:''}
+    </div>
+    <div class="card-body">
+      ${src.summary?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">${esc(src.summary)}</div>`:''}
+      ${lessonRows}${ideaRows}
+      ${!lessonRows&&!ideaRows?`<div style="font-size:12px;color:var(--text-muted)">No lessons or ideas extracted from this source.</div>`:''}
+    </div>
+  </div>`;
+}
+
+function _learnedFind(sourceId){ const all=load(K.learned); return {all,s:all.find(x=>x.id===sourceId)}; }
+function _learnedMaybeComplete(all,s){
+  if(!sourceDecided(s)) return;
+  const tl=load(K.toLearn);
+  const t=tl.find(x=>x.learnedId===s.id);
+  if(t&&t.status!=='done'){ t.status='done'; save(K.toLearn,tl); }
+}
+function learnedConfirmKeep(sourceId,lessonId){
+  const cat=($('learned-keep-cat-'+sourceId+'-'+lessonId)||{value:'General'}).value;
+  const {all,s}=_learnedFind(sourceId); if(!s) return;
+  const l=(s.lessons||[]).find(x=>x.id===lessonId); if(!l) return;
+  const lib=load(K.library);
+  lib.push({id:uid(),title:l.text,url:s.url||'',content:'',summary:'',category:LIB_CATS.includes(cat)?cat:'General',sourceId:s.id,createdAt:today()});
+  save(K.library,lib);
+  l.status='kept';
+  save(K.learned,all);
+  _learnedMaybeComplete(all,s);
+  _learnedKeepOpen=null;
+  renderSelfDev();
+  showToast('Kept to Library','var(--t-library)');
+}
+function learnedDiscardLesson(sourceId,lessonId){
+  const {all,s}=_learnedFind(sourceId); if(!s) return;
+  const l=(s.lessons||[]).find(x=>x.id===lessonId); if(!l) return;
+  l.status='discarded'; save(K.learned,all); _learnedMaybeComplete(all,s); renderSelfDev();
+}
+function learnedActIdea(sourceId,ideaId){
+  const {all,s}=_learnedFind(sourceId); if(!s) return;
+  const i=(s.ideas||[]).find(x=>x.id===ideaId); if(!i) return;
+  const notes=load(K.notes);
+  notes.unshift({id:uid(),text:i.text,category:'Idea',source:s.url||'',status:'open',created:today(),ts:Date.now(),originSourceId:s.id});
+  save(K.notes,notes);
+  i.status='acted'; save(K.learned,all); _learnedMaybeComplete(all,s);
+  renderSelfDev();
+  if(activeTab==='notes') renderNotes();
+  showToast('Idea sent to Capture','var(--green)');
+}
+function learnedDiscardIdea(sourceId,ideaId){
+  const {all,s}=_learnedFind(sourceId); if(!s) return;
+  const i=(s.ideas||[]).find(x=>x.id===ideaId); if(!i) return;
+  i.status='discarded'; save(K.learned,all); _learnedMaybeComplete(all,s); renderSelfDev();
+}
+
+// ── To Learn queue ──────────────────────────────────────
+function renderToLearnQueue(){
+  const all=load(K.toLearn);
+  const queue=all.filter(t=>t.status==='queued'||t.status==='extracting').sort((a,b)=>(a.queuePosition||0)-(b.queuePosition||0));
+  const hdr=$('to-learn-count'); if(hdr) hdr.textContent=`${all.filter(t=>t.status==='queued').length} queued`;
+  const el=$('to-learn-list'); if(!el) return;
+  if(!queue.length){ el.innerHTML='<div class="empty"><span class="empty-icon">📥</span><span class="empty-text">Queue is empty. Paste a link above to add one.</span></div>'; return; }
+  el.innerHTML=queue.map(t=>`
+    <div class="book-row">
+      <div style="flex:1;min-width:0">
+        <div class="book-title">${esc(t.title||t.url)}</div>
+        <div class="book-author" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.url)}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:${t.status==='extracting'?'var(--yellow)':'var(--text-muted)'};margin-right:8px;flex-shrink:0">${t.status==='extracting'?'Extracting…':'Queued'}</span>
+      ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>
+      <button class="btn btn-primary btn-sm" style="background:var(--t-selfdev);color:#000" onclick="toLearnProcess('${t.id}')">▶ Process</button>`:''}
+      <button class="delete-btn" onclick="toLearnRemove('${t.id}')">✕</button>
+    </div>`).join('');
+}
+function toLearnMoveTop(id){
+  const all=load(K.toLearn);
+  const queued=all.filter(t=>t.status==='queued').sort((a,b)=>(a.queuePosition||0)-(b.queuePosition||0));
+  const idx=queued.findIndex(t=>t.id===id); if(idx<=0) return;
+  const [item]=queued.splice(idx,1); queued.unshift(item);
+  queued.forEach((t,i)=>{t.queuePosition=i;});
+  save(K.toLearn,all);
+  renderToLearnQueue();
+}
+function toLearnRemove(id){
+  const all=load(K.toLearn);
+  const it=all.find(t=>t.id===id); if(it) trashItem('toLearn',it);
+  save(K.toLearn,all.filter(t=>t.id!==id));
+  renderToLearnQueue();
+}
+
+// ── Learned archive (decided sources + legacy K.knowledge lessons) ──
+function renderLearnedArchive(){
+  const decided=load(K.learned).filter(sourceDecided);
+  const legacy=load(K.knowledge).filter(k=>k.category==='lessons'&&!k.migratedToLibrary);
+  const el=$('learned-archive-list'); if(!el) return;
+  if(!decided.length&&!legacy.length){ el.innerHTML='<div class="empty"><span class="empty-icon">📚</span><span class="empty-text">Nothing decided yet.</span></div>'; return; }
+  const decidedRows=decided.map(s=>{
+    const kept=(s.lessons||[]).filter(l=>l.status==='kept').length;
+    const acted=(s.ideas||[]).filter(i=>i.status==='acted').length;
+    const discarded=[...(s.lessons||[]),...(s.ideas||[])].filter(x=>x.status==='discarded').length;
+    return `<div class="book-row">
+      <div style="flex:1;min-width:0">
+        <div class="book-title">${esc(s.sourceName||'Untitled')}</div>
+        <div class="book-author">${kept} kept · ${acted} acted · ${discarded} discarded</div>
+      </div>
+      ${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text-muted)">🔗</a>`:''}
+    </div>`;
+  }).join('');
+  const legacyRows=legacy.map(k=>`
+    <div class="book-row">
+      <div style="flex:1;min-width:0">
+        <div class="book-title">${esc(k.title)}</div>
+        <div class="book-author">Legacy lesson${k.date?' · '+fmtDateShort(k.date):''}</div>
+      </div>
+      <button class="delete-btn" style="color:var(--text-muted)" onclick="editKnowledge('${k.id}')">✏️</button>
+    </div>`).join('');
+  el.innerHTML=`
+    ${decidedRows?`<div class="card" style="margin-bottom:14px"><div class="card-accent" style="background:var(--t-selfdev)"></div><div class="card-header"><span class="card-title" style="color:var(--t-selfdev)">Decided</span><span style="font-size:11px;color:var(--text-muted)">${decided.length}</span></div><div class="card-body">${decidedRows}</div></div>`:''}
+    ${legacyRows?`<div class="card"><div class="card-accent" style="background:var(--text-muted)"></div><div class="card-header"><span class="card-title">Legacy lessons</span><span style="font-size:11px;color:var(--text-muted)">${legacy.length}</span></div><div class="card-body">${legacyRows}</div></div>`:''}
+  `;
+}
+
+// ── Loop stats footer ───────────────────────────────────
+function renderLoopStats(){
+  const learned=load(K.learned);
+  const monthPrefix=today().slice(0,7);
+  const lessonsThisMonth=learned.filter(s=>new Date(s.extractedAt||0).toISOString().slice(0,7)===monthPrefix).reduce((n,s)=>n+(s.lessons||[]).length,0);
+  const acted=learned.reduce((n,s)=>n+(s.ideas||[]).filter(i=>i.status==='acted').length,0);
+  const notes=load(K.notes), tasks=load(K.tasks);
+  const loopsClosed=notes.filter(n=>n.originSourceId&&tasks.some(t=>t.sourceNoteId===n.id&&t.done)).length;
+  let bestSource=null,bestScore=0;
+  learned.forEach(s=>{
+    const score=(s.lessons||[]).filter(l=>l.status==='kept').length+(s.ideas||[]).filter(i=>i.status==='acted').length;
+    if(score>bestScore){bestScore=score;bestSource=s;}
+  });
+  const el=$('loop-stats'); if(!el) return;
+  el.innerHTML=`
+    <span>${lessonsThisMonth} lesson${lessonsThisMonth===1?'':'s'} this month</span>
+    <span>${acted} acted</span>
+    <span>${loopsClosed} loop${loopsClosed===1?'':'s'} closed</span>
+    ${bestSource?`<span>Best ROI: ${esc(bestSource.sourceName||'—')}</span>`:''}
+  `;
 }
 
 // ── Quotes ────────────────────────────────────────────
@@ -2725,11 +2982,7 @@ function discardVocabPreview(){
 function sdExport(){
   const csv=(headers,rows)=>`${headers.join(',')}\n${rows.map(r=>headers.map((_,i)=>'"'+(r[i]||'').toString().replace(/"/g,'""')+'"').join(',')).join('\n')}`;
   let content,filename;
-  if(_sdTab==='quotes'){
-    const items=load(K.quotes);
-    content=csv(['text','author','source','category','date'],items.map(q=>[q.text,q.author,q.source,q.category,q.date]));
-    filename='quotes.csv';
-  } else if(_sdTab==='vocab'){
+  if(_sdTab==='vocab'){
     const items=load(K.vocab);
     content=csv(['word','definition','example','category','date'],items.map(v=>[v.word,v.definition,v.example,v.category,v.date]));
     filename='vocabulary.csv';
@@ -2761,18 +3014,17 @@ function _sdParseCSV(text){
   const isQuote=headers.some(h=>h==='text'||h==='quote');
   const isVocab=headers.some(h=>h==='word'||h==='definition');
   if(isQuote){
-    const items=load(K.quotes);
-    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),text:get(row,'text')||get(row,'quote'),author:get(row,'author'),source:get(row,'source'),category:get(row,'category')||get(row,'cat')||'Other',date:_normDate(get(row,'date'))});count++;});
-    save(K.quotes,items);if(_sdTab==='quotes')renderQuotes();
+    const items=load(K.library);
+    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),title:get(row,'author')||'Unknown',url:get(row,'source'),content:get(row,'text')||get(row,'quote'),summary:get(row,'category')||get(row,'cat')||'',category:'Quotes',sourceId:null,createdAt:_normDate(get(row,'date'))});count++;});
+    save(K.library,items);if(activeTab==='library')renderLibrary();
   } else if(isVocab){
     const items=load(K.vocab);
     rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),word:get(row,'word')||get(row,'term')||get(row,'vocabulary')||get(row,'entry'),definition:get(row,'definition')||get(row,'def')||get(row,'meaning')||get(row,'translation'),example:get(row,'example'),category:get(row,'category')||get(row,'cat')||'General',date:_normDate(get(row,'date'))});count++;});
     save(K.vocab,items);if(_sdTab==='vocab')renderVocab();
   } else {
     const items=load(K.knowledge);
-    const importCat=['lessons','skills','systems'].includes(_sdTab)?_sdTab:'lessons';
-    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),title:get(row,'title'),category:get(row,'category')||importCat,type:get(row,'type')||'Other',skill:get(row,'skill')||'Other',source:get(row,'source'),link:get(row,'link'),status:get(row,'status')||'',progress:parseInt(get(row,'progress'))||0,notes:get(row,'notes')||get(row,'note'),date:_normDate(get(row,'date'))});count++;});
-    save(K.knowledge,items);if(['lessons','skills','systems'].includes(_sdTab))renderSelfDev();
+    rows.forEach(line=>{const row=parseRow(line);if(!row[0])return;items.push({id:uid(),title:get(row,'title'),category:get(row,'category')||'skills',type:get(row,'type')||'Other',skill:get(row,'skill')||'Other',source:get(row,'source'),link:get(row,'link'),status:get(row,'status')||'',progress:parseInt(get(row,'progress'))||0,notes:get(row,'notes')||get(row,'note'),date:_normDate(get(row,'date'))});count++;});
+    save(K.knowledge,items);if(_sdTab==='skills')renderSelfDev();
   }
   showToast(`✅ Imported ${count} item${count!==1?'s':''}`,count?'var(--green)':'var(--amber)');
 }
@@ -2804,40 +3056,30 @@ function viewKnowledge(id){
 function viewKnowledgeNotes(id){viewKnowledge(id);}  // backward compat
 
 // ── YouTube → Knowledge Flow ──────────────────────────
-let _ytFlow={state:'idle',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:''};
+// Entered only via toLearnProcess() — a queued To Learn item is always the trigger now.
+let _ytFlow={state:'idle',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,pendingLesson:'',toLearnId:null,_loadMsg:''};
 
-function ytFlowOpen(){
-  _ytFlow={state:'url',videoId:null,ytUrl:null,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:''};
-  $('ytFlowOverlay').style.display='flex';
-  _ytRender();
+function ytFlowClose(){
+  $('ytFlowOverlay').style.display='none';
+  // Closed mid-flight — put the queue item back to 'queued' rather than leaving it stuck 'extracting'.
+  if(_ytFlow.toLearnId){
+    const q=load(K.toLearn);
+    const item=q.find(x=>x.id===_ytFlow.toLearnId);
+    if(item&&item.status==='extracting'){ item.status='queued'; save(K.toLearn,q); if(activeTab==='selfdev') renderSelfDev(); }
+  }
+  _ytFlow.state='idle';
 }
-function ytFlowClose(){$('ytFlowOverlay').style.display='none';_ytFlow.state='idle';}
 
 function _ytRender(){
   const el=$('ytFlowInner');if(!el)return;
   const s=_ytFlow.state;
-  if(s==='url')el.innerHTML=_ytHtmlUrl();
-  else if(s==='loading'||s==='loading2')el.innerHTML=_ytHtmlLoading(_ytFlow._loadMsg||'Working…');
+  if(s==='loading'||s==='loading2')el.innerHTML=_ytHtmlLoading(_ytFlow._loadMsg||'Working…');
   else if(s==='manual')el.innerHTML=_ytHtmlManual();
   else if(s==='review1')el.innerHTML=_ytHtmlReview1();
   else if(s==='review2')el.innerHTML=_ytHtmlReview2();
 }
 
 function _ytX(){return `<button onclick="ytFlowClose()" style="position:absolute;top:16px;right:16px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;line-height:1">✕</button>`;}
-
-function _ytHtmlUrl(){
-  const hasKey=!!localStorage.getItem('gemini_api_key');
-  return `${_ytX()}
-  <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:8px">Growth · Extract</div>
-  <div style="font-size:19px;font-weight:700;color:var(--text-bright);margin-bottom:6px">YouTube → Knowledge</div>
-  <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Claude extracts the lesson, quotes, and vocab for you to review before saving.</div>
-  ${!hasKey?`<div style="padding:10px 14px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);border-radius:var(--r-sm);font-size:12px;color:var(--yellow);margin-bottom:14px;display:flex;align-items:center;gap:10px">⚠ No Claude API key set. <button onclick="openClaudeSettings()" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.25);border-radius:var(--r-xs);padding:3px 10px;color:var(--yellow);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600">Set key →</button></div>`:''}
-  <div style="display:flex;gap:10px;margin-bottom:10px">
-    <input id="ytf-url" class="input" placeholder="https://youtube.com/watch?v=…" style="flex:1;font-size:14px" onkeydown="if(event.key==='Enter')_ytProcessUrl()">
-    <button onclick="_ytProcessUrl()" style="padding:0 20px;height:40px;border-radius:var(--r-sm);border:none;background:var(--t-selfdev);color:#000;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Extract</button>
-  </div>
-  <button onclick="_ytShowManual()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;text-decoration:underline;padding:0">Paste transcript manually instead</button>`;
-}
 
 function _ytHtmlLoading(msg){
   return `<div style="text-align:center;padding:48px 0">
@@ -2952,38 +3194,42 @@ async function _ytCallClaude(system,user){
   throw new Error('QUOTA_ALL');
 }
 
-async function _ytQuickFromInput(){
+// Add-to-queue only — no AI call. Processing (fetch + extract) happens later,
+// on demand, via toLearnProcess() from the To Learn section.
+function _ytQuickFromInput(){
   const url=($('yt-quick-url')?.value||'').trim();
-  const videoId=url?_ytExtractVideoId(url):null;
-  if(!videoId){$('yt-quick-url').value='';ytFlowOpen();return;}
-  _ytFlow={state:'loading',videoId,ytUrl:url,meta:null,transcript:null,draft:null,approved:null,idea:null,_loadMsg:'Fetching transcript…'};
-  $('ytFlowOverlay').style.display='flex';_ytRender();
+  if(!url){ return; }
+  const q=load(K.toLearn);
+  const videoId=_ytExtractVideoId(url);
+  q.push({id:uid(),url,title:videoId?'':url,status:'queued',queuePosition:q.length,addedAt:Date.now()});
+  save(K.toLearn,q);
   $('yt-quick-url').value='';
-  try{
-    const res=await _ytFetchAll(videoId);
-    _ytFlow.meta=res.meta;
-    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
-    _ytFlow.transcript=res.transcript;
-    _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
-    await _ytRunExtraction();
-  }catch{_ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};_ytFlow.state='manual';_ytRender();}
+  if(activeTab==='selfdev') renderSelfDev();
+  showToast('Added to queue','var(--t-selfdev)');
 }
 
-async function _ytProcessUrl(){
-  const url=($('ytf-url')?.value||'').trim();
-  if(!url){showToast('Paste a YouTube URL first','var(--red)');return;}
-  const videoId=_ytExtractVideoId(url);
-  if(!videoId){showToast('Not a valid YouTube URL','var(--red)');return;}
-  _ytFlow.videoId=videoId;_ytFlow.ytUrl=url;
-  _ytFlow.state='loading';_ytFlow._loadMsg='Fetching transcript…';_ytRender();
-  try{
-    const res=await _ytFetchAll(videoId);
-    _ytFlow.meta=res.meta;
-    if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
-    _ytFlow.transcript=res.transcript;
-    _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
-    await _ytRunExtraction();
-  }catch{_ytFlow.meta=_ytFlow.meta||{title:'YouTube Video',author:''};_ytFlow.state='manual';_ytRender();}
+// Opens the existing extraction pipeline (same fetch/Gemini calls as before) for one
+// specific queued item. On completion the result is saved as a K.learned source and
+// this queue item flips to 'ready' — see _ytFinalizeLearned.
+function toLearnProcess(id){
+  const q=load(K.toLearn);
+  const item=q.find(x=>x.id===id); if(!item) return;
+  item.status='extracting'; save(K.toLearn,q);
+  if(activeTab==='selfdev') renderSelfDev();
+  const videoId=_ytExtractVideoId(item.url);
+  _ytFlow={state:'loading',videoId,ytUrl:item.url,meta:{title:item.title||'',author:''},transcript:null,draft:null,approved:null,idea:null,pendingLesson:'',toLearnId:id,_loadMsg:'Fetching transcript…'};
+  $('ytFlowOverlay').style.display='flex';_ytRender();
+  (async()=>{
+    try{
+      if(!videoId) throw new Error('not-youtube');
+      const res=await _ytFetchAll(videoId);
+      _ytFlow.meta=res.meta;
+      if(!res.transcript){_ytFlow.state='manual';_ytRender();return;}
+      _ytFlow.transcript=res.transcript;
+      _ytFlow._loadMsg='Extracting knowledge…';_ytRender();
+      await _ytRunExtraction();
+    }catch{_ytFlow.meta=_ytFlow.meta||{title:item.title||'Source',author:''};_ytFlow.state='manual';_ytRender();}
+  })();
 }
 
 function _ytShowManual(){
@@ -3013,7 +3259,7 @@ STRICT RULES: lesson=null if no real takeaway. quote_candidates=[] if nothing ge
   }catch(e){
     if(e.message==='NO_KEY'){
       showToast('Set your Gemini API key first','var(--red)');
-      _ytFlow.state='url';_ytRender();
+      ytFlowClose();
       setTimeout(openClaudeSettings,300);
     }else if(e.message==='QUOTA_ALL'){
       showToast('Gemini quota hit — try again in a minute, or paste the transcript below','var(--orange)');
@@ -3033,25 +3279,22 @@ function _ytApproveExtraction(){
   const keptQuotes=qc.filter((_,i)=>document.getElementById('ytf-q-'+i)?.checked);
   const keptVocab=vc.filter((_,i)=>document.getElementById('ytf-v-'+i)?.checked);
 
-  if(lesson){
-    const items=load(K.knowledge);
-    items.push({id:uid(),title:_ytFlow.meta?.title||'YouTube Video',category:'lessons',type:'Video',skill:'Other',source:_ytFlow.meta?.author||'',link:_ytFlow.ytUrl||'',notes:lesson,date:today()});
-    save(K.knowledge,items);
-  }
+  // Quotes now live in the Library (Phase 1); vocab is unchanged. Lesson is held
+  // pending — it's finalized into a K.learned source once the idea gate resolves.
   if(keptQuotes.length){
-    const quotes=load(K.quotes);
-    keptQuotes.forEach(q=>quotes.push({id:uid(),text:q.text,author:_ytFlow.meta?.author||'',source:_ytFlow.meta?.title||'',category:'Other',date:today()}));
-    save(K.quotes,quotes);
+    const lib=load(K.library);
+    keptQuotes.forEach(q=>lib.push({id:uid(),title:_ytFlow.meta?.author||'Unknown',url:_ytFlow.ytUrl||'',content:q.text,summary:_ytFlow.meta?.title||'',category:'Quotes',sourceId:null,createdAt:today()}));
+    save(K.library,lib);
   }
   if(keptVocab.length){
     const vocab=load(K.vocab);
     keptVocab.forEach(v=>vocab.push({id:uid(),word:v.term,definition:v.definition,date:today()}));
     save(K.vocab,vocab);
   }
+  _ytFlow.pendingLesson=lesson;
   _ytFlow.approved={lesson,quotes:keptQuotes,vocab:keptVocab};
-  if(activeTab==='selfdev') renderSelfDev();
 
-  if(!lesson){showToast('Saved','var(--green)');ytFlowClose();return;}
+  if(!lesson){ _ytFinalizeLearned(null); return; }
   _ytFlow.state='loading2';_ytFlow._loadMsg='Generating idea…';_ytRender();
   _ytGenerateIdea(lesson);
 }
@@ -3064,21 +3307,42 @@ async function _ytGenerateIdea(lesson){
     if(cleaned==='null'){_ytFlow.idea=null;}
     else{const j=JSON.parse(cleaned);_ytFlow.idea=j?.idea||null;}
   }catch{_ytFlow.idea=null;}
-  if(!_ytFlow.idea){showToast('Saved','var(--green)');ytFlowClose();return;}
+  if(!_ytFlow.idea){ _ytFinalizeLearned(null); return; }
   _ytFlow.state='review2';_ytRender();
 }
 
 function _ytApproveIdea(){
   const idea=($('ytf-idea')?.value||'').trim();
-  if(idea){
-    const notes=load(K.notes);
-    notes.unshift({id:uid(),text:idea,category:'Idea',source:_ytFlow.ytUrl||'',status:'open',created:today(),ts:Date.now()});
-    save(K.notes,notes);
-    showToast('Idea saved to Capture','var(--green)');
-  }
-  ytFlowClose();
+  _ytFinalizeLearned(idea||null);
 }
-function _ytSkipIdea(){showToast('Saved','var(--green)');ytFlowClose();}
+function _ytSkipIdea(){ _ytFinalizeLearned(null); }
+
+// Writes the accumulated lesson (Gate 1) + idea (Gate 2, or null if skipped/none)
+// as one K.learned source, and flips the linked To Learn queue item to 'ready'.
+function _ytFinalizeLearned(ideaText){
+  const learned=load(K.learned);
+  const source={
+    id:uid(),
+    sourceName:_ytFlow.meta?.title||_ytFlow.ytUrl||'Untitled source',
+    url:_ytFlow.ytUrl||'',
+    summary:_ytFlow.meta?.author||'',
+    lessons:_ytFlow.pendingLesson?[{id:uid(),text:_ytFlow.pendingLesson,status:'undecided'}]:[],
+    ideas:ideaText?[{id:uid(),text:ideaText,status:'undecided'}]:[],
+    extractedAt:Date.now(),
+  };
+  learned.push(source);
+  save(K.learned,learned);
+
+  if(_ytFlow.toLearnId){
+    const q=load(K.toLearn);
+    const item=q.find(x=>x.id===_ytFlow.toLearnId);
+    if(item){ item.status='ready'; item.learnedId=source.id; save(K.toLearn,q); }
+  }
+  if(activeTab==='selfdev') renderSelfDev();
+  showToast('Saved to Learned','var(--green)');
+  $('ytFlowOverlay').style.display='none';
+  _ytFlow.state='idle';
+}
 
 function openClaudeSettings(){
   const gKey=localStorage.getItem('gemini_api_key')||'';
@@ -5127,6 +5391,7 @@ function _trashSummary(type,item){
   if(type==='directory') return esc(item.name||'Untitled');
   if(type==='review') return `Week of ${item.week||'?'} · ${item.overall||'?'}/10`;
   if(type==='library') return `${esc(item.title||'Untitled')} · ${esc(item.category||'')}`;
+  if(type==='toLearn') return `${esc(item.title||item.url||'Untitled')}`;
   return '—';
 }
 function _updateTrashBtn(){
@@ -5151,7 +5416,7 @@ function renderTrashSection(type){
     +dbTable(['Item','Deleted','',''],rows);
 }
 function openTrashView(){
-  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library'};
+  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library',toLearn:'To Learn'};
   const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const el=document.getElementById('logs-content');
   if(!el) return;
@@ -5183,7 +5448,7 @@ function emptyTrash(){
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const entry=trash.find(t=>t.id===trashId);if(!entry)return;
-  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library};
+  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library,toLearn:K.toLearn};
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
