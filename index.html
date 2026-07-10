@@ -1544,6 +1544,16 @@ function migrateWorkoutIds(){
 // One-time move: K.knowledge systems + all K.quotes → K.library. Originals are
 // flagged migratedToLibrary (never deleted) so Growth's old Systems/Quotes views
 // can filter them out without losing data.
+// Creates the "Daily learning" habit once, wired to auto-complete via _autoLogDailyLearning().
+function migrateDailyLearningHabit(){
+  if(localStorage.getItem('_mig_daily_learning_habit')) return;
+  const habits=load(K.habits);
+  if(!habits.some(h=>h.autoLog==='growth-dispo')){
+    habits.push({id:uid(),name:'Daily learning',icon:'🌱',streak:0,autoLog:'growth-dispo'});
+    save(K.habits,habits);
+  }
+  localStorage.setItem('_mig_daily_learning_habit','1');
+}
 function migrateToLibraryV1(){
   if(getSchemaVersion()>=1) return;
   const lib=load(K.library);
@@ -2892,6 +2902,22 @@ function renderTodaysLearning(){
     : `<div class="empty"><span class="empty-icon">✅</span><span class="empty-text">${served.length?'All served sources decided. Serve next, or check back tomorrow.':'Nothing ready yet — process a queued item in To Learn below.'}</span></div>`;
   const counterEl=$('todays-learning-counter');
   if(counterEl) counterEl.textContent=served.length?`${decidedCount} of ${served.length} decided today`:'';
+  if(served.length&&!active.length) _autoLogDailyLearning();
+}
+// Auto-completes the "Daily learning" habit the first time all of today's served
+// cards are decided. Idempotent — a day already logged is left alone.
+function _autoLogDailyLearning(){
+  const h=load(K.habits).find(x=>x.autoLog==='growth-dispo');
+  if(!h) return;
+  const log=loadObj(K.habitLog,{});
+  const t=today();
+  if(!log[t]) log[t]=[];
+  if(log[t].includes(h.id)) return;
+  log[t].push(h.id);
+  save(K.habitLog,log);
+  updateScore();
+  if(activeTab==='home') renderHomeHabits();
+  if(activeTab==='habits') renderHabitMonth();
 }
 
 // ── Shared per-source card (lessons + ideas disposition) ──
@@ -3647,7 +3673,8 @@ function openClaudeSettings(){
   $('modalTitle').textContent='AI Settings';
   $('modalBody').innerHTML=`
     <div class="field"><label>Google Gemini API Key</label><input class="input" id="gemini-key" value="${esc(gKey)}" placeholder="AIza…" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">Free at <strong style="color:var(--text-secondary)">aistudio.google.com/apikey</strong> · Text-only extraction — low quota usage</div></div>
-    <div class="field" style="margin-top:12px"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Optional — free at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">500 transcripts/month free · without a key you get fewer auto-fetches</div></div>`;
+    <div class="field" style="margin-top:12px"><label>Supadata API Key <span style="font-weight:400;color:var(--text-muted)">(YouTube transcripts)</span></label><input class="input" id="supadata-key" value="${esc(sKey)}" placeholder="Optional — free at supadata.ai" style="font-family:'JetBrains Mono',monospace;font-size:12px" type="password"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">500 transcripts/month free · without a key you get fewer auto-fetches</div></div>
+    <div class="field" style="margin-top:12px"><label>Daily Learning Serving</label><input class="input" id="daily-serving" type="number" min="1" max="20" value="${getDailyServing()}" style="font-family:'JetBrains Mono',monospace;font-size:12px"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">How many Learned sources Today's Learning serves up front each day</div></div>`;
   $('modalFoot').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
@@ -3658,7 +3685,11 @@ function saveClaudeSettings(){
   const sKey=$('supadata-key').value.trim();
   if(gKey) localStorage.setItem('gemini_api_key',gKey); else localStorage.removeItem('gemini_api_key');
   if(sKey) localStorage.setItem('supadata_api_key',sKey); else localStorage.removeItem('supadata_api_key');
+  const servingEl=$('daily-serving');
+  const serving=servingEl?parseInt(servingEl.value):NaN;
+  localStorage.setItem('ahq_daily_serving',String(!isNaN(serving)&&serving>0?serving:3));
   closeModal();showToast('Settings saved','var(--t-selfdev)');
+  if(activeTab==='selfdev') renderSelfDev();
 }
 
 // ── FITNESS ───────────────────────────────────────────
@@ -7597,6 +7628,7 @@ function init(){
   migrateWoCats();
   migrateWorkoutIds();
   migrateToLibraryV1();
+  migrateDailyLearningHabit();
   // Set time of day greeting
   const h=new Date().getHours();
   $('timeOfDay').textContent=h<12?'morning':h<17?'afternoon':'evening';
