@@ -812,6 +812,17 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 
 <!-- HOME -->
 <div id="tab-home" class="tab-panel active">
+  <div id="homeTodaysLearningCard" class="card" style="display:none;margin-bottom:16px;cursor:pointer" onclick="switchTab('selfdev',document.querySelector('[data-tab=selfdev]'))">
+    <div class="card-accent" style="background:var(--t-selfdev)"></div>
+    <div class="card-body" style="display:flex;align-items:center;gap:12px;padding:16px">
+      <span style="font-size:22px">⭐</span>
+      <div style="flex:1">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t-selfdev);margin-bottom:2px">Today's Learning</div>
+        <div id="homeTodaysLearningText" style="font-size:13px;color:var(--text-primary);font-weight:600"></div>
+      </div>
+      <span style="color:var(--text-muted);font-size:13px">→</span>
+    </div>
+  </div>
   <div id="homeAthena" style="margin-bottom:4px"></div>
   <div class="home-hero">
     <div class="greeting">Good <span id="timeOfDay">morning</span>, <span id="greetName">there</span></div>
@@ -841,6 +852,8 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <div class="card-body" id="homeHabits"><div class="empty"><span class="empty-icon">⭐</span><span class="empty-text">No habits set up</span></div></div>
     </div>
   </div>
+
+  <div id="homeSecondaryCards"></div>
 
   <div class="card" style="margin-bottom:16px">
     <div class="card-accent" style="background:var(--t-goals)"></div>
@@ -1753,12 +1766,70 @@ if(t.urgency==='urgent') s += 20;
   renderHomeHabits();
   renderHomeGoals();
   renderHomeMeetings();
+  renderHomeTodaysLearning();
+  renderHomeSecondaryCards();
 }
 function renderHomeTasks(){
   const tasks = load(K.tasks).filter(t=>!t.done && t.due===today());
+  const projects = load(K.projects);
   const el = $('homeTasks');
   if(!tasks.length){el.innerHTML='<div class="empty"><span class="empty-icon">✓</span><span class="empty-text">No tasks due today</span></div>';return;}
-  el.innerHTML = tasks.slice(0,4).map(t=>`<div class="check-row ${t.done?'done':''}" onclick="toggleTask('${t.id}')"><div class="check-box">${t.done?'✓':''}</div><span class="check-text">${esc(t.title)}</span><span class="check-meta">${t.due?fmtDateShort(t.due):''}</span></div>`).join('');
+  el.innerHTML = tasks.slice(0,4).map(t=>{
+    const proj=t.projectId?projects.find(p=>p.id===t.projectId):null;
+    return `<div class="check-row ${t.done?'done':''}" onclick="toggleTask('${t.id}')"><div class="check-box">${t.done?'✓':''}</div><span class="check-text">${esc(t.title)}</span>${proj?`<span class="lbl lbl-c" style="margin-right:6px;flex-shrink:0">${esc(proj.name)}</span>`:''}<span class="check-meta">${t.due?fmtDateShort(t.due):''}</span></div>`;
+  }).join('');
+}
+// Hidden entirely when no served source still has undecided cards.
+function renderHomeTodaysLearning(){
+  const card=$('homeTodaysLearningCard'); if(!card) return;
+  const seed=_ensureServedSeed();
+  const learned=load(K.learned);
+  const served=seed.ids.map(id=>learned.find(s=>s.id===id)).filter(Boolean);
+  const active=served.filter(s=>!sourceDecided(s));
+  if(!active.length){ card.style.display='none'; return; }
+  const cardsToDecide=active.reduce((n,s)=>n+[...(s.lessons||[]),...(s.ideas||[])].filter(x=>x.status==='undecided').length,0);
+  card.style.display='';
+  $('homeTodaysLearningText').textContent=`${active.length} ready · ${cardsToDecide} card${cardsToDecide===1?'':'s'} to decide`;
+}
+function _homeGoToJournal(){
+  switchTab('journal',document.querySelector('[data-tab=journal]'));
+  setTimeout(()=>{ const el=$('journalDump'); if(el) el.focus(); },100);
+}
+// Evening journal card (after 6pm local, only if no entry today) + weekend card (Sat/Sun, backlog count).
+function renderHomeSecondaryCards(){
+  const el=$('homeSecondaryCards'); if(!el) return;
+  let html='';
+  const hour=new Date().getHours();
+  const hasEntryToday=load(K.journal).some(e=>e.date===today());
+  if(hour>=18&&!hasEntryToday){
+    html+=`<div class="card" style="margin-bottom:16px;cursor:pointer" onclick="_homeGoToJournal()">
+      <div class="card-accent" style="background:var(--t-journal)"></div>
+      <div class="card-body" style="display:flex;align-items:center;gap:12px;padding:16px">
+        <span style="font-size:22px">📔</span>
+        <div style="flex:1">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t-journal);margin-bottom:2px">Evening Journal</div>
+          <div style="font-size:13px;color:var(--text-primary);font-weight:600">No entry yet today — one tap to write it</div>
+        </div>
+        <span style="color:var(--text-muted);font-size:13px">→</span>
+      </div>
+    </div>`;
+  }
+  const day=new Date().getDay();
+  if(day===0||day===6){
+    const backlogCount=load(K.notes).filter(n=>n.status==='scheduled').length;
+    html+=`<div class="card" style="margin-bottom:16px;cursor:pointer" onclick="switchTab('review',document.querySelector('[data-tab=review]'))">
+      <div class="card-accent" style="background:var(--t-review)"></div>
+      <div class="card-body" style="display:flex;align-items:center;gap:12px;padding:16px">
+        <span style="font-size:22px">📊</span>
+        <div style="flex:1">
+          <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t-review);margin-bottom:2px">Weekly Review</div>
+          <div style="font-size:13px;color:var(--text-primary);font-weight:600">Weekly review ready · ${backlogCount} backlog item${backlogCount===1?'':'s'}</div>
+        </div>
+        <span style="color:var(--text-muted);font-size:13px">→</span>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=html;
 }
 function renderHomeHabits(){
   const habits = load(K.habits);
@@ -3776,20 +3847,30 @@ function renderReview(){
   renderWeeklyReport();
 }
 
-// Backlog notes untouched 30+ days since backlog_at — surfaced here for a keep/kill decision.
+// Every note currently parked in the backlog, surfaced for a keep/reject/re-triage decision.
+// Notes 30+ days since backlog_at are flagged expiring (red) rather than filtered out.
 function renderBacklogReviewCard(){
-  const expiring=load(K.notes).filter(n=>n.status==='scheduled'&&TriageRules.isBacklogExpiring(n));
-  if(!expiring.length) return '';
+  const backlog=load(K.notes).filter(n=>n.status==='scheduled').sort((a,b)=>(a.backlog_at||0)-(b.backlog_at||0));
+  if(!backlog.length) return '';
   return `<div class="card" style="margin-top:16px">
-    <div class="card-header"><span class="card-title">🗂️ Backlog — Needs a Decision</span><span class="lbl lbl-a">${expiring.length} EXPIRING</span></div>
+    <div class="card-header"><span class="card-title">🗂️ Backlog</span><span class="lbl lbl-a">${backlog.length}</span></div>
     <div class="card-body">
-      ${expiring.map(n=>`<div class="review-item" style="align-items:center">
-        <div class="review-dot" style="background:var(--yellow)"></div>
-        <div style="flex:1;color:var(--text-secondary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.text)}</div>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);flex-shrink:0;margin-right:8px">${TriageRules.backlogAgeDays(n)}d in backlog</span>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="backlogKeep('${n.id}')">Keep</button>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;flex-shrink:0;margin-left:6px" onclick="backlogKill('${n.id}')">Kill</button>
-      </div>`).join('')}
+      ${backlog.map(n=>{
+        const expiring=TriageRules.isBacklogExpiring(n);
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div class="review-item" style="align-items:center;margin-bottom:0">
+            <div class="review-dot" style="background:${expiring?'var(--red)':'var(--yellow)'}"></div>
+            <div style="flex:1;color:var(--text-secondary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.text)}</div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${expiring?'var(--red)':'var(--text-muted)'};flex-shrink:0;margin-right:8px">${TriageRules.backlogAgeDays(n)}d${expiring?' · expiring':''}</span>
+          </div>
+          ${n.feedback?`<div style="margin:6px 0 0 20px;padding:8px 10px;border-left:2px solid var(--t-library);background:color-mix(in srgb,var(--t-library) 6%,transparent);border-radius:0 var(--r-xs) var(--r-xs) 0;font-size:12px;color:var(--text-secondary);line-height:1.5"><span style="font-weight:700;color:var(--t-library);font-size:10px;text-transform:uppercase;letter-spacing:.05em">↩ Reply</span><br>${esc(n.feedback)}</div>`:''}
+          <div style="display:flex;gap:6px;margin-top:8px;margin-left:20px">
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="backlogToTriage('${n.id}')">→ Triage</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="backlogKill('${n.id}')">Reject</button>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="backlogKeep('${n.id}')">Keep</button>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
 }
@@ -3802,6 +3883,15 @@ function backlogKill(id){
   const notes=load(K.notes); const i=notes.findIndex(n=>n.id===id);
   if(i>=0){ notes[i].status='rejected'; save(K.notes,notes); }
   renderReview();
+  updateReviewPill();
+}
+function backlogToTriage(id){
+  const notes=load(K.notes); const i=notes.findIndex(n=>n.id===id);
+  if(i<0) return;
+  notes[i].status='open'; delete notes[i].backlog_at;
+  save(K.notes,notes);
+  updateReviewPill();
+  openTriage(id);
 }
 
 function renderWeeklyReport(){
