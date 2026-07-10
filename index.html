@@ -2185,25 +2185,57 @@ function renderGoals(){
       </div>
     </div>`).join('');
 }
+let _newProjectGoalId=null;
+function newProjectForGoal(goalId){ _editingProjectId=null; _newProjectGoalId=goalId; openModal('project'); }
+function linkExistingProjectToGoal(goalId){
+  const sel=$('goal-link-proj-'+goalId); if(!sel||!sel.value) return;
+  const projects=load(K.projects);
+  const p=projects.find(x=>x.id===sel.value); if(!p) return;
+  p.goalId=goalId;
+  save(K.projects,projects);
+  renderGoals();
+}
+function unlinkProjectFromGoal(projectId){
+  const projects=load(K.projects);
+  const p=projects.find(x=>x.id===projectId); if(!p) return;
+  p.goalId=null;
+  save(K.projects,projects);
+  renderGoals();
+}
 function _goalProjectsHtml(goalId){
-  const projects=load(K.projects).filter(p=>p.goalId===goalId);
-  if(!projects.length) return '';
+  const allProjects=load(K.projects);
+  const linked=allProjects.filter(p=>p.goalId===goalId);
+  const unlinked=allProjects.filter(p=>p.goalId!==goalId);
   const tasks=load(K.tasks);
-  const rows=projects.map(p=>{
+  const rows=linked.map(p=>{
     const list=tasks.filter(t=>t.projectId===p.id);
     const done=list.filter(t=>t.done).length;
     const pct=list.length?Math.round(done/list.length*100):0;
     return `<div style="margin-bottom:6px">
       <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:3px">
         <span style="color:var(--text-secondary)">${esc(p.name)}</span>
-        <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace">${done}/${list.length}</span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace">${done}/${list.length}</span>
+          <button class="delete-btn" style="font-size:11px;padding:0" onclick="unlinkProjectFromGoal('${p.id}')" title="Unlink">✕</button>
+        </span>
       </div>
       <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${PROJECT_STATUS_COLOR[p.status]||'var(--t-tasks)'}"></div></div>
     </div>`;
   }).join('');
+  const linkExisting=unlinked.length?`
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select class="select" id="goal-link-proj-${goalId}" style="font-size:11px;flex:1;padding:4px 8px;height:auto">
+        ${unlinked.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="linkExistingProjectToGoal('${goalId}')">Link</button>
+    </div>`:'';
   return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-    <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">📁 Projects</div>
-    ${rows}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">📁 Projects</span>
+      <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="newProjectForGoal('${goalId}')">+ New</button>
+    </div>
+    ${rows||'<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">No projects linked yet.</div>'}
+    ${linkExisting}
   </div>`;
 }
 function toggleMilestone(gid,mi){
@@ -4939,6 +4971,7 @@ const MODAL_FORMS = {
   project:{title:()=>_editingProjectId?'Edit Project':'New Project',html:()=>{
     const p=_editingProjectId?load(K.projects).find(x=>x.id===_editingProjectId):null;
     const goals=load(K.goals);
+    const preselectGoal=p?p.goalId:_newProjectGoalId;
     return `
     <div class="field"><label>Name *</label><input class="input" id="m-proj-name" placeholder="Project name" value="${esc(p?.name||'')}"></div>
     <div class="field-row">
@@ -4947,7 +4980,7 @@ const MODAL_FORMS = {
       </select></div>
       <div class="field"><label>Goal (optional)</label><select class="select" id="m-proj-goal">
         <option value="">No goal</option>
-        ${goals.map(g=>`<option value="${g.id}"${p&&p.goalId===g.id?' selected':''}>${esc(g.title)}</option>`).join('')}
+        ${goals.map(g=>`<option value="${g.id}"${preselectGoal===g.id?' selected':''}>${esc(g.title)}</option>`).join('')}
       </select></div>
     </div>`;
   },save:()=>{
@@ -4956,6 +4989,7 @@ const MODAL_FORMS = {
     const projects=load(K.projects);
     if(_editingProjectId){const i=projects.findIndex(x=>x.id===_editingProjectId);if(i>=0)projects[i]={...projects[i],...fields};_editingProjectId=null;}
     else projects.push({id:uid(),...fields,createdAt:today()});
+    _newProjectGoalId=null;
     save(K.projects,projects);closeModal();
     if(activeTab==='tasks')renderTasksProjects();
     if(activeTab==='goals')renderGoals();
@@ -5050,7 +5084,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_editingProjectId=null;_mtgSelectedContacts=[];resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_editingProjectId=null;_newProjectGoalId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
