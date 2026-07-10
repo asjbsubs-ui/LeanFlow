@@ -46,7 +46,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .sb-sub{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)}
 .sb-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);margin-top:3px;opacity:.7}
 
-.sb-nav{flex:1;padding:4px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav{flex:1;padding:4px 10px;overflow-y:hidden;display:flex;flex-direction:column;gap:1px}
 .nav-btn{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:500;width:100%;text-align:left;transition:all .15s;position:relative}
 .nav-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
 .nav-btn.active{color:var(--tab-color);background:color-mix(in srgb,var(--tab-color) 10%,transparent)}
@@ -796,11 +796,6 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <span style="font-size:14px">📓</span> Obsidian Sync
     </button>
     <button id="obsFullSyncBtn" onclick="obsFullSync()" title="Sync all to Obsidian now" style="width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:all .15s" onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">↺</button>
-  </div>
-  <div style="padding:0 16px 10px">
-    <button onclick="openClaudeSettings()" style="width:100%;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;font-family:'Outfit',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='var(--t-selfdev)';this.style.color='var(--t-selfdev)'" onmouseout="this.style.borderColor='var(--border-md)';this.style.color='var(--text-muted)'">
-      <span style="font-size:14px">🌱</span> Growth Settings
-    </button>
   </div>
 </nav>
 
@@ -3364,23 +3359,6 @@ function _ytQuickFromInput(){
   $('yt-quick-url').value='';
   if(activeTab==='selfdev') renderSelfDev();
   showToast('Added to queue','var(--t-selfdev)');
-}
-
-function openClaudeSettings(){
-  $('modalTitle').textContent='Growth Settings';
-  $('modalBody').innerHTML=`
-    <div class="field"><label>Daily Learning Serving</label><input class="input" id="daily-serving" type="number" min="1" max="20" value="${getDailyServing()}" style="font-family:'JetBrains Mono',monospace;font-size:12px"><div style="font-size:10px;color:var(--text-muted);margin-top:4px">How many Learned sources Today's Learning serves up front each day</div></div>`;
-  $('modalFoot').innerHTML=`
-    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveClaudeSettings()">Save</button>`;
-  $('modalOverlay').classList.add('open');
-}
-function saveClaudeSettings(){
-  const servingEl=$('daily-serving');
-  const serving=servingEl?parseInt(servingEl.value):NaN;
-  localStorage.setItem('ahq_daily_serving',String(!isNaN(serving)&&serving>0?serving:3));
-  closeModal();showToast('Settings saved','var(--t-selfdev)');
-  if(activeTab==='selfdev') renderSelfDev();
 }
 
 // ── FITNESS ───────────────────────────────────────────
