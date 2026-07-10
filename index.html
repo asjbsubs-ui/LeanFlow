@@ -841,8 +841,18 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
       <button class="btn btn-ghost" onclick="openLogs('tasks')">📋 Logs</button>
     </div>
   </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:2px">
+      <button class="btn btn-sm" id="tasks-lens-today" onclick="setTasksLens('today')" style="padding:5px 12px;background:rgba(255,255,255,.08);color:var(--text-primary)">📌 Today</button>
+      <button class="btn btn-sm" id="tasks-lens-matrix" onclick="setTasksLens('matrix')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">⊞ Matrix</button>
+      <button class="btn btn-sm" id="tasks-lens-projects" onclick="setTasksLens('projects')" style="padding:5px 12px;background:transparent;color:var(--text-muted)">📁 Projects</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="tasks-new-project-btn" style="display:none" onclick="_editingProjectId=null;openModal('project')">+ New Project</button>
+  </div>
   <div id="tasksAiSuggest"></div>
-  <div id="task-matrix-view"></div>
+  <div id="task-today-view"><div id="task-today-list"></div></div>
+  <div id="task-matrix-view" style="display:none"></div>
+  <div id="task-projects-view" style="display:none"><div id="task-projects-list"></div></div>
 </div>
 
 <!-- MEETINGS -->
@@ -1411,7 +1421,7 @@ function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return 
 function fmtWeekRange(sunStr){const sun=new Date(sunStr+'T12:00:00');const sat=new Date(sun);sat.setDate(sun.getDate()+6);const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];return sun.getMonth()===sat.getMonth()?`${mn[sun.getMonth()]} ${sun.getDate()}-${sat.getDate()}`:`${mn[sun.getMonth()]} ${sun.getDate()} – ${mn[sat.getMonth()]} ${sat.getDate()}`;}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn',learned:'ahq_learned'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn',learned:'ahq_learned',projects:'ahq_projects'};
 
 // ── Growth / Learned model helpers ─────────────────────
 function getDailyServing(){ return parseInt(localStorage.getItem('ahq_daily_serving')||'3',10)||3; }
@@ -1761,7 +1771,100 @@ ${t.business?`<span class="task-cat" style="background:rgba(74,222,128,.1);color
     </div>
   </div>`;
 }
-function renderTasks(){renderMatrix();}
+let _tasksLens='today';
+function setTasksLens(lens){
+  _tasksLens=lens;
+  ['today','matrix','projects'].forEach(l=>{
+    const view=$('task-'+l+'-view'); if(view) view.style.display=l===lens?'':'none';
+    const btn=$('tasks-lens-'+l);
+    if(btn){ btn.style.background=l===lens?'rgba(255,255,255,.08)':'transparent'; btn.style.color=l===lens?'var(--text-primary)':'var(--text-muted)'; }
+  });
+  const newProjBtn=$('tasks-new-project-btn'); if(newProjBtn) newProjBtn.style.display=lens==='projects'?'':'none';
+  renderTasks();
+}
+function renderTasks(){
+  if(_tasksLens==='matrix') renderMatrix();
+  else if(_tasksLens==='projects') renderTasksProjects();
+  else renderTasksToday();
+}
+
+function renderTasksToday(){
+  const todayStr=today();
+  const items=load(K.tasks).filter(t=>!t.done&&t.due&&t.due<=todayStr).sort((a,b)=>(a.due||'').localeCompare(b.due||''));
+  const projects=load(K.projects);
+  const el=$('task-today-list'); if(!el) return;
+  if(!items.length){ el.innerHTML='<div class="empty"><span class="empty-icon">✅</span><span class="empty-text">Nothing due today or overdue.</span></div>'; return; }
+  el.innerHTML=items.map(t=>{
+    const proj=t.projectId?projects.find(p=>p.id===t.projectId):null;
+    const overdue=t.due<todayStr;
+    return `<div class="matrix-task">
+      <div class="check-box" onclick="toggleTask('${t.id}');renderTasksToday()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+      <div style="flex:1;min-width:0">
+        <div class="matrix-task-title">${esc(t.title)}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:2px;flex-wrap:wrap">
+          <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${overdue?'var(--red)':'var(--text-muted)'};font-weight:${overdue?'700':'400'}">📅 ${fmtDateShort(t.due)}${overdue?' overdue':''}</span>
+          ${proj?`<span class="lbl lbl-c">${esc(proj.name)}</span>`:''}
+        </div>
+      </div>
+      <button class="delete-btn" title="Pomodoro" onclick="openPomodoro('${t.id}')" style="font-size:11px;padding:2px 4px">🍅</button>
+      <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
+      <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+const PROJECT_STATUS_LABEL={planned:'Planned',active:'Active',paused:'Paused',done:'Done'};
+const PROJECT_STATUS_COLOR={planned:'var(--text-muted)',active:'var(--t-tasks)',paused:'var(--yellow)',done:'var(--green)'};
+let _projectsCollapsed={};
+function toggleProjectCollapse(id){ _projectsCollapsed[id]=!_projectsCollapsed[id]; renderTasksProjects(); }
+function _projTaskRow(t){
+  return `<div class="matrix-task ${t.done?'done':''}">
+    <div class="check-box" onclick="toggleTask('${t.id}');renderTasksProjects()" style="cursor:pointer;width:16px;height:16px;border-radius:3px;flex-shrink:0">${t.done?'✓':''}</div>
+    <div style="flex:1;min-width:0"><div class="matrix-task-title">${esc(t.title)}</div>${t.due?`<div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">📅 ${fmtDateShort(t.due)}</div>`:''}</div>
+    <button class="delete-btn" onclick="editTask('${t.id}')" style="font-size:11px;padding:2px 4px">✏️</button>
+    <button class="delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+  </div>`;
+}
+function renderTasksProjects(){
+  const tasks=load(K.tasks);
+  const projects=load(K.projects);
+  const el=$('task-projects-list'); if(!el) return;
+  const byProject={}; projects.forEach(p=>byProject[p.id]=[]);
+  const noProject=[];
+  tasks.forEach(t=>{ if(t.projectId&&byProject[t.projectId]) byProject[t.projectId].push(t); else noProject.push(t); });
+
+  const groupCard=(id,label,statusHtml,list)=>{
+    const collapsed=!!_projectsCollapsed[id];
+    const doneCt=list.filter(t=>t.done).length;
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="card-header" style="cursor:pointer" onclick="toggleProjectCollapse('${id}')">
+        <span style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">${collapsed?'▶':'▼'}</span>
+          <span class="card-title" style="color:var(--t-tasks);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
+          ${statusHtml}
+        </span>
+        <span style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">${doneCt}/${list.length} done</span>
+          ${id!=='__none__'?`<button class="delete-btn" style="color:var(--text-muted)" onclick="event.stopPropagation();editProject('${id}')">✏️</button>
+          <button class="delete-btn" onclick="event.stopPropagation();deleteProject('${id}')">✕</button>`:''}
+        </span>
+      </div>
+      ${collapsed?'':`<div class="card-body">${list.length?list.map(_projTaskRow).join(''):'<div class="matrix-empty">No tasks yet</div>'}</div>`}
+    </div>`;
+  };
+
+  let html=projects.map(p=>{
+    const statusHtml=`<span class="lbl lbl-c" style="background:color-mix(in srgb,${PROJECT_STATUS_COLOR[p.status]} 15%,transparent);color:${PROJECT_STATUS_COLOR[p.status]};flex-shrink:0">${PROJECT_STATUS_LABEL[p.status]||p.status}</span>`;
+    return groupCard(p.id,p.name,statusHtml,byProject[p.id]||[]);
+  }).join('');
+  html+=groupCard('__none__','No project','',noProject);
+
+  if(!projects.length&&!noProject.length){
+    el.innerHTML='<div class="empty"><span class="empty-icon">📁</span><span class="empty-text">No projects yet. Create one to start grouping tasks.</span></div>';
+    return;
+  }
+  el.innerHTML=html;
+}
 function resolveRecurDays(year,month,days){
   const last=new Date(year,month+1,0).getDate();
   return days.map(d=>d<0?last+d+1:Math.min(d,last)).sort((a,b)=>a-b);
@@ -1829,10 +1932,25 @@ function editTask(id){
       if($('m-task-dept')) $('m-task-dept').value=t.dept;
     }
     prefillEim(t.urgency,t.importance);
+    if($('m-task-project')) $('m-task-project').value=t.projectId||'';
     if($('modalTitle')) $('modalTitle').textContent='Edit Task';
   },60);
 }
 let _editingTaskId=null;let _noteToTaskSourceId=null;
+let _editingProjectId=null;
+function editProject(id){ _editingProjectId=id; openModal('project'); }
+function deleteProject(id){
+  const projects=load(K.projects);
+  const p=projects.find(x=>x.id===id); if(p) trashItem('projects',p);
+  save(K.projects,projects.filter(x=>x.id!==id));
+  // Orphaned tasks fall back to "No project" rather than pointing at a deleted id.
+  const tasks=load(K.tasks);
+  let changed=false;
+  tasks.forEach(t=>{ if(t.projectId===id){ t.projectId=null; changed=true; } });
+  if(changed) save(K.tasks,tasks);
+  renderTasksProjects();
+  if(activeTab==='goals') renderGoals();
+}
 
 async function addTaskToGcal(id){
   const t=load(K.tasks).find(x=>x.id===id);
@@ -2049,6 +2167,7 @@ function renderGoals(){
       ${g.milestones&&g.milestones.length?`
         <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Milestones</div>
         ${g.milestones.map((m,mi)=>`<div class="milestone-row ${m.done?'done':''}" onclick="toggleMilestone('${g.id}',${mi})"><div class="milestone-check">${m.done?'✓':''}</div><span style="flex:1">${esc(m.text)}</span></div>`).join('')}`:'' }
+      ${_goalProjectsHtml(g.id)}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
         ${g.deadline?(()=>{
           const days=Math.ceil((new Date(g.deadline+'T12:00:00')-new Date())/(1000*60*60*24));
@@ -2065,6 +2184,27 @@ function renderGoals(){
         </div>
       </div>
     </div>`).join('');
+}
+function _goalProjectsHtml(goalId){
+  const projects=load(K.projects).filter(p=>p.goalId===goalId);
+  if(!projects.length) return '';
+  const tasks=load(K.tasks);
+  const rows=projects.map(p=>{
+    const list=tasks.filter(t=>t.projectId===p.id);
+    const done=list.filter(t=>t.done).length;
+    const pct=list.length?Math.round(done/list.length*100):0;
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:var(--text-secondary)">${esc(p.name)}</span>
+        <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace">${done}/${list.length}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${PROJECT_STATUS_COLOR[p.status]||'var(--t-tasks)'}"></div></div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">📁 Projects</div>
+    ${rows}
+  </div>`;
 }
 function toggleMilestone(gid,mi){
   const goals=load(K.goals);
@@ -4439,7 +4579,7 @@ function clearTaskChips(dim){
   });
 }
 const MODAL_FORMS = {
-  task:{title:'New Task',html:`
+  task:{title:'New Task',html:()=>`
     <div class="field">
       <label>Type</label>
       <div style="display:flex;gap:8px">
@@ -4496,6 +4636,10 @@ const MODAL_FORMS = {
         <button type="button" class="eim-chip" id="eim-not-important" onclick="setEim('importance','not-important')">○ Not Important</button>
       </div>
     </div>
+    <div class="field"><label>Project (optional)</label><select class="select" id="m-task-project">
+      <option value="">No project</option>
+      ${load(K.projects).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+    </select></div>
     </div>`,
     save:()=>{
       const title=$('m-task-title').value.trim();if(!title)return alert('Title required');
@@ -4507,6 +4651,7 @@ const MODAL_FORMS = {
         recurWeekDays:(()=>{const sel=[...document.querySelectorAll('#m-task-weekday-chips button.wday-on')].map(b=>parseInt(b.dataset.day));return sel.length?sel:null;})(),
         business:isWork?($('m-task-biz').value.trim()||''):'',
         dept:isWork?($('m-task-dept').value.trim()||''):'',
+        projectId:($('m-task-project')||{value:''}).value||null,
         urgency:_eimUrgency||null,importance:_eimImportance||null};
       if(_editingTaskId){
         const i=tasks.findIndex(t=>t.id===_editingTaskId);
@@ -4791,6 +4936,30 @@ const MODAL_FORMS = {
     else items.push({id:uid(),...entry});
     save(K.vocab,items);closeModal();renderVocab();
   }},
+  project:{title:()=>_editingProjectId?'Edit Project':'New Project',html:()=>{
+    const p=_editingProjectId?load(K.projects).find(x=>x.id===_editingProjectId):null;
+    const goals=load(K.goals);
+    return `
+    <div class="field"><label>Name *</label><input class="input" id="m-proj-name" placeholder="Project name" value="${esc(p?.name||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>Status</label><select class="select" id="m-proj-status">
+        ${['planned','active','paused','done'].map(s=>`<option value="${s}"${(p?p.status===s:s==='planned')?' selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>Goal (optional)</label><select class="select" id="m-proj-goal">
+        <option value="">No goal</option>
+        ${goals.map(g=>`<option value="${g.id}"${p&&p.goalId===g.id?' selected':''}>${esc(g.title)}</option>`).join('')}
+      </select></div>
+    </div>`;
+  },save:()=>{
+    const name=$('m-proj-name').value.trim();if(!name)return alert('Name required');
+    const fields={name,status:$('m-proj-status').value||'planned',goalId:$('m-proj-goal').value||null};
+    const projects=load(K.projects);
+    if(_editingProjectId){const i=projects.findIndex(x=>x.id===_editingProjectId);if(i>=0)projects[i]={...projects[i],...fields};_editingProjectId=null;}
+    else projects.push({id:uid(),...fields,createdAt:today()});
+    save(K.projects,projects);closeModal();
+    if(activeTab==='tasks')renderTasksProjects();
+    if(activeTab==='goals')renderGoals();
+  }},
   contact:{title:'New Contact',html:()=>{
     const _defaults=['Client','Lead','Partner','Investor','Mentor','Colleague','Friend','Vendor','Referral','Other'];
     const _imported=[...new Set(load(K.directory).map(c=>c.category).filter(Boolean))];
@@ -4881,7 +5050,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_mtgSelectedContacts=[];resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_editingProjectId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
@@ -5392,6 +5561,7 @@ function _trashSummary(type,item){
   if(type==='review') return `Week of ${item.week||'?'} · ${item.overall||'?'}/10`;
   if(type==='library') return `${esc(item.title||'Untitled')} · ${esc(item.category||'')}`;
   if(type==='toLearn') return `${esc(item.title||item.url||'Untitled')}`;
+  if(type==='projects') return `${esc(item.name||'Untitled')}`;
   return '—';
 }
 function _updateTrashBtn(){
@@ -5416,7 +5586,7 @@ function renderTrashSection(type){
     +dbTable(['Item','Deleted','',''],rows);
 }
 function openTrashView(){
-  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library',toLearn:'To Learn'};
+  const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library',toLearn:'To Learn',projects:'Projects'};
   const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const el=document.getElementById('logs-content');
   if(!el) return;
@@ -5448,7 +5618,7 @@ function emptyTrash(){
 function restoreFromTrash(trashId,type){
   const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
   const entry=trash.find(t=>t.id===trashId);if(!entry)return;
-  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library,toLearn:K.toLearn};
+  const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library,toLearn:K.toLearn,projects:K.projects};
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
   localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
