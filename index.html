@@ -440,6 +440,11 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
 .cal-day{position:relative}
 /* ── Athena merged components ── */
 .nav-section-label{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px 4px;opacity:.55;display:block}
+.nav-group{margin-top:6px}
+.nav-group-toggle{display:flex;align-items:center;gap:5px;width:100%;background:transparent;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px 4px;opacity:.55;transition:opacity .15s}
+.nav-group-toggle:hover{opacity:.9}
+.nav-group-caret{font-size:8px;flex-shrink:0;transition:transform .15s}
+.nav-group-items{display:flex;flex-direction:column;gap:1px}
 .ai-instruction{border:1px solid var(--purple-border);border-radius:var(--r-md);background:var(--purple-dim);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px}
 .ai-inst-icon{font-size:22px;flex-shrink:0;margin-top:2px}
 .ai-inst-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--purple);letter-spacing:2px;margin-bottom:5px;text-transform:uppercase}
@@ -708,48 +713,71 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
     <div class="sb-date" id="sbDate"></div>
   </div>
   <div class="sb-nav">
-    <span class="nav-section-label">Personal OS</span>
     <button class="nav-btn active" data-tab="home" style="--tab-color:var(--t-home)" onclick="switchTab('home',this)">
       <span class="nav-emoji">🏠</span>Home
     </button>
-    <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
-      <span class="nav-emoji">💡</span>Capture
-      <span class="nav-pill" id="pill-notes" style="background:rgba(167,139,250,.15);color:#a78bfa">0</span>
-    </button>
-    <button class="nav-btn" data-tab="goals" style="--tab-color:var(--t-goals)" onclick="switchTab('goals',this)">
-      <span class="nav-emoji">🎯</span>Goals
-    </button>
-    <button class="nav-btn" data-tab="tasks" style="--tab-color:var(--t-tasks)" onclick="switchTab('tasks',this)">
-      <span class="nav-emoji">✅</span>Tasks
-      <span class="nav-pill" id="pill-tasks" style="background:rgba(96,165,250,.15);color:#60a5fa">0</span>
-    </button>
-    <button class="nav-btn" data-tab="meetings" style="--tab-color:var(--t-meetings)" onclick="switchTab('meetings',this)">
-      <span class="nav-emoji">🤝</span>Meetings
-    </button>
-    <button class="nav-btn" data-tab="habits" style="--tab-color:var(--t-habits)" onclick="switchTab('habits',this)">
-      <span class="nav-emoji">⭐</span>Habits
-    </button>
-    <button class="nav-btn" data-tab="fitness" style="--tab-color:var(--t-fitness)" onclick="switchTab('fitness',this)">
-      <span class="nav-emoji">💪</span>Fitness
-    </button>
-    <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
-      <span class="nav-emoji">📚</span>Growth
-      <span class="nav-pill" id="pill-selfdev" style="background:color-mix(in srgb,var(--t-selfdev) 15%,transparent);color:var(--t-selfdev)"></span>
-    </button>
-    <button class="nav-btn" data-tab="library" style="--tab-color:var(--t-library)" onclick="switchTab('library',this)">
-      <span class="nav-emoji">🏛️</span>Library
-      <span class="nav-pill" id="pill-library" style="background:color-mix(in srgb,var(--t-library) 15%,transparent);color:var(--t-library)"></span>
-    </button>
-    <button class="nav-btn" data-tab="journal" style="--tab-color:var(--t-journal)" onclick="switchTab('journal',this)">
-      <span class="nav-emoji">📔</span>Journal
-    </button>
-    <button class="nav-btn" data-tab="review" style="--tab-color:var(--t-review)" onclick="switchTab('review',this)">
-      <span class="nav-emoji">📊</span>Weekly Review
-    </button>
-    <button class="nav-btn" data-tab="directory" style="--tab-color:var(--t-directory)" onclick="switchTab('directory',this)">
-      <span class="nav-emoji">👥</span>Directory
-      <span class="nav-pill" id="pill-directory" style="background:color-mix(in srgb,var(--t-directory) 15%,transparent);color:var(--t-directory)"></span>
-    </button>
+
+    <div class="nav-group" data-group="workflow">
+      <button type="button" class="nav-group-toggle" onclick="toggleNavGroup('workflow')"><span class="nav-group-caret">▾</span>Workflow</button>
+      <div class="nav-group-items" id="navgroup-workflow">
+        <button class="nav-btn" data-tab="notes" style="--tab-color:#a78bfa" onclick="switchTab('notes',this)">
+          <span class="nav-emoji">💡</span>Capture
+          <span class="nav-pill" id="pill-notes" style="background:rgba(167,139,250,.15);color:#a78bfa">0</span>
+        </button>
+        <button class="nav-btn" data-tab="tasks" style="--tab-color:var(--t-tasks)" onclick="switchTab('tasks',this)">
+          <span class="nav-emoji">✅</span>Tasks
+          <span class="nav-pill" id="pill-tasks" style="background:rgba(96,165,250,.15);color:#60a5fa">0</span>
+        </button>
+        <button class="nav-btn" data-tab="selfdev" style="--tab-color:var(--t-selfdev)" onclick="switchTab('selfdev',this)">
+          <span class="nav-emoji">📚</span>Growth
+          <span class="nav-pill" id="pill-selfdev" style="background:color-mix(in srgb,var(--t-selfdev) 15%,transparent);color:var(--t-selfdev)"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="track">
+      <button type="button" class="nav-group-toggle" onclick="toggleNavGroup('track')"><span class="nav-group-caret">▾</span>Track</button>
+      <div class="nav-group-items" id="navgroup-track">
+        <button class="nav-btn" data-tab="habits" style="--tab-color:var(--t-habits)" onclick="switchTab('habits',this)">
+          <span class="nav-emoji">⭐</span>Habits
+        </button>
+        <button class="nav-btn" data-tab="fitness" style="--tab-color:var(--t-fitness)" onclick="switchTab('fitness',this)">
+          <span class="nav-emoji">💪</span>Fitness
+        </button>
+        <button class="nav-btn" data-tab="meetings" style="--tab-color:var(--t-meetings)" onclick="switchTab('meetings',this)">
+          <span class="nav-emoji">🤝</span>Meetings
+        </button>
+        <button class="nav-btn" data-tab="goals" style="--tab-color:var(--t-goals)" onclick="switchTab('goals',this)">
+          <span class="nav-emoji">🎯</span>Goals
+        </button>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="reflect">
+      <button type="button" class="nav-group-toggle" onclick="toggleNavGroup('reflect')"><span class="nav-group-caret">▾</span>Reflect</button>
+      <div class="nav-group-items" id="navgroup-reflect">
+        <button class="nav-btn" data-tab="journal" style="--tab-color:var(--t-journal)" onclick="switchTab('journal',this)">
+          <span class="nav-emoji">📔</span>Journal
+        </button>
+        <button class="nav-btn" data-tab="review" style="--tab-color:var(--t-review)" onclick="switchTab('review',this)">
+          <span class="nav-emoji">📊</span>Weekly Review
+          <span class="nav-pill" id="pill-review" style="display:none;background:color-mix(in srgb,var(--t-review) 15%,transparent);color:var(--t-review)"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="resources">
+      <button type="button" class="nav-group-toggle" onclick="toggleNavGroup('resources')"><span class="nav-group-caret">▾</span>Resources</button>
+      <div class="nav-group-items" id="navgroup-resources">
+        <button class="nav-btn" data-tab="library" style="--tab-color:var(--t-library)" onclick="switchTab('library',this)">
+          <span class="nav-emoji">🏛️</span>Library
+          <span class="nav-pill" id="pill-library" style="background:color-mix(in srgb,var(--t-library) 15%,transparent);color:var(--t-library)"></span>
+        </button>
+        <button class="nav-btn" data-tab="directory" style="--tab-color:var(--t-directory)" onclick="switchTab('directory',this)">
+          <span class="nav-emoji">👥</span>Directory
+        </button>
+      </div>
+    </div>
   </div>
   <div class="sb-score">
     <div class="score-label">Today's Discipline</div>
@@ -1187,7 +1215,7 @@ html,body{height:100%;background:var(--bg);color:var(--text-primary);font-family
   <div class="ph">
     <div class="ph-left">
       <div class="ph-eyebrow" style="color:var(--t-directory)">People</div>
-      <div class="ph-title" style="color:var(--t-directory)">Directory</div>
+      <div class="ph-title" style="color:var(--t-directory)">Directory <span id="dirHeaderCount" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text-muted);vertical-align:middle"></span></div>
       <div class="ph-sub">Your contacts, organized and searchable.</div>
     </div>
     <div class="ph-actions">
@@ -1595,6 +1623,30 @@ const MOB_BTN = {
   library:  {label:'+ Add',      color:'var(--t-library)',   fn:"_editingLibraryId=null;openModal('library')"},
 };
 
+// ── Sidebar nav groups (collapsible, state remembered) ──
+const NAV_GROUPS=['workflow','track','reflect','resources'];
+function _loadNavGroupState(){
+  let s; try{ s=JSON.parse(localStorage.getItem('ahq_nav_groups')||'null'); }catch{ s=null; }
+  if(!s) s={track:true}; // TRACK collapsed by default; others start expanded
+  return s;
+}
+function toggleNavGroup(name){
+  const s=_loadNavGroupState();
+  s[name]=!s[name];
+  localStorage.setItem('ahq_nav_groups',JSON.stringify(s));
+  applyNavGroupState();
+}
+function applyNavGroupState(){
+  const s=_loadNavGroupState();
+  NAV_GROUPS.forEach(g=>{
+    const collapsed=!!s[g];
+    const items=$('navgroup-'+g);
+    const caret=document.querySelector(`.nav-group[data-group="${g}"] .nav-group-caret`);
+    if(items) items.style.display=collapsed?'none':'';
+    if(caret) caret.textContent=collapsed?'▸':'▾';
+  });
+}
+
 function switchTab(id, btn){
   if(_logsTab){_logsTab=null;document.getElementById('logs-page').style.display='none';}
   document.querySelectorAll('.tab-panel').forEach(p=>{p.classList.remove('active');p.style.removeProperty('display');});
@@ -1906,6 +1958,7 @@ function toggleTask(id){
   if(t.done&&t.sourceNoteId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===t.sourceNoteId);if(_ni>=0){_ns[_ni].status='done';save(K.notes,_ns);}}
   save(K.tasks,tasks);
   renderTasks();if(activeTab==='home')renderHome();if(t.sourceNoteId)renderNotes();
+  updateTasksPill();
 }
 function editTask(id){
   const t=load(K.tasks).find(x=>x.id===id);if(!t)return;
@@ -1981,6 +2034,7 @@ function deleteTask(id){
   save(K.tasks,_tasks.filter(t=>t.id!==id));
   renderTasks();if(activeTab==='home')renderHome();
   if(_logsTab==='tasks')renderCurrentLogs('');
+  updateTasksPill();
 }
 function restoreTask(id){
   const tasks=load(K.tasks);
@@ -4304,6 +4358,7 @@ function exitNoteAsTask(note,{due,quadrant,goalId}){
   if(i>=0){ notes[i].status='done'; notes[i].exit_type='task'; save(K.notes,notes); }
   if(activeTab==='tasks') renderTasks();
   if(activeTab==='home') renderHome();
+  updateTasksPill();
 }
 // A note "has a URL" if it's in the dedicated source field or embedded in the text —
 // captures can land either way (paste-into-text auto-copies to source, but MCP/share-target
@@ -4334,6 +4389,7 @@ function exitNoteAsExtract(note){
 function exitNoteAsBacklog(note){
   const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
   if(i>=0){ notes[i].status='scheduled'; notes[i].backlog_at=Date.now(); save(K.notes,notes); }
+  updateReviewPill();
 }
 function exitNoteAsReject(note){
   const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
@@ -4692,7 +4748,7 @@ const MODAL_FORMS = {
       } else {
         tasks.unshift({id:uid(),...fields,done:false,created:today(),...(_noteToTaskSourceId?{sourceNoteId:_noteToTaskSourceId}:{})});
       }
-      save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();
+      save(K.tasks,tasks);closeModal();renderTasks();if(activeTab==='home')renderHome();updateTasksPill();
       if(_noteToTaskSourceId){const _ns=load(K.notes);const _ni=_ns.findIndex(n=>n.id===_noteToTaskSourceId);if(_ni>=0){_ns[_ni].status='done';_ns[_ni].exit_type='task';save(K.notes,_ns);renderNotes();}_noteToTaskSourceId=null;}
     }},
   habit:{title:'New Habit',html:`
@@ -6168,9 +6224,9 @@ function renderDirectory(){
     })
   ].join('');
 
-  // Pill count
-  const pill=$('pill-directory');
-  if(pill) pill.textContent=contacts.length||'';
+  // Total count lives in the page header now, not a sidebar badge.
+  const headerCount=$('dirHeaderCount');
+  if(headerCount) headerCount.textContent=contacts.length?`· ${contacts.length}`:'';
 
   let filtered=contacts;
   if(_dirCatFilter) filtered=filtered.filter(c=>(c.category||'Other')===_dirCatFilter);
@@ -7474,9 +7530,9 @@ function init(){
     const x=_mList.scrollLeft;
     _mList.querySelectorAll('.habit-mname').forEach(el=>{el.style.transform=`translateX(${x}px)`;});
   });
-  // Update task pill
-  const active=load(K.tasks).filter(t=>!t.done).length;
-  $('pill-tasks').textContent=active;
+  applyNavGroupState();
+  updateTasksPill();
+  updateReviewPill();
   updateNotesPill();
 }
 
@@ -7484,6 +7540,24 @@ function updateNotesPill(){
   const pillEl=$('pill-notes');if(!pillEl)return;
   const stats=TriageRules.inboxStats(load(K.notes).filter(n=>n.status==='open'));
   pillEl.textContent=stats.count?`${stats.count} · ${stats.oldestAgeDays}d`:'0';
+}
+
+// Due today + overdue only — not every open task (that used to count all open tasks).
+function updateTasksPill(){
+  const pill=$('pill-tasks'); if(!pill) return;
+  const todayStr=today();
+  const count=load(K.tasks).filter(t=>!t.done&&t.due&&t.due<=todayStr).length;
+  pill.textContent=count;
+}
+
+// Lights up only on Sat/Sun, showing the backlog (scheduled) note count.
+function updateReviewPill(){
+  const pill=$('pill-review'); if(!pill) return;
+  const day=new Date().getDay();
+  if(day!==0&&day!==6){ pill.style.display='none'; return; }
+  const count=load(K.notes).filter(n=>n.status==='scheduled').length;
+  pill.style.display='';
+  pill.textContent=count;
 }
 
 // Set Obsidian API key on first run (stored in localStorage only, never sent externally)
