@@ -3686,7 +3686,7 @@ async function renderNotes(){
     const ageCol=TriageRules.bucketColorVar(bucket);
     const exitIcon=item.exit_type==='task'?'📋':item.exit_type==='reference'?'📚':'';
     const expiring=item.status==='scheduled'&&TriageRules.isBacklogExpiring(item);
-    const hasUrl=TriageRules.hasUrl(item.text);
+    const hasUrl=noteHasUrl(item);
     return `<div class="note-card${item.status==='done'?' note-done':item.status==='rejected'?' note-rejected':''}" id="notecard-${item.id}">
       <div class="note-text">${esc(item.text)}</div>
       ${item.feedback?`<div style="margin:8px 0 0;padding:8px 10px;border-left:2px solid var(--t-library);background:color-mix(in srgb,var(--t-library) 6%,transparent);border-radius:0 var(--r-xs) var(--r-xs) 0;font-size:12px;color:var(--text-secondary);line-height:1.5"><span style="font-weight:700;color:var(--t-library);font-size:10px;text-transform:uppercase;letter-spacing:.05em">↩ Reply</span><br>${esc(item.feedback)}</div>`:''}
@@ -3795,7 +3795,7 @@ function renderTriage(){
   const rest=_triageStack.slice(_triageIndex+1,_triageIndex+6).map(id=>load(K.notes).find(n=>n.id===id)).filter(Boolean);
   const ageDays=TriageRules.ageDays(note.created);
   const ageCol=TriageRules.bucketColorVar(TriageRules.ageBucket(note.created));
-  const hasUrl=TriageRules.hasUrl(note.text);
+  const hasUrl=noteHasUrl(note);
 
   let formHtml='';
   if(_triageFormMode==='task'){
@@ -3869,6 +3869,12 @@ function exitNoteAsTask(note,{due,quadrant,goalId}){
   if(activeTab==='tasks') renderTasks();
   if(activeTab==='home') renderHome();
 }
+// A note "has a URL" if it's in the dedicated source field or embedded in the text —
+// captures can land either way (paste-into-text auto-copies to source, but MCP/share-target
+// captures often set source directly with no URL in the text body).
+function noteHasUrl(note){ return TriageRules.hasUrl(note.source)||TriageRules.hasUrl(note.text); }
+function noteExtractUrl(note){ return (note.source&&TriageRules.hasUrl(note.source))?note.source.trim():TriageRules.extractUrl(note.text); }
+
 // Files straight into the Library — no reason required, category defaults to General.
 function exitNoteAsReference(note,{category}){
   const items=load(K.library);
@@ -3878,9 +3884,9 @@ function exitNoteAsReference(note,{category}){
   if(i>=0){ notes[i].status='done'; notes[i].exit_type='reference'; save(K.notes,notes); }
   if(activeTab==='library') renderLibrary();
 }
-// Returns false (does nothing) if the note text has no URL — extract requires one.
+// Returns false (does nothing) if the note has no URL — extract requires one.
 function exitNoteAsExtract(note){
-  const url=TriageRules.extractUrl(note.text);
+  const url=noteExtractUrl(note);
   if(!url) return false;
   const q=load(K.toLearn);
   q.push({id:uid(),url,title:note.text.replace(url,'').trim()||url,status:'queued',queuePosition:q.length,addedAt:Date.now()});
