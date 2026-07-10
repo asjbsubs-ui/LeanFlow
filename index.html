@@ -3020,8 +3020,22 @@ function renderToLearnQueue(){
       </div>
       <span style="font-size:10px;font-weight:700;color:${t.status==='extracting'?'var(--yellow)':'var(--text-muted)'};margin-right:8px;flex-shrink:0">${t.status==='extracting'?'Extracting…':'Queued'}</span>
       ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>`:''}
+      <button class="btn btn-ghost btn-sm" style="color:var(--t-library);border-color:color-mix(in srgb,var(--t-library) 35%,var(--border-md))" onclick="toLearnMoveToLibrary('${t.id}')">→ Library</button>
       <button class="delete-btn" onclick="toLearnRemove('${t.id}')">✕</button>
     </div>`).join('');
+}
+// Escape hatch for items that don't need the full Learned disposition flow —
+// files straight into Library (General) and drops it from the queue.
+function toLearnMoveToLibrary(id){
+  const all=load(K.toLearn);
+  const item=all.find(t=>t.id===id); if(!item) return;
+  const lib=load(K.library);
+  lib.push({id:uid(),title:item.title||item.url,url:item.url||'',content:'',summary:'',category:'General',sourceId:null,createdAt:today()});
+  save(K.library,lib);
+  save(K.toLearn,all.filter(t=>t.id!==id));
+  renderToLearnQueue();
+  if(activeTab==='library') renderLibrary();
+  showToast('Moved to Library','var(--t-library)');
 }
 function toLearnMoveTop(id){
   const all=load(K.toLearn);
