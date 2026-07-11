@@ -1451,7 +1451,7 @@ function fmtDateShort(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return 
 function fmtWeekRange(sunStr){const sun=new Date(sunStr+'T12:00:00');const sat=new Date(sun);sat.setDate(sun.getDate()+6);const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];return sun.getMonth()===sat.getMonth()?`${mn[sun.getMonth()]} ${sun.getDate()}-${sat.getDate()}`:`${mn[sun.getMonth()]} ${sun.getDate()} – ${mn[sat.getMonth()]} ${sat.getDate()}`;}
 
 // ── Keys ──────────────────────────────────────────────
-const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn',learned:'ahq_learned',projects:'ahq_projects'};
+const K={tasks:'ahq_tasks',habits:'ahq_habits',habitLog:'ahq_habit_log',goals:'ahq_goals',journal:'ahq_journal',meetings:'ahq_meetings',books:'ahq_books',courses:'ahq_courses',knowledge:'ahq_knowledge',workouts:'ahq_workouts',metrics:'ahq_metrics',reviews:'ahq_reviews',notes:'ahq_notes',directory:'ahq_directory',mediaMemos:'ahq_media_memos',noteCats:'ahq_note_cats',quotes:'ahq_quotes',vocab:'ahq_vocab',woCats:'ahq_wo_cats',library:'ahq_library',toLearn:'ahq_to_learn',learned:'ahq_learned',projects:'ahq_projects',trash:'ahq_trash'};
 
 // ── Growth / Learned model helpers ─────────────────────
 function getDailyServing(){ return parseInt(localStorage.getItem('ahq_daily_serving')||'3',10)||3; }
@@ -5488,13 +5488,12 @@ function renderCurrentLogs(q){
 }
 
 // ── Trash ─────────────────────────────────────────────
-const _TRASH_KEY='ahq_trash';
 function trashItem(type,item){
-  const t=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const t=load(K.trash);
   t.push({id:uid(),type,item,deletedAt:today()});
-  localStorage.setItem(_TRASH_KEY,JSON.stringify(t));
+  save(K.trash,t);
 }
-function loadTrash(type){return JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]').filter(t=>t.type===type);}
+function loadTrash(type){return load(K.trash).filter(t=>t.type===type);}
 function _trashSummary(type,item){
   if(type==='tasks') return esc(item.title||'Untitled');
   if(type==='meetings') return `${esc(item.title||'Untitled')}${item.date?' · '+item.date:''}`;
@@ -5515,7 +5514,7 @@ function _trashSummary(type,item){
   return '—';
 }
 function _updateTrashBtn(){
-  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const all=load(K.trash);
   const cnt=document.getElementById('logs-trash-count');
   if(cnt){
     if(all.length){cnt.textContent=all.length;cnt.style.background='rgba(255,80,80,.15)';cnt.style.color='var(--red)';}
@@ -5537,7 +5536,7 @@ function renderTrashSection(type){
 }
 function openTrashView(){
   const TYPE_LABELS={tasks:'Tasks',meetings:'Meetings',habits:'Habits',goals:'Goals',journal:'Journal',selfdev:'Growth',workouts:'Workouts',metrics:'Body Metrics',notes:'Notes',directory:'Directory',library:'Library',toLearn:'To Learn',projects:'Projects'};
-  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const all=load(K.trash);
   const el=document.getElementById('logs-content');
   if(!el) return;
   document.getElementById('logs-title').textContent='🗑️ Trash';
@@ -5557,21 +5556,21 @@ function openTrashView(){
   }).join('<div style="margin-top:20px"></div>');
 }
 function emptyTrash(){
-  const all=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const all=load(K.trash);
   if(!all.length)return;
   if(!confirm(`Permanently delete all ${all.length} item${all.length!==1?'s':''} in trash? This cannot be undone.`))return;
-  localStorage.removeItem(_TRASH_KEY);
+  save(K.trash,[]);
   _updateTrashBtn();
   openTrashView();
   showToast('Trash emptied','var(--amber)');
 }
 function restoreFromTrash(trashId,type){
-  const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
+  const trash=load(K.trash);
   const entry=trash.find(t=>t.id===trashId);if(!entry)return;
   const colMap={tasks:K.tasks,meetings:K.meetings,habits:K.habits,goals:K.goals,selfdev:K.knowledge,workouts:K.workouts,metrics:K.metrics,notes:K.notes,directory:K.directory,journal:K.journal,quotes:K.quotes,vocab:K.vocab,library:K.library,toLearn:K.toLearn,projects:K.projects};
   const key=colMap[type];
   if(key){const items=load(key);items.push(entry.item);save(key,items);}
-  localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
+  save(K.trash,trash.filter(t=>t.id!==trashId));
   _updateTrashBtn();
   const title=document.getElementById('logs-title');
   if(title&&title.textContent.startsWith('🗑️')) openTrashView();
@@ -5581,8 +5580,8 @@ function restoreFromTrash(trashId,type){
   showToast('↩ Restored','var(--green)');
 }
 function deleteForever(trashId){
-  const trash=JSON.parse(localStorage.getItem(_TRASH_KEY)||'[]');
-  localStorage.setItem(_TRASH_KEY,JSON.stringify(trash.filter(t=>t.id!==trashId)));
+  const trash=load(K.trash);
+  save(K.trash,trash.filter(t=>t.id!==trashId));
   _updateTrashBtn();
   const title=document.getElementById('logs-title');
   if(title&&title.textContent.startsWith('🗑️')) openTrashView();
