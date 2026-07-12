@@ -4161,10 +4161,16 @@ function renderTriage(){
           <option value="q4">Q4 · Eliminate</option>
         </select></div>
       </div>
-      <div class="field"><label>Goal (optional)</label><select class="select" id="triage-task-goal">
-        <option value="">No goal</option>
-        ${goals.map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')}
-      </select></div>
+      <div class="field-row">
+        <div class="field"><label>Goal (optional)</label><select class="select" id="triage-task-goal">
+          <option value="">No goal</option>
+          ${goals.map(g=>`<option value="${g.id}">${esc(g.title)}</option>`).join('')}
+        </select></div>
+        <div class="field"><label>Project (optional)</label><select class="select" id="triage-task-project">
+          <option value="">No project</option>
+          ${load(K.projects).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+        </select></div>
+      </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-primary" style="background:var(--t-tasks);color:#000" onclick="triageConfirmTask()">Create task →</button>
         <button class="btn btn-ghost" onclick="triageCancelForm()">Cancel</button>
@@ -4209,11 +4215,11 @@ function triageShowReferenceForm(){ _triageFormMode='reference'; renderTriage();
 function triageCancelForm(){ _triageFormMode=null; renderTriage(); }
 
 // ── Shared exit mutations — used by both Triage mode and per-card inline exits ──
-function exitNoteAsTask(note,{due,quadrant,goalId}){
+function exitNoteAsTask(note,{due,quadrant,goalId,projectId}){
   const q=quadrant||TriageRules.DEFAULT_TASK_QUADRANT;
   const {urgency,importance}=TriageRules.quadrantToFields(q);
   const tasks=load(K.tasks);
-  tasks.unshift({id:uid(),title:note.text.trim(),type:'work',due:due||'',recur:null,recurDays:null,recurWeekDays:null,business:'',dept:'',urgency,importance,goalId:goalId||null,done:false,created:today(),sourceNoteId:note.id});
+  tasks.unshift({id:uid(),title:note.text.trim(),type:'work',due:due||'',recur:null,recurDays:null,recurWeekDays:null,business:'',dept:'',urgency,importance,goalId:goalId||null,projectId:projectId||null,done:false,created:today(),sourceNoteId:note.id});
   save(K.tasks,tasks);
   const notes=load(K.notes); const i=notes.findIndex(n=>n.id===note.id);
   if(i>=0){ notes[i].status='done'; notes[i].exit_type='task'; save(K.notes,notes); }
@@ -4318,6 +4324,7 @@ function triageConfirmTask(){
     due:($('triage-task-due')||{value:''}).value,
     quadrant:($('triage-task-quadrant')||{value:TriageRules.DEFAULT_TASK_QUADRANT}).value,
     goalId:($('triage-task-goal')||{value:''}).value,
+    projectId:($('triage-task-project')||{value:''}).value,
   });
   _triageSession.task++;
   triageAdvance();
