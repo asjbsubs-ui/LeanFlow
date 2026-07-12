@@ -5718,24 +5718,56 @@ function renderLogsG(q){
 }
 
 // ── Journal Logs ──────────────────────────────────────
+let _journalEditMood=0;
 function viewJournal(id){
   const e=load(K.journal).find(x=>x.id===id);if(!e)return;
+  _journalEditMood=e.mood||0;
   const moods=['','😩','😞','😐','😊','🔥'];
-  const field=(label,val)=>val?`<div style="margin-bottom:14px"><div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px">${label}</div><div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap">${esc(val)}</div></div>`:'';
   const el=document.getElementById('reviewReadOverlay');
   el.innerHTML=`<div style="background:var(--bg-card);border:1px solid var(--border-md);border-radius:var(--r-xl);width:100%;max-width:560px;max-height:85vh;overflow-y:auto;padding:24px;position:relative">
     <button onclick="document.getElementById('reviewReadOverlay').style.display='none'" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
     <div style="font-family:'Orbitron',monospace;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t-journal);margin-bottom:4px">Journal Entry</div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <span style="font-size:16px;font-weight:700;color:var(--text-bright)">${fmtDate(e.date)}</span>
-      ${e.mood?`<span style="font-size:22px">${moods[e.mood]||''}</span>`:''}
+    <div style="font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:14px">${fmtDate(e.date)}</div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Mood</div>
+      <div class="mood-row" id="jeMoodRow">
+        ${[1,2,3,4,5].map(m=>`<button type="button" class="mood-btn${e.mood===m?' selected':''}" data-mood="${m}" onclick="_jeSelectMood(this)">${moods[m]}</button>`).join('')}
+      </div>
     </div>
-    ${field('Brain Dump',e.dump)}
-    ${field('Gratitude',e.grat)}
-    ${field('Intention',e.intent)}
-    ${field('Notes',e.notes)}
+    <div class="field" style="margin-bottom:14px">
+      <label>Brain Dump</label>
+      <textarea class="textarea" id="jeDump" style="min-height:120px">${esc(e.dump||'')}</textarea>
+    </div>
+    <div class="field" style="margin-bottom:14px">
+      <label>Gratitude</label>
+      <textarea class="textarea" id="jeGrat" style="min-height:72px">${esc(e.grat||'')}</textarea>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Intention</label>
+      <textarea class="textarea" id="jeIntent" style="min-height:56px">${esc(e.intent||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="background:#10b981;color:#fff;flex:1" onclick="saveJournalEdit('${e.id}')">💾 Save Changes</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('reviewReadOverlay').style.display='none'">Cancel</button>
+    </div>
   </div>`;
   el.style.display='flex';
+}
+function _jeSelectMood(btn){
+  document.querySelectorAll('#jeMoodRow .mood-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  _journalEditMood=parseInt(btn.dataset.mood);
+}
+function saveJournalEdit(id){
+  const entries=load(K.journal);
+  const idx=entries.findIndex(x=>x.id===id);
+  if(idx<0)return;
+  entries[idx]={...entries[idx],mood:_journalEditMood,dump:$('jeDump').value.trim(),grat:$('jeGrat').value.trim(),intent:$('jeIntent').value.trim()};
+  save(K.journal,entries);
+  document.getElementById('reviewReadOverlay').style.display='none';
+  renderJournal();
+  if(_logsTab==='journal') renderCurrentLogs((document.getElementById('logs-search')||{value:''}).value);
+  showToast('Entry updated ✓','#10b981');
 }
 function renderLogsJ(q){
   const q_=(q||'').toLowerCase();
