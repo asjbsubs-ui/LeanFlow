@@ -3293,7 +3293,6 @@ function renderVocab(){
               <span style="font-size:16px;font-weight:700;color:var(--t-selfdev)">${esc(v.word)}</span>
               ${v.pronunciation?`<span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${esc(v.pronunciation)}</span>`:''}
               <button type="button" onclick="speakVocabItem('${v.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--t-selfdev);font-size:13px;padding:0" title="Pronounce">🔊</button>
-              ${!v.pronunciation&&!v.audioUrl?`<button type="button" onclick="vocabLookupPronunciation('${v.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:11px;padding:0" title="Find pronunciation">🔍</button>`:''}
             </div>
             <div style="font-size:13px;color:var(--text-primary);line-height:1.5">${esc(v.definition)}</div>
           </div>
@@ -3301,6 +3300,19 @@ function renderVocab(){
         </div>
       </div>
     </div>`).join('');
+  _vocabAutoLookupMissing(items);
+}
+// Words saved before the pronunciation feature existed (or added manually) have
+// neither field — fetch it for them silently in the background, once per word per
+// session, so it just shows up rather than requiring a manual lookup click.
+const _vocabAutoLookupTried=new Set();
+function _vocabAutoLookupMissing(items){
+  items.forEach(v=>{
+    if(v.pronunciation||v.audioUrl) return;
+    if(_vocabAutoLookupTried.has(v.id)) return;
+    _vocabAutoLookupTried.add(v.id);
+    vocabLookupPronunciation(v.id,true);
+  });
 }
 // Prefers the dictionary API's recorded clip; falls back to the browser's built-in
 // text-to-speech so the speaker button always works, even for manually-added words.
@@ -3312,7 +3324,7 @@ function speakVocabItem(id){
   const v=load(K.vocab).find(x=>x.id===id); if(!v) return;
   speakWord(v.word,v.audioUrl||'');
 }
-async function vocabLookupPronunciation(id){
+async function vocabLookupPronunciation(id,silent){
   const items=load(K.vocab);
   const v=items.find(x=>x.id===id); if(!v) return;
   try{
@@ -3321,13 +3333,13 @@ async function vocabLookupPronunciation(id){
     const data=await res.json();
     const pronunciation=data[0]?.phonetic||(data[0]?.phonetics||[]).map(p=>p.text).find(Boolean)||'';
     const audioUrl=(data[0]?.phonetics||[]).map(p=>p.audio).find(Boolean)||'';
-    if(!pronunciation&&!audioUrl){ showToast('No pronunciation found','var(--amber)'); return; }
+    if(!pronunciation&&!audioUrl){ if(!silent) showToast('No pronunciation found','var(--amber)'); return; }
     v.pronunciation=pronunciation; v.audioUrl=audioUrl;
     save(K.vocab,items);
     renderVocab();
-    showToast('Pronunciation added','var(--t-selfdev)');
+    if(!silent) showToast('Pronunciation added','var(--t-selfdev)');
   }catch(e){
-    showToast('Lookup failed','var(--red)');
+    if(!silent) showToast('Lookup failed','var(--red)');
   }
 }
 function editVocab(id){_editingVocabId=id;openModal('vocab');}
