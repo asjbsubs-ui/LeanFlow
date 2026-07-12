@@ -2691,11 +2691,6 @@ function editMeeting(id){
     if($('m-mtg-end'))    $('m-mtg-end').value=m.endTime||'';
     if($('m-mtg-attendees')) $('m-mtg-attendees').value=m.attendees||'';
     if($('m-mtg-notes'))  $('m-mtg-notes').value=m.notes||'';
-    if(m.business){
-      document.querySelectorAll('#m-mtg-biz-chips button').forEach(b=>{
-        if(b.textContent===m.business) selectMtgBiz(b,m.business);
-      });
-    }
     if($('modalTitle')) $('modalTitle').textContent='Edit Meeting';
     renderMtgContactTags();
   },60);
@@ -4575,16 +4570,6 @@ function autoSetEndTime(){
   if(endH<24) end.value=`${String(endH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
 
-function selectMtgBiz(btn, label){
-  document.querySelectorAll('#m-mtg-biz-chips button').forEach(c=>{
-    c.classList.remove('mtg-biz-on');
-    c.style.background='transparent';c.style.borderColor='var(--border-md)';c.style.color='var(--text-muted)';
-  });
-  btn.classList.add('mtg-biz-on');
-  btn.style.background='rgba(74,222,128,.12)';btn.style.borderColor='var(--green)';btn.style.color='var(--green)';
-  document.getElementById('m-mtg-biz').value=label;
-}
-
 function toggleRecurDays(v){
   const monthWrap=document.getElementById('m-task-recur-days-wrap');
   const weekWrap=document.getElementById('m-task-recur-weekdays-wrap');
@@ -4732,13 +4717,6 @@ const MODAL_FORMS = {
       save(K.habits,habits);closeModal();renderHabits();if(activeTab==='home')renderHome();
     }},
   meeting:{title:'New Meeting',html:`
-    <div class="field">
-      <label>Business</label>
-      <div style="display:flex;flex-wrap:wrap;gap:6px" id="m-mtg-biz-chips">
-        ${['StreamLean','Sunglao Real Estate','Cultivate','Personal'].map((b,i)=>`<button type="button" onclick="selectMtgBiz(this,'${b}')" style="padding:4px 14px;border-radius:99px;border:1px solid ${i===0?'var(--green)':'var(--border-md)'};background:${i===0?'rgba(74,222,128,.12)':'transparent'};color:${i===0?'var(--green)':'var(--text-muted)'};cursor:pointer;font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;transition:all .15s" ${i===0?'class="mtg-biz-on"':''}>${b}</button>`).join('')}
-      </div>
-      <input type="hidden" id="m-mtg-biz" value="StreamLean">
-    </div>
     <div class="field"><label>Meeting Title *</label><input class="input" id="m-mtg-title" placeholder="Call with…"></div>
     <div class="field-row">
       <div class="field"><label>Date *</label><input class="input" id="m-mtg-date" type="date"></div>
@@ -4760,7 +4738,7 @@ const MODAL_FORMS = {
     save:()=>{
       const title=$('m-mtg-title').value.trim();if(!title)return alert('Title required');
       const meetings=load(K.meetings);
-      const fields={title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,endTime:$('m-mtg-end').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),business:$('m-mtg-biz').value||'StreamLean',contactIds:_mtgSelectedContacts.map(c=>c.id)};
+      const fields={title,date:$('m-mtg-date').value,time:$('m-mtg-time').value,endTime:$('m-mtg-end').value,attendees:$('m-mtg-attendees').value.trim(),notes:$('m-mtg-notes').value.trim(),contactIds:_mtgSelectedContacts.map(c=>c.id)};
       if(_editingMeetingId){
         const i=meetings.findIndex(m=>m.id===_editingMeetingId);
         if(i>=0){ meetings[i]={...meetings[i],...fields}; updateGcalEvent(meetings[i]); }
