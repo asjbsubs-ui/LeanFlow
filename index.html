@@ -3024,8 +3024,10 @@ function learnedDiscardIdea(sourceId,ideaId){
 
 // ── To Learn queue ──────────────────────────────────────
 let _toLearnLibraryPickerOpen=null;
+let _toLearnProcessId=null;
 function toLearnShowLibraryPicker(id){ _toLearnLibraryPickerOpen=id; renderToLearnQueue(); }
 function toLearnCancelLibraryPicker(){ _toLearnLibraryPickerOpen=null; renderToLearnQueue(); }
+function toLearnOpenProcess(id){ _toLearnProcessId=id; openModal('learnedSource'); }
 function renderToLearnQueue(){
   const all=load(K.toLearn);
   const queue=all.filter(t=>t.status==='queued'||t.status==='extracting').sort((a,b)=>(a.queuePosition||0)-(b.queuePosition||0));
@@ -3041,6 +3043,7 @@ function renderToLearnQueue(){
       </div>
       ${!pickerOpen?`<span style="font-size:10px;font-weight:700;color:${t.status==='extracting'?'var(--yellow)':'var(--text-muted)'};margin-right:8px;flex-shrink:0">${t.status==='extracting'?'Extracting…':'Queued'}</span>
       ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>`:''}
+      ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" style="color:var(--t-selfdev);border-color:color-mix(in srgb,var(--t-selfdev) 35%,var(--border-md))" onclick="toLearnOpenProcess('${t.id}')">→ Today's Learning</button>`:''}
       <button class="btn btn-ghost btn-sm" style="color:var(--t-library);border-color:color-mix(in srgb,var(--t-library) 35%,var(--border-md))" onclick="toLearnShowLibraryPicker('${t.id}')">→ Library</button>
       <button class="delete-btn" onclick="toLearnRemove('${t.id}')">✕</button>`
       :`<div style="display:flex;gap:6px;align-items:center;width:100%;margin-top:8px">
@@ -4957,6 +4960,35 @@ const MODAL_FORMS = {
     if(activeTab==='tasks')renderTasksProjects();
     if(activeTab==='goals')renderGoals();
   }},
+  learnedSource:{title:"Move to Today's Learning",html:()=>{
+    const t=load(K.toLearn).find(x=>x.id===_toLearnProcessId);
+    return `
+    <div class="field"><label>Source / Channel *</label><input class="input" id="m-ls-source" placeholder="e.g. a podcast episode, newsletter, book…" value="${esc(t?.title||'')}"></div>
+    <div class="field"><label>URL</label><input class="input" id="m-ls-url" placeholder="https://…" value="${esc(t?.url||'')}"></div>
+    <div class="field"><label>Summary</label><textarea class="textarea" id="m-ls-summary" style="min-height:70px" placeholder="What's this about, in a couple sentences?"></textarea></div>
+    <div class="field"><label>Lessons</label><textarea class="textarea" id="m-ls-lessons" style="min-height:90px" placeholder="One lesson per line"></textarea></div>
+    <div class="field"><label>Ideas — actionable</label><textarea class="textarea" id="m-ls-ideas" style="min-height:90px" placeholder="One idea per line — something you could actually act on"></textarea></div>`;
+  },save:()=>{
+    const sourceName=$('m-ls-source').value.trim(); if(!sourceName) return alert('Source name required');
+    const url=$('m-ls-url').value.trim();
+    const summary=$('m-ls-summary').value.trim();
+    const lessons=$('m-ls-lessons').value.split('\n').map(s=>s.trim()).filter(Boolean).map(text=>({id:uid(),text,status:'undecided'}));
+    const ideas=$('m-ls-ideas').value.split('\n').map(s=>s.trim()).filter(Boolean).map(text=>({id:uid(),text,status:'undecided'}));
+    if(!lessons.length&&!ideas.length) return alert('Add at least one lesson or idea');
+    const learned=load(K.learned);
+    const newId=uid();
+    learned.push({id:newId,sourceName,url,summary,lessons,ideas,extractedAt:Date.now()});
+    save(K.learned,learned);
+    const tl=load(K.toLearn);
+    const item=tl.find(x=>x.id===_toLearnProcessId);
+    if(item){ item.learnedId=newId; item.status='extracting'; save(K.toLearn,tl); }
+    _toLearnProcessId=null;
+    closeModal();
+    renderToLearnQueue();
+    if(activeTab==='selfdev') renderSelfDev();
+    if(activeTab==='home') renderHome();
+    showToast("Added to Today's Learning",'var(--t-selfdev)');
+  }},
   contact:{title:'New Contact',html:()=>{
     const _defaults=['Client','Lead','Partner','Investor','Mentor','Colleague','Friend','Vendor','Referral','Other'];
     const _imported=[...new Set(load(K.directory).map(c=>c.category).filter(Boolean))];
@@ -5047,7 +5079,7 @@ function openModal(type,defaultTaskType){
   $('modalOverlay').classList.add('open');
   setTimeout(()=>{const first=$('modalBody').querySelector('input:not([type=date]),textarea');if(first)first.focus();},120);
 }
-function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_editingProjectId=null;_newProjectGoalId=null;_mtgSelectedContacts=[];resetEim();}
+function closeModal(){$('modalOverlay').classList.remove('open');currentSaveFn=null;_editingTaskId=null;_editingHabitId=null;_editingMeetingId=null;_editingGoalId=null;_editingContactId=null;_editingNoteId=null;_editingKnowledgeId=null;_editingWorkoutId=null;_editingMetricId=null;_editingQuoteId=null;_editingVocabId=null;_editingLibraryId=null;_editingProjectId=null;_newProjectGoalId=null;_toLearnProcessId=null;_mtgSelectedContacts=[];resetEim();}
 function closeModalOutside(e){if(e.target===$('modalOverlay'))closeModal();}
 
 // ── ICS EXPORT (kept for Meetings tab) ───────────────
