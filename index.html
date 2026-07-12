@@ -3292,7 +3292,8 @@ function renderVocab(){
             <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:3px">
               <span style="font-size:16px;font-weight:700;color:var(--t-selfdev)">${esc(v.word)}</span>
               ${v.pronunciation?`<span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${esc(v.pronunciation)}</span>`:''}
-              ${v.audioUrl?`<button type="button" onclick="new Audio('${esc(v.audioUrl)}').play()" style="background:transparent;border:none;cursor:pointer;color:var(--t-selfdev);font-size:13px;padding:0" title="Play pronunciation">🔊</button>`:''}
+              <button type="button" onclick="speakVocabItem('${v.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--t-selfdev);font-size:13px;padding:0" title="Pronounce">🔊</button>
+              ${!v.pronunciation&&!v.audioUrl?`<button type="button" onclick="vocabLookupPronunciation('${v.id}')" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:11px;padding:0" title="Find pronunciation">🔍</button>`:''}
             </div>
             <div style="font-size:13px;color:var(--text-primary);line-height:1.5">${esc(v.definition)}</div>
           </div>
@@ -3300,6 +3301,34 @@ function renderVocab(){
         </div>
       </div>
     </div>`).join('');
+}
+// Prefers the dictionary API's recorded clip; falls back to the browser's built-in
+// text-to-speech so the speaker button always works, even for manually-added words.
+function speakWord(word,audioUrl){
+  if(audioUrl){ new Audio(audioUrl).play(); return; }
+  if('speechSynthesis' in window && word) speechSynthesis.speak(new SpeechSynthesisUtterance(word));
+}
+function speakVocabItem(id){
+  const v=load(K.vocab).find(x=>x.id===id); if(!v) return;
+  speakWord(v.word,v.audioUrl||'');
+}
+async function vocabLookupPronunciation(id){
+  const items=load(K.vocab);
+  const v=items.find(x=>x.id===id); if(!v) return;
+  try{
+    const res=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(v.word));
+    if(!res.ok) throw new Error();
+    const data=await res.json();
+    const pronunciation=data[0]?.phonetic||(data[0]?.phonetics||[]).map(p=>p.text).find(Boolean)||'';
+    const audioUrl=(data[0]?.phonetics||[]).map(p=>p.audio).find(Boolean)||'';
+    if(!pronunciation&&!audioUrl){ showToast('No pronunciation found','var(--amber)'); return; }
+    v.pronunciation=pronunciation; v.audioUrl=audioUrl;
+    save(K.vocab,items);
+    renderVocab();
+    showToast('Pronunciation added','var(--t-selfdev)');
+  }catch(e){
+    showToast('Lookup failed','var(--red)');
+  }
 }
 function editVocab(id){_editingVocabId=id;openModal('vocab');}
 function deleteVocab(id){
@@ -3320,7 +3349,7 @@ function _renderVocabPreview(){
   const counter=total>1?`<span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${_vocabDefIdx+1} / ${total}</span>`:'';
   const nextBtn=total>1?`<button class="btn btn-ghost" onclick="nextVocabDef()">Next meaning →</button>`:'';
   const pron=_vocabPreview.pronunciation?`<span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${esc(_vocabPreview.pronunciation)}</span>`:'';
-  const playBtn=_vocabPreview.audioUrl?`<button type="button" onclick="new Audio('${esc(_vocabPreview.audioUrl)}').play()" style="background:transparent;border:none;cursor:pointer;color:var(--t-selfdev);font-size:14px;padding:0" title="Play pronunciation">🔊</button>`:'';
+  const playBtn=`<button type="button" onclick="speakWord(_vocabPreview.word,_vocabPreview.audioUrl||'')" style="background:transparent;border:none;cursor:pointer;color:var(--t-selfdev);font-size:14px;padding:0" title="Pronounce">🔊</button>`;
   $('vocab-preview').innerHTML=`<div class="card" style="border-color:var(--t-selfdev);margin-bottom:0"><div class="card-body" style="padding:14px 16px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap"><div style="font-size:20px;font-weight:800;color:var(--t-selfdev)">${esc(canonical)}</div>${pron}${playBtn}<span style="font-size:10px;color:var(--text-muted);font-style:italic">${esc(entry.pos)}</span></div><div style="font-size:13px;color:var(--text-primary);line-height:1.6;margin-bottom:14px">${esc(entry.def)}</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${counter}<button class="btn btn-primary" style="background:var(--t-selfdev);color:#000" onclick="saveVocabPreview()">Save</button>${nextBtn}<button class="btn btn-ghost" onclick="discardVocabPreview()">Discard</button></div></div></div>`;
 }
 async function lookupWord(){
