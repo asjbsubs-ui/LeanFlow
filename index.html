@@ -1610,9 +1610,9 @@ function seedIfEmpty(){
   }
   if(!load(K.goals).length){
     save(K.goals,[
-      {id:uid(),title:'Build StreamLean to £5K MRR',cat:'Business',deadline:'2026-12-31',progress:12,color:'#c084fc',milestones:[{text:'First paying client',done:true},{text:'£1K MRR',done:false},{text:'£2.5K MRR',done:false},{text:'£5K MRR',done:false}]},
+      {id:uid(),title:'Build StreamLean to $5K MRR',cat:'Business',deadline:'2026-12-31',progress:12,color:'#c084fc',milestones:[{text:'First paying client',done:true},{text:'$1K MRR',done:false},{text:'$2.5K MRR',done:false},{text:'$5K MRR',done:false}]},
       {id:uid(),title:'Read 24 books this year',cat:'Learning',deadline:'2026-12-31',progress:8,color:'#22d3ee',milestones:[{text:'First 6 books',done:false},{text:'12 books (halfway)',done:false},{text:'18 books',done:false},{text:'24 books',done:false}]},
-      {id:uid(),title:'Achieve lean physique — 80kg',cat:'Fitness',deadline:'2026-09-30',progress:25,color:'#4ade80',milestones:[{text:'Consistent training 4x/week',done:true},{text:'Clean diet dialled in',done:false},{text:'85kg mark',done:false},{text:'80kg lean',done:false}]},
+      {id:uid(),title:'Achieve lean physique — 176lbs',cat:'Fitness',deadline:'2026-09-30',progress:25,color:'#4ade80',milestones:[{text:'Consistent training 4x/week',done:true},{text:'Clean diet dialled in',done:false},{text:'187lbs mark',done:false},{text:'176lbs lean',done:false}]},
     ]);
   }
 }
@@ -7470,7 +7470,7 @@ function startBgPoll(){
       // Re-render active tab so changes appear immediately
       if(typeof renderHome==='function') renderHome();
       updateNotesPill();
-      if(activeTab&&typeof window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]==='function')
+      if(activeTab&&activeTab!=='journal'&&typeof window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]==='function')
         window['render'+activeTab.charAt(0).toUpperCase()+activeTab.slice(1)]();
       await obsFullSync(true);
     }catch(e){ console.warn('Background poll error',e); }
