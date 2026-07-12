@@ -3039,7 +3039,7 @@ function renderToLearnQueue(){
     return `<div class="book-row" style="flex-wrap:wrap">
       <div style="flex:1;min-width:0">
         <div class="book-title">${esc(t.title||t.url)}</div>
-        <div class="book-author" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.url)}</div>
+        ${t.url?`<a href="${esc(t.url)}" target="_blank" rel="noopener" class="book-author" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;color:var(--text-muted)">🔗 ${esc(t.url)}</a>`:''}
       </div>
       ${!pickerOpen?`<span style="font-size:10px;font-weight:700;color:${t.status==='extracting'?'var(--yellow)':'var(--text-muted)'};margin-right:8px;flex-shrink:0">${t.status==='extracting'?'Extracting…':'Queued'}</span>
       ${t.status==='queued'?`<button class="btn btn-ghost btn-sm" onclick="toLearnMoveTop('${t.id}')" title="Move to top">↑ Top</button>`:''}
