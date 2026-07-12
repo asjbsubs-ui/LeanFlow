@@ -4066,6 +4066,10 @@ async function renderNotes(){
             <button type="button" class="exit-chip" data-q="q3" onclick="inlineSelQuad(this)">Q3 delegate</button>
             <button type="button" class="exit-chip" data-q="q4" onclick="inlineSelQuad(this)">Q4 drop</button>
           </div>
+          <select class="select" id="exitfield-${item.id}-project" style="flex:1;min-width:140px">
+            <option value="">No project</option>
+            ${load(K.projects).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+          </select>
           <button class="exit-confirm t" onclick="inlineExit('${item.id}','t')">Create task</button>
         </div>
         <div class="exit-panel-hint">Reuses the existing note → task flow · keeps sourceNoteId link</div>
@@ -4284,7 +4288,8 @@ function inlineExit(noteId,kind){
     const due=($('exitfield-'+noteId+'-due')||{value:''}).value;
     const qBtn=card&&card.querySelector('.exit-chip.sel-t');
     const quadrant=qBtn?qBtn.dataset.q:TriageRules.DEFAULT_TASK_QUADRANT;
-    exitNoteAsTask(note,{due,quadrant});
+    const projectId=($('exitfield-'+noteId+'-project')||{value:''}).value;
+    exitNoteAsTask(note,{due,quadrant,projectId});
     _inlineTally.t++;
   } else if(kind==='e'){
     const ok=exitNoteAsExtract(note);
