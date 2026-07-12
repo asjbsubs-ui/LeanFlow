@@ -1512,6 +1512,23 @@ function migrateNoteStatuses(){
   if(changed) save(K.notes,notes);
   localStorage.setItem('_mig_note_status_v1','1');
 }
+function migrateGoalSeedUnits(){
+  if(localStorage.getItem('_mig_goal_units_v1')) return;
+  const swaps={
+    'Build StreamLean to £5K MRR':'Build StreamLean to $5K MRR',
+    '£1K MRR':'$1K MRR','£2.5K MRR':'$2.5K MRR','£5K MRR':'$5K MRR',
+    'Achieve lean physique — 80kg':'Achieve lean physique — 176lbs',
+    '85kg mark':'187lbs mark','80kg lean':'176lbs lean'
+  };
+  const goals=load(K.goals);
+  let changed=false;
+  goals.forEach(g=>{
+    if(swaps[g.title]){ g.title=swaps[g.title]; changed=true; }
+    (g.milestones||[]).forEach(m=>{ if(swaps[m.text]){ m.text=swaps[m.text]; changed=true; } });
+  });
+  if(changed) save(K.goals,goals);
+  localStorage.setItem('_mig_goal_units_v1','1');
+}
 function migrateWoCats(){
   if(localStorage.getItem('_mig_wo_cats_v1')) return;
   const cats=loadWoCats();
@@ -7392,6 +7409,7 @@ function clearWorkoutChips(){
 // ── Init ──────────────────────────────────────────────
 function init(){
   seedIfEmpty();
+  migrateGoalSeedUnits();
   migrateReviewsToSunday();
   migrateNoteStatuses();
   migrateKnowledge();
