@@ -3296,7 +3296,10 @@ function renderVocab(){
             </div>
             <div style="font-size:13px;color:var(--text-primary);line-height:1.5">${esc(v.definition)}</div>
           </div>
-          <button class="delete-btn" onclick="deleteVocab('${v.id}')" style="flex-shrink:0;margin-top:2px">✕</button>
+          <div style="display:flex;gap:2px;flex-shrink:0">
+            <button class="delete-btn" style="color:var(--text-muted)" onclick="editVocab('${v.id}')" title="Edit">✏️</button>
+            <button class="delete-btn" onclick="deleteVocab('${v.id}')" style="margin-top:2px">✕</button>
+          </div>
         </div>
       </div>
     </div>`).join('');
